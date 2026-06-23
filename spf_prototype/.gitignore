@@ -1,0 +1,10 @@
+# Build artifacts / caches (source + results are tracked; binaries are not)
+build/
+__pycache__/
+*.pyc
+*.so
+*.o
+run_*/
+.pytest_cache/
+# Reference papers kept locally, not committed
+*.pdf
