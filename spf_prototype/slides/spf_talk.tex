@@ -1,7 +1,7 @@
 \documentclass[aspectratio=169]{beamer}
-% Spin-polarized DT neutron wall loading: theory (Schwartz 2025), methods,
-% and an OpenMC verification. Teaching deck.
-% Build:  pdflatex spf_talk.tex  (run twice for the table of contents)
+% Spin-polarized DT neutron wall loading -- a from-scratch teaching deck.
+% Assumes NO prior neutronics or OpenMC knowledge.
+% Build:  pdflatex spf_talk.tex   (run twice for the table of contents)
 \usetheme{Madrid}
 \usecolortheme{whale}
 \usepackage{amsmath,amssymb}
@@ -11,461 +11,580 @@
 \graphicspath{{../figs/}}
 \setbeamertemplate{navigation symbols}{}
 \setbeamertemplate{caption}{\raggedright\insertcaption\par}
+\setbeamertemplate{blocks}[rounded][shadow=false]
 \newcommand{\Bhat}{\hat{B}}
 \newcommand{\dOmega}{\,d\Omega}
+\newcommand{\keyword}[1]{\textcolor{blue!60!black}{\textbf{#1}}}
 
 \title[Spin-polarized fusion NWL]{Steering Fusion Neutrons}
-\subtitle{Spin-polarized DT wall loading: theory (Schwartz 2025), methods, and an OpenMC verification}
+\subtitle{Spin-polarized DT wall loading, from first principles:\\ the physics, the analytic theory, and an OpenMC verification}
 \author[SPF source project]{[Your Name]}
-\institute[]{Prepared as a learning deck \\ \small (companion to the \texttt{spf\_prototype} OpenMC source)}
+\institute[]{A self-contained learning deck \\ \small (companion to the \texttt{spf\_prototype} OpenMC source)}
 \date{\today}
 
 \begin{document}
 
 \begin{frame}[plain]\titlepage\end{frame}
 
-\begin{frame}{What you'll get from this deck}
+\begin{frame}{How to read this deck}
+  It assumes \alert{no prior neutronics or OpenMC knowledge}. We build up from scratch:
   \begin{itemize}
-    \item \alert{Part I --- Physics:} why spin-polarized fusion steers neutrons, and the cross section that does it.
-    \item \alert{Part II --- Analytic wall load:} how Schwartz (2025) turns that into a fast, closed-form neutron wall load (NWL).
-    \item \alert{Part III --- Our prototype:} a polarization-aware \emph{OpenMC} source and a tiered verification.
-    \item \alert{Part IV --- Results:} sampler $\to$ independent analytic $\to$ full Monte-Carlo, plus engineering scalars.
-    \item \alert{Part V --- Honest scope \& what's next.}
+    \item \keyword{Part 0 -- Why:} fusion, neutrons, and why ``where they hit the wall'' matters.
+    \item \keyword{Part 1 -- Two methods:} the analytic (paper-and-pencil) picture vs.\ Monte-Carlo simulation, and \emph{why we use both}.
+    \item \keyword{Part 2 -- Vocabulary:} a plain-language neutronics \& OpenMC primer.
+    \item \keyword{Part 3 -- Physics:} how aligning nuclear spins steers neutrons.
+    \item \keyword{Part 4 -- Theory:} Schwartz's analytic wall load.
+    \item \keyword{Part 5 -- What we built \& how we checked it.}
+    \item \keyword{Part 6 -- Results, findings, limits, next steps.}
   \end{itemize}
   \vfill
-  \footnotesize Primary reference: J.~A.~Schwartz, \emph{Analytic neutron wall loading from spin-polarized fusion in axisymmetric geometries}, arXiv:2507.11758 (2025).
+  \footnotesize Blue boxes give \keyword{intuition}; orange text flags the \alert{key point} on each slide.
 \end{frame}
 
 \begin{frame}{Outline}\tableofcontents\end{frame}
 
 % ======================================================================
-\section{Part I --- The physics of spin-polarized fusion}
+\section{Part 0 -- Why this matters}
 % ======================================================================
-\begin{frame}{Why polarize the fuel?}
-  Align the nuclear spins of the D and T fuel \emph{before} they react. Two payoffs:
+\begin{frame}{Fusion in one slide}
+  The deuterium--tritium (DT) reaction powers most fusion designs:
+  \[
+    \mathrm{D} + \mathrm{T} \;\longrightarrow\; \underbrace{{}^4\mathrm{He}}_{3.5\ \mathrm{MeV}} \;+\; \underbrace{n}_{14.1\ \mathrm{MeV}}
+  \]
   \begin{itemize}
-    \item \alert{Rate:} the fusion cross section can rise by up to \alert{50\%}.
-    \item \alert{Direction:} neutrons (and alphas) are emitted \alert{anisotropically} --- preferentially along or across the magnetic field.
+    \item The \keyword{alpha} (${}^4$He) is \emph{charged} $\Rightarrow$ trapped by the magnetic field $\Rightarrow$ heats the plasma.
+    \item The \keyword{neutron} carries \alert{$\sim$80\% of the energy} and is \emph{uncharged} $\Rightarrow$ it is \alert{not confined} -- it flies straight out of the plasma.
   \end{itemize}
   \vfill
-  Engineering hook: \alert{aim neutrons away from fragile structures} (tokamak center stack, divertor; mirror end plugs; dipole flyer ring) and toward robust outer walls.
-  \vfill
-  \footnotesize The two effects are \emph{not} independent --- the spin mix that boosts rate is not the same as the one that best steers. Choosing the mix is a design trade-off.
+  \begin{block}{Why you should care}
+    All that neutron energy lands on the surrounding wall. Managing it -- and using it -- is one of the central engineering problems of a fusion reactor.
+  \end{block}
 \end{frame}
 
-\begin{frame}{Spin states of the reactants}
+\begin{frame}{What the escaping neutrons do}
+  Those 14.1 MeV neutrons stream out and hit the \keyword{first wall} and \keyword{blanket}. They:
   \begin{itemize}
-    \item \alert{Deuteron} (spin 1): projection on $\Bhat$ can be $m=+1,0,-1$. Fractions $d_+,\,d_0,\,d_-$.
-    \item \alert{Triton} (spin $\tfrac12$): projection $m=\pm\tfrac12$. Fractions $t_+,\,t_-$.
+    \item \keyword{Heat} the structure (the power you want to extract).
+    \item \keyword{Damage} materials (atoms knocked out of place $\to$ embrittlement; lifetime limit).
+    \item \keyword{Breed tritium}: $n + {}^6\mathrm{Li}\to {}^4\mathrm{He}+\mathrm{T}$ in a Li blanket -- you must make your own T fuel.
   \end{itemize}
   \vfill
-  Six spin combinations $\to$ by symmetry about $\Bhat$ they collapse to \alert{three collision modes} $a,b,c$ (Schwartz Eq.~1):
-  \[
-    a = d_+ t_+ + d_- t_-, \qquad
-    b = d_0\;(= d_0 t_+ + d_0 t_-), \qquad
-    c = d_+ t_- + d_- t_+ .
-  \]
-  with $a+b+c=1$. \quad Unpolarized fuel: $a=b=c=\tfrac13$.
-  \vfill
-  \footnotesize $b$ is just the deuteron transverse ($m=0$) fraction. The three spin fractions give 3 knobs, but the emission depends on only \alert{2 degrees of freedom}.
+  \begin{block}{The central question of this work}
+    \alert{Where do the neutrons hit the wall, and how intensely?} The answer drives cooling, material lifetime, and fuel self-sufficiency.
+  \end{block}
 \end{frame}
 
-\begin{frame}{The differential cross section (Schwartz Eq.~2)}
-  Let $\theta$ be the angle between the emitted neutron and the \alert{local field direction $\Bhat$}:
-  \[
-    \frac{d\sigma}{d\Omega}
-    = \frac{\sigma_0}{2\pi}\left[\;
-      \tfrac{3}{4}\,a\,\sin^2\theta
-      \;+\;\Big(\tfrac{2}{3}b+\tfrac{1}{3}c\Big)\Big(\tfrac14+\tfrac34\cos^2\theta\Big)
-    \;\right]
-  \]
-  $\sigma_0$ = cross section in the $S=\tfrac32$ combined-spin state.
-  \vfill
+\begin{frame}{``Neutron wall load'' (NWL): the key metric}
+  \keyword{Neutron wall load} = neutron power (or current) arriving \alert{per unit area} of the first wall (e.g.\ MW/m$^2$).
   \begin{itemize}
-    \item The $\sin^2\theta$ piece (weight $\propto a$): emission \alert{perpendicular} to $\Bhat$.
-    \item The $\tfrac14+\tfrac34\cos^2\theta$ piece (weight $\propto \tfrac23 b+\tfrac13 c$): emission \alert{parallel} to $\Bhat$.
+    \item A \emph{spatial map}: some parts of the wall are hit harder than others.
+    \item Engineers care about the \alert{peak}, not just the average: hot spots set the cooling requirement and the component lifetime.
+    \item The \keyword{peaking factor} = peak / average. Lower (more uniform) is generally easier to engineer.
   \end{itemize}
   \vfill
-  \footnotesize Everything that follows --- rate, directionality, wall load --- is a consequence of this one formula.
+  \footnotesize In this work NWL is computed as a \alert{geometric} quantity (we will be precise about what that includes and excludes).
 \end{frame}
 
-\begin{frame}{Integrate over the sphere: the total rate factor $\eta$}
-  Using $\displaystyle\int \sin^2\theta\dOmega=\frac{8\pi}{3}$ and $\displaystyle\int\Big(\tfrac14+\tfrac34\cos^2\theta\Big)\dOmega=2\pi$:
+\begin{frame}{The idea: what if you could aim the neutrons?}
+  Normally DT neutrons come off \keyword{isotropically} (equally in all directions). But if you \alert{align the nuclear spins} of the fuel, the emission becomes \keyword{directional}.
+  \vfill
+  \begin{block}{The payoff}
+    \alert{Steer neutrons away from fragile, hard-to-replace parts} (the tokamak \keyword{center stack} / inboard magnets) and \alert{toward robust outer walls}. Same fusion power, gentler on the weak spot.
+  \end{block}
+  \vfill
+  This deck is about \alert{modeling that steering} and \alert{verifying the model is correct} -- the prerequisite before anyone trusts it for design.
+\end{frame}
+
+% ======================================================================
+\section{Part 1 -- Two ways to find where neutrons go}
+% ======================================================================
+\begin{frame}{Two complementary methods}
+  \begin{columns}[T]
+    \begin{column}{0.5\linewidth}
+      \begin{block}{Analytic (paper-and-pencil)}
+        \footnotesize Assume neutrons travel in \alert{straight lines} from birth to wall (no scattering). Then the wall load is a \alert{geometry integral} you can do in closed form.\\[4pt]
+        $+$ instant, exact, differentiable\\
+        $-$ only valid with \alert{no scattering}; simple shapes
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\linewidth}
+      \begin{block}{Monte Carlo (simulation)}
+        \footnotesize \alert{Simulate many individual neutrons} one at a time, using random numbers for each step; average the results.\\[4pt]
+        $+$ handles scattering, real materials, any geometry\\
+        $-$ slower; has \alert{statistical noise} ($\sim 1/\sqrt{N}$)
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vfill
+  \footnotesize Schwartz (2025) provides the \alert{analytic} method. \keyword{OpenMC} is the \alert{Monte-Carlo} code. This project connects the two.
+\end{frame}
+
+\begin{frame}{The key idea: ``recovery'' as a correctness check}
+  In the special case of \alert{no scattering}, both methods describe the \emph{same} physics, so they must give the \alert{same answer}.
+  \vfill
+  \begin{block}{The validation logic (used throughout this work)}
+    \begin{enumerate}
+      \item Build the Monte-Carlo source and turn scattering \alert{off} (free-streaming).
+      \item Check that OpenMC \alert{recovers} (reproduces, within statistical noise) the known analytic answer.
+      \item Agreement $\Rightarrow$ the source and the simulation machinery are \alert{correct}.
+      \item \alert{Only then} turn on the physics the analytic method \emph{cannot} do (scattering, blankets, real shapes).
+    \end{enumerate}
+  \end{block}
+  \vfill
+  \alert{``Recovery'' is the heart of this report:} we earn trust in the new tool by first reproducing a known result.
+\end{frame}
+
+\begin{frame}{Why not just go straight to Monte Carlo?}
+  Because a brand-new custom source could be \alert{subtly wrong} (a flipped sign, a bad rotation, a mis-normalized distribution) and still produce \emph{plausible-looking} output.
+  \vfill
+  \begin{itemize}
+    \item The analytic result is an \alert{independent, exact} answer for the no-scattering case.
+    \item Matching it to a fraction of a percent is strong evidence the MC source is right.
+    \item It also calibrates the \alert{statistical noise}: residuals should look like random scatter, not a systematic bias.
+  \end{itemize}
+  \vfill
+  \footnotesize This is standard practice in computational physics: \alert{verify against a known solution} before trusting a code on the unknown.
+\end{frame}
+
+% ======================================================================
+\section{Part 2 -- A neutronics \& OpenMC primer}
+% ======================================================================
+\begin{frame}{What is Monte-Carlo particle transport?}
+  Simulate the \keyword{life history} of one neutron at a time:
+  \begin{enumerate}
+    \item \keyword{Born} somewhere (position), heading some way (direction), with some energy.
+    \item \keyword{Fly} in a straight line until it (maybe) interacts with a nucleus.
+    \item \keyword{Interact}: scatter (change direction/energy), get absorbed, etc.
+    \item Repeat until it leaks out or dies; \keyword{tally} what it did along the way.
+  \end{enumerate}
+  \vfill
+  Run \alert{millions} of histories; the averages converge to the physical answer, with error shrinking like $1/\sqrt{N}$.
+  \vfill
+  \begin{block}{Intuition}
+    It is a numerical experiment: instead of solving an equation, you ``play out'' many random neutron journeys and count outcomes.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The vocabulary you need (1/2)}
+  \begin{itemize}
+    \item \keyword{Source} -- the rule for how neutrons are \alert{born}: their position, \alert{direction}, and energy. \emph{This is what we wrote.}
+    \item \keyword{Cross section} -- how likely a neutron is to interact per unit path length. Large $\Rightarrow$ interacts often; near zero $\Rightarrow$ flies through.
+    \item \keyword{Mean free path} -- average distance between interactions ($= 1/\text{cross section}$).
+    \item \keyword{Void / vacuum} -- a region with $\approx$ zero cross section: the neutron \alert{free-streams} (straight line, no interactions).
+  \end{itemize}
+  \vfill
+  \begin{block}{How we get ``no scattering'' in OpenMC}
+    Make the interior a \alert{void}. Then the mean free path is huge compared to the device, so every neutron flies straight from birth to wall -- exactly the analytic assumption.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The vocabulary you need (2/2)}
+  \begin{itemize}
+    \item \keyword{Tally} -- what you \alert{measure} during the simulation (a counter you accumulate).
+    \item \keyword{Surface current} -- a tally that counts neutrons \alert{crossing a surface} (e.g.\ the wall). This is our NWL.
+    \item \keyword{Mesh} -- a grid that \alert{bins} the measurement by location, so we get a wall \emph{map}, not just a total.
+    \item \keyword{Vacuum boundary} -- an outer surface where a neutron that crosses is \alert{gone} (``leaks'' out and is counted).
+  \end{itemize}
+  \vfill
+  \footnotesize So: born in the plasma $\to$ free-stream across the void $\to$ cross a wall surface (counted by a meshed current tally) $\to$ leak out. Summing the bins gives the NWL map.
+\end{frame}
+
+\begin{frame}{What is OpenMC, and what is a ``custom source''?}
+  \keyword{OpenMC} is a widely used, open-source Monte-Carlo neutron/photon transport code (C++ core, Python interface).
+  \vfill
+  \begin{itemize}
+    \item It ships with \alert{built-in sources} (point, isotropic, simple energy spectra).
+    \item None of them know about \alert{spin-polarization directionality}. So we wrote a \keyword{custom (``compiled'') source}:
+      \begin{itemize}\footnotesize
+        \item a small C++ program that, each time OpenMC asks for a new neutron, returns its birth \alert{position, direction, energy};
+        \item compiled into a plug-in library OpenMC loads at run time.
+      \end{itemize}
+  \end{itemize}
+  \vfill
+  \alert{Our contribution lives almost entirely in that source} -- the rule that makes neutrons come out with the spin-polarized angular pattern.
+\end{frame}
+
+% ======================================================================
+\section{Part 3 -- The physics of spin-polarized fusion}
+% ======================================================================
+\begin{frame}{Where does the directionality come from?}
+  D and T nuclei have \keyword{spin} (a quantum ``orientation''). Normally the spins point every which way, and neutrons come off isotropically.
+  \vfill
+  \begin{itemize}
+    \item \keyword{Polarize} the fuel = line the spins up relative to the magnetic field $\Bhat$ \alert{before} they react.
+    \item The fusion probability then depends on the \alert{angle $\theta$ between the outgoing neutron and $\Bhat$}.
+    \item Result: neutrons preferentially come out \alert{across} or \alert{along} the field.
+  \end{itemize}
+  \vfill
+  \begin{block}{Intuition}
+    Aligned spins give the reaction a ``preferred axis'' ($\Bhat$). The emission pattern is shaped relative to that axis -- that is the knob we exploit.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Bookkeeping the spin states}
+  \begin{itemize}
+    \item \keyword{Deuteron} (spin 1): can be $m=+1,0,-1$ relative to $\Bhat$ -- fractions $d_+,d_0,d_-$.
+    \item \keyword{Triton} (spin $\tfrac12$): $m=\pm\tfrac12$ -- fractions $t_+,t_-$.
+  \end{itemize}
+  The combinations collapse (by symmetry about $\Bhat$) into \alert{three ``collision modes''} $a,b,c$ (Schwartz Eq.~1):
   \[
-    \sigma_{\text{tot}} = \sigma_0\Big(a+\tfrac23 b+\tfrac13 c\Big)\equiv \sigma_0\,\eta .
+    a = d_+t_+ + d_-t_-,\qquad b = d_0,\qquad c = d_+t_- + d_-t_+,\qquad a+b+c=1.
   \]
-  $\eta$ is the \alert{total-rate factor} (relative to $\sigma_0$). Corner values:
-  \begin{center}\footnotesize
-  \begin{tabular}{lccc}
+  \vfill
+  \footnotesize \keyword{Unpolarized} fuel is the balanced mix $a=b=c=\tfrac13$. Pure modes ($a{=}1$, etc.) are idealized limits we use to isolate each effect.
+\end{frame}
+
+\begin{frame}{The one equation that governs everything (Schwartz Eq.~2)}
+  The chance of emitting a neutron at angle $\theta$ to the field:
+  \[
+    \frac{d\sigma}{d\Omega}=\frac{\sigma_0}{2\pi}\Big[\;
+      \underbrace{\tfrac34 a\,\sin^2\theta}_{\text{across }\Bhat}
+      \;+\;\underbrace{\big(\tfrac23 b+\tfrac13 c\big)\big(\tfrac14+\tfrac34\cos^2\theta\big)}_{\text{along }\Bhat}\;\Big]
+  \]
+  \begin{itemize}
+    \item $d\sigma/d\Omega$ = relative number of neutrons per unit solid angle in direction $\theta$.
+    \item $\sin^2\theta$ term peaks \alert{perpendicular} to $\Bhat$; $\tfrac14+\tfrac34\cos^2\theta$ term peaks \alert{parallel}.
+    \item $\sigma_0$ is just an overall scale.
+  \end{itemize}
+  \vfill
+  \alert{Read it as a recipe:} the fuel mix $(a,b,c)$ sets how much ``across'' vs.\ ``along'' emission you get.
+\end{frame}
+
+\begin{frame}{Two numbers actually matter for direction}
+  Group the equation into two \alert{angular shapes} with two weights:
+  \[
+    w_\perp = \tfrac34 a \quad(\sin^2\theta),\qquad
+    w_\parallel = \tfrac23 b + \tfrac13 c \quad(\tfrac14+\tfrac34\cos^2\theta).
+  \]
+  The birth-direction pattern depends \alert{only} on $(w_\perp,w_\parallel)$.
+  \vfill
+  Separately, the \alert{total number} of neutrons (the rate) scales with
+  \[
+    \eta = a + \tfrac23 b + \tfrac13 c \qquad(\text{``total-rate factor''}).
+  \]
+  \begin{block}{Why this split matters}
+    \alert{Direction and rate are different questions.} Keeping them separate is the single most important modeling choice -- it lets us compare ``shapes'' at \alert{equal total fusion power}.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The three pure modes (our test cases)}
+  \begin{center}\small
+  \begin{tabular}{lccl}
     \toprule
-    mode & $(a,b,c)$ & $\sigma_{\text{tot}}/\sigma_0=\eta$ & vs.\ unpolarized\\
+    mode & $(a,b,c)$ & rate $\eta$ & emission pattern \\
     \midrule
-    unpolarized & $(\tfrac13,\tfrac13,\tfrac13)$ & $2/3$ & --- \\
-    \alert{A} & $(1,0,0)$ & $1$ & $+50\%$ \\
-    \alert{B} & $(0,1,0)$ & $2/3$ & same \\
-    \alert{C} & $(0,0,1)$ & $1/3$ & $-50\%$ \\
+    \keyword{unpolarized} & $(\tfrac13,\tfrac13,\tfrac13)$ & $2/3$ & \alert{isotropic} (flat) \\
+    \keyword{A} & $(1,0,0)$ & $1$ ($+50\%$) & $\sin^2\theta$: \alert{across} $\Bhat$ (peaks $\perp$) \\
+    \keyword{B} & $(0,1,0)$ & $2/3$ & $\tfrac14+\tfrac34\cos^2\theta$: \alert{along} $\Bhat$ \\
+    \keyword{C} & $(0,0,1)$ & $1/3$ ($-50\%$) & \alert{same shape as B} \\
     \bottomrule
   \end{tabular}
   \end{center}
   \vfill
-  \footnotesize Note: the unpolarized total is $2\sigma_0/3$, \emph{not} $\sigma_0$. The ``50\% enhancement'' is A's $\sigma_0$ relative to that $2\sigma_0/3$.
+  \begin{block}{A correction worth flagging}
+    It is tempting to call mode C ``isotropic.'' \alert{It is not.} B and C share the \emph{same} angular shape; they differ only in how \emph{many} neutrons (the rate). We will see this confirmed both analytically and in OpenMC.
+  \end{block}
 \end{frame}
 
-\begin{frame}{The three pure modes --- shapes and a key correction}
+\begin{frame}{Energy: deliberately kept simple}
   \begin{itemize}
-    \item \alert{A mode} $(1,0,0)$: $\dfrac{d\sigma}{d\Omega}\propto\sin^2\theta$ --- vanishes along $\Bhat$, peaks \alert{perpendicular}. Highest rate.
-    \item \alert{B mode} $(0,1,0)$: $\propto\tfrac14+\tfrac34\cos^2\theta$ --- peaks \alert{parallel} to $\Bhat$. Same total as unpolarized.
-    \item \alert{C mode} $(0,0,1)$: \alert{same angular shape as B} ($\tfrac14+\tfrac34\cos^2\theta$); only the \emph{rate} differs (half the unpolarized rate).
+    \item Real DT neutrons are born near 14.1 MeV with a small thermal spread.
+    \item The spread is \alert{decoupled} from the angular (steering) physics, and irrelevant to the geometry of where neutrons land.
+    \item So throughout the verification we use a single energy, \alert{14.1 MeV} -- exactly as Schwartz does.
   \end{itemize}
   \vfill
-  \alert{Correction to a common mistake:} C is \alert{not} isotropic. Set $a=0$ in Eq.~2 --- the $b$ and $c$ terms carry the \emph{identical} $\theta$-dependence. So \alert{B and C share directionality}; they differ only in magnitude.
-\end{frame}
-
-\begin{frame}{Separating ``where'' from ``how many''}
-  The birth-direction shape depends on only \alert{two effective weights}:
-  \[
-    w_\perp=\tfrac34 a \quad(\sin^2\theta\text{ piece}),\qquad
-    w_\parallel=\tfrac23 b+\tfrac13 c\quad(\tfrac14+\tfrac34\cos^2\theta\text{ piece}).
-  \]
-  Unnormalized birth intensity about $\Bhat$:
-  \[
-    I(\theta)=w_\perp\sin^2\theta+w_\parallel\Big(\tfrac14+\tfrac34\cos^2\theta\Big),\qquad
-    p(\theta,\varphi)=\frac{I(\theta)}{\int I\dOmega},\;\; \varphi\sim U[0,2\pi).
-  \]
-  \vfill
-  \alert{Design takeaway:} the \emph{direction} pdf needs only $(w_\perp,w_\parallel)$; the \emph{total rate} $\eta$ is a separate scalar. Keeping these two concerns apart is the single most important modeling decision --- it mirrors how Schwartz separates angular factors from rate factors.
-\end{frame}
-
-\begin{frame}{Energy (for completeness)}
-  \begin{itemize}
-    \item Birth energy is \alert{decoupled} from the polarized angular distribution to leading order.
-    \item For the analytic comparison: \alert{monoenergetic 14.1 MeV} (Schwartz drops the energy spread entirely).
-    \item A physical option (not used in verification): a Ballabio-broadened Gaussian at ion temperature $T_i$ (width $\approx 177\sqrt{T_i[\text{keV}]}$ keV).
-  \end{itemize}
-  \vfill
-  Energy is irrelevant to the \emph{angular}/geometric wall-load physics, so we set it aside.
+  \footnotesize This keeps the comparison clean: any difference between OpenMC and analytic is about \alert{geometry/direction}, not energy.
 \end{frame}
 
 % ======================================================================
-\section{Part II --- The analytic neutron wall load (Schwartz)}
+\section{Part 4 -- The analytic wall load (Schwartz 2025)}
 % ======================================================================
-\begin{frame}{What is ``neutron wall load'' (NWL)?}
-  Following Lion, the NWL is the neutron current through a patch of first wall (Schwartz Eq.~3):
+\begin{frame}{From emission pattern to wall load}
+  Given how a source emits, the load on a wall patch is a classic geometry calculation:
   \[
-    Q^{\text{NWL}}(\mathbf r_w)=\frac{E_n}{4\pi}\int_{V_s} dV\;
-      \Phi^{\text{src}}(\mathbf r_s)\;\Bhat_n\!\cdot\!\frac{\mathbf r_s-\mathbf r_w}{|\mathbf r_s-\mathbf r_w|^3}
+    Q^{\text{NWL}}(\mathbf r_w)\;\propto\;\int_{\text{source}} \!\!
+      \underbrace{\frac{1}{|\mathbf r_s-\mathbf r_w|^2}}_{\text{inverse-square}}\;
+      \underbrace{\cos\nu}_{\text{angle onto wall}}\;
+      \underbrace{f(\theta)}_{\text{emission pattern}}\; dV
   \]
-  $E_n$ = energy/neutron, $\Phi^{\text{src}}$ = source density, $\hat n$ = wall normal.
-  \vfill
   \begin{itemize}
-    \item For an \alert{isotropic} source the $1/4\pi$ is a constant; for a \alert{polarized} source we insert the angular factor in $\cos\theta$ (angle to local $\Bhat$).
-    \item \alert{Crucial:} this is a \alert{free-streaming, sightline} quantity --- \alert{no scattering}. It is a \emph{geometric} load, not a shielded dose, not a TBR.
+    \item \keyword{Inverse-square}: farther source points contribute less.
+    \item \keyword{$\cos\nu$}: a glancing hit deposits less per area than a head-on hit.
+    \item \keyword{$f(\theta)$}: the spin-polarization pattern (1 for isotropic, $\sin^2\theta$ for A, $\tfrac14+\tfrac34\cos^2\theta$ for B/C).
   \end{itemize}
+  \vfill
+  \alert{No scattering appears} -- this is the free-streaming, sightline picture.
 \end{frame}
 
-\begin{frame}{Geometry: a filamentary ring source}
-  Schwartz reduces the volume integral to a 1-D toroidal integral over a \alert{ring} of plasma at major radius $p$, height $z$:
+\begin{frame}{Modeling the plasma as rings}
+  An axisymmetric (doughnut-shaped) plasma is built from \keyword{circular ring} sources at major radius $p$, height $z$.
   \begin{columns}[T]
-    \begin{column}{0.58\linewidth}
+    \begin{column}{0.6\linewidth}
       \begin{itemize}\small
-        \item Source point $S=(p\cos\varphi,\,p\sin\varphi,\,z)$.
-        \item Target $T$ on the wall (radius $u$ on the inboard side), normal $\hat n$.
-        \item $\boldsymbol\Delta=S-T=(p\cos\varphi-u,\,p\sin\varphi,\,z)$,
-        \item $|\boldsymbol\Delta|=\sqrt{p^2+u^2+z^2-2pu\cos\varphi}$.
-        \item $\cos\nu=\dfrac{\boldsymbol\Delta\cdot\hat n}{|\boldsymbol\Delta|}=\dfrac{p\cos\varphi-u}{|\boldsymbol\Delta|}$ (inboard).
-        \item Visible arc $\pm\varphi_i=\arccos(u/p)$.
+        \item Each wall target sees the ring from a range of toroidal angles $\varphi$.
+        \item $|\Delta|$ = distance from a ring point to the target.
+        \item $\cos\nu$ = how square-on the neutron hits the wall.
+        \item $\cos\theta$ = angle of that sightline to the local field $\Bhat$ (this is where polarization enters).
+        \item Integrate over the \alert{visible arc} of the ring.
       \end{itemize}
     \end{column}
-    \begin{column}{0.42\linewidth}
-      \footnotesize $\nu$ = angle between sightline and wall normal.\\[2pt]
-      $\theta$ = angle between sightline and $\Bhat$.\\[2pt]
-      The ring is integrated only over the arc \alert{visible} from the target.
+    \begin{column}{0.4\linewidth}
+      \begin{block}{Plasma profile}
+        \footnotesize A real plasma is denser in the middle. We weight the rings by a \alert{parabolic} $1-\rho^2$ profile ($\rho$ = normalized minor radius) and sum.
+      \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
-\begin{frame}{The reduced intensity $g$}
-  Per unit ring length (dropping $E_n/4\pi$), the wall load from one ring is
-  \[
-    g=\int_{-\varphi_m}^{\varphi_m} \frac{p\,\cos\nu}{|\boldsymbol\Delta|^2}\,f(\cos\theta)\,d\varphi,
-  \]
-  with the angular factor $f$:
-  \[
-    f=1\ (\text{iso}),\quad f=\sin^2\theta\ (\text{A}),\quad f=\tfrac14+\tfrac34\cos^2\theta\ (\text{B/C}).
-  \]
-  For a \alert{purely toroidal} field $\Bhat=(-\sin\varphi,\cos\varphi,0)$ one finds the compact result
-  \[
-    \cos\theta=\frac{u\sin\varphi}{|\boldsymbol\Delta|}\qquad(\text{Schwartz Eq.~7}).
-  \]
-  \vfill
-  \footnotesize $1/|\boldsymbol\Delta|^2$ = inverse-square fall-off; $\cos\nu$ = projection onto the wall; $p\,d\varphi$ = ring line element.
-\end{frame}
-
-\begin{frame}{Closed form via elliptic integrals (Schwartz Eq.~5)}
-  The integrals evaluate in terms of incomplete elliptic integrals $F(\varphi,m),E(\varphi,m)$. E.g.\ inboard, isotropic:
-  \[\resizebox{\linewidth}{!}{$\displaystyle
+\begin{frame}{Schwartz's result: a fast closed form}
+  Doing the ring integral yields \alert{closed-form expressions} (using elliptic integrals $F,E$), e.g.\ on the inboard wall:
+  \[\resizebox{0.96\linewidth}{!}{$\displaystyle
     g_{RiI}=\frac{4p\sqrt{(p^2-u^2)(p^2-u^2+z^2)}}{q}
     -\frac{2p\,F(\varphi,m)}{u\sqrt{(p-u)^2+z^2}}
     +\frac{2p(p^2-u^2+z^2)\sqrt{(p-u)^2+z^2}}{q\,u}\,E(\varphi,m)
   $}\]
-  \[
-    q=p^4-2p^2(u^2-z^2)+(u^2+z^2)^2,\quad \varphi=\tfrac{\varphi_i}{2},\quad m=\frac{-4pu}{(p-u)^2+z^2}.
-  \]
   \begin{itemize}
-    \item Floor/ceiling and outboard walls: same structure, different normal and visibility limits (Schwartz \S3.3--3.4).
-    \item \alert{Fully differentiable} $\Rightarrow$ usable inside a gradient-based design optimizer.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{\texttt{anarr\'ima}: Schwartz's reference implementation}
-  \begin{itemize}
-    \item Open-source \texttt{python} package (PrincetonUniversity/\texttt{anarrima}), \alert{JAX}-based (auto-differentiable).
-    \item Implements the closed forms: \texttt{g\_HI/g\_HA/g\_Hc/g\_HB} (horizontal-normal walls) and \texttt{g\_VI/...} (vertical), plus angled-field variants (\S3.2).
-    \item Ships an \texttt{examples/square\_torus.py} that generates the paper's Figure~2.
+    \item \alert{Instant} to evaluate and \alert{differentiable} $\Rightarrow$ usable inside design optimizers.
+    \item Implemented in Schwartz's open-source \keyword{\texttt{anarr\'ima}} package -- our analytic ``ground truth.''
   \end{itemize}
   \vfill
-  \alert{We use it as the ``ground-truth'' analytic reference} --- and cross-check it with our own independent quadrature.
+  \footnotesize You do not need to read the formula -- the point is that an \alert{exact, independent} answer exists to check our simulation against.
 \end{frame}
 
-\begin{frame}{Schwartz's headline example: square-cross-section torus}
-  Circular plasma (parabolic $1-\rho^2$ profile), purely toroidal field, four flat walls. Holding \alert{total fusion rate constant}, compare directionality:
+\begin{frame}{Schwartz's headline example (what we reproduce)}
+  A \keyword{square-cross-section torus}: circular plasma, four flat walls, purely toroidal field. Holding total fusion power fixed and comparing emission patterns:
   \begin{center}\footnotesize
-  \begin{tabular}{lcc}
+  \begin{tabular}{ll}
     \toprule
-    quantity & effect (paper text) \\
+    quantity & effect \\
     \midrule
-    isotropic: outboard vs inboard & outboard $\sim\!12\%$ hotter (pure geometry)\\
-    A mode, inboard midplane & $+43\%$ \\
-    A mode, outboard midplane & $-22\%$ \\
-    B/C mode (mirror of A) & $-43\%$ inboard, $+22\%$ outboard \\
+    unpolarized: outboard vs.\ inboard wall & outboard $\sim$12\% hotter (pure geometry) \\
+    \keyword{A} mode at the inboard midplane & $+43\%$ \\
+    \keyword{A} mode at the outboard midplane & $-22\%$ \\
+    \keyword{B/C} mode & the mirror image ($-43\%$ inboard, $+22\%$ outboard) \\
     \bottomrule
   \end{tabular}
   \end{center}
   \vfill
-  \alert{Physics story:} B/C steers neutrons \alert{off the inboard center stack} toward the outboard wall --- attractive for spherical tokamaks where the center stack is precious.
+  \alert{Physics story:} B/C steers neutrons \alert{off the inboard center stack} and onto the outboard wall -- exactly what you want to protect the precious center column.
 \end{frame}
 
 % ======================================================================
-\section{Part III --- Our prototype: a polarization-aware OpenMC source}
+\section{Part 5 -- What we built, and how we checked it}
 % ======================================================================
-\begin{frame}{Goal and method}
-  \alert{Goal:} a self-contained, polarization-aware \emph{birth-direction sampler} for OpenMC --- validated against (i) the unpolarized isotropic limit and (ii) Schwartz's analytic results --- before any integration with a real plasma source.
+\begin{frame}{The goal, restated plainly}
+  \begin{block}{Goal}
+    Build a \alert{spin-polarized neutron source for OpenMC}, and \alert{prove it is correct} by recovering Schwartz's analytic results -- creating a trustworthy, transport-capable tool to go beyond what the analytic theory can do.
+  \end{block}
   \vfill
-  \alert{Working style (strict):}
-  \begin{itemize}
-    \item Hard-gate on correctness; \alert{strict tier ordering} (don't start tier $N{+}1$ until $N$ passes).
-    \item Honest, non-cherry-picked diagnostics (report marginal/failed results plainly).
-    \item Asserts for invariants; warnings only for user input.
+  We worked in strict \keyword{tiers}, not advancing until each was verified:
+  \begin{itemize}\small
+    \item \keyword{Tier 0} -- get OpenMC built and the plug-in mechanism working.
+    \item \keyword{Tier 1} -- the emission \emph{sampler} alone (no transport): are the directions right?
+    \item \keyword{Tier 2a} -- our \emph{own} analytic calculation, to double-check the reference.
+    \item \keyword{Tier 2b} -- the full OpenMC run: does it \alert{recover} the analytic?
+    \item \keyword{Tier 3} -- turn the validated results into engineering numbers and figures.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{The tiers}
+\begin{frame}{Tier 1 -- the ``sampler'': how a neutron's direction is drawn}
+  Each time OpenMC needs a neutron, the source must \alert{randomly pick a direction} from the spin-polarized pattern. Three pieces:
   \begin{itemize}
-    \item \alert{Tier 0 --- Environment:} build OpenMC, install, cross sections, verify the custom-source build recipe end-to-end.
-    \item \alert{Tier 1 --- Sampler alone} (no transport): get the birth directions provably right.
-    \item \alert{Tier 2a --- Independent analytic NWL:} reimplement Schwartz's integral; agree with \texttt{anarr\'ima}.
-    \item \alert{Tier 2b --- Full Monte-Carlo:} run the compiled source through OpenMC; reproduce the analytic.
-    \item \alert{Tier 3 --- Engineering artifacts:} peaking factors, current fractions, figures.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Sampler architecture (one source of truth)}
-  \begin{itemize}
-    \item \texttt{spf\_sampler.hpp} --- \alert{pure-math header}: $(a,b,c)\!\to\!(w_\perp,w_\parallel,\eta)$, the angular samplers, and the frame rotation. No OpenMC types $\Rightarrow$ testable standalone.
-    \item \texttt{spf\_mirror.py} --- a \alert{Python mirror}, including a \emph{bit-exact} port of OpenMC's PCG \texttt{prn}.
-    \item \texttt{polarized\_fusion\_source.cpp} --- a thin \texttt{openmc::Source} wrapper (the \texttt{.so}).
+    \item \keyword{Choose the shape} (``stratified sampling''): with probability $a/\eta$ use the $\sin^2\theta$ pattern, else the $\tfrac14+\tfrac34\cos^2\theta$ pattern.
+    \item \keyword{Draw the angle} from that shape using an exact formula (inverse of its cumulative distribution).
+    \item \keyword{Rotate} that direction so ``up'' aligns with the \alert{local field $\Bhat$} at the birth point.
   \end{itemize}
   \vfill
-  \alert{Why this split?} ``C++ vs Python on identical seeds'' becomes a transcription-bug catcher, and Tier 1 needs no \texttt{libopenmc}.
-  \vfill
-  \footnotesize Thread-safety: all state set in the constructor and \texttt{const} thereafter; randomness only via \texttt{openmc::prn(seed)} --- no data races.
+  \begin{block}{Why a separate ``sampler'' tier?}
+    Directions are the whole ballgame. We test them in isolation -- against exact math and a second method -- \alert{before} ever running a transport simulation.
+  \end{block}
 \end{frame}
 
-\begin{frame}{Method: stratified angular sampling}
-  The mixture pdf is a blend of two shapes. Sample exactly by \alert{stratification}:
-  \[
-    P_\perp=\frac{W_\perp}{W_\perp+W_\parallel}=\frac{a}{\eta},
-    \qquad W_\perp=w_\perp\!\int\!\sin^2\theta\dOmega,\;\; W_\parallel=w_\parallel\!\int\!\big(\tfrac14+\tfrac34\cos^2\theta\big)\dOmega.
-  \]
+\begin{frame}{Tier 1 -- how we made the directions trustworthy}
   \begin{itemize}
-    \item With prob.\ $P_\perp$ draw the $\sin^2\theta$ shape; else the $\tfrac14+\tfrac34\cos^2\theta$ shape.
-    \item Then $\varphi\sim U[0,2\pi)$, and rotate into the lab frame.
+    \item \keyword{Exact formula vs.\ a second method:} the angle is drawn by an exact inverse-formula, cross-checked against an independent ``accept/reject'' method -- they must give the same distribution.
+    \item \keyword{C++ vs.\ Python twins:} we wrote the sampler twice (the real C++ and a Python mirror) and fed them the \alert{same random numbers}; outputs must match to machine precision -- this catches any typo.
+    \item \keyword{Robust rotation:} the ``align with $\Bhat$'' step uses a method that never breaks, even when $\Bhat$ points straight up (a classic failure case).
   \end{itemize}
   \vfill
-  \alert{Direction and rate are decoupled:} the same stratified split samples directions for \emph{any} $(a,b,c)$; the scalar $\eta$ rides separately on the source strength.
+  \footnotesize Plus: the source has \alert{no hidden state} and uses only OpenMC's random-number stream, so it is safe to run on many CPU cores at once.
 \end{frame}
 
-\begin{frame}{Method: exact inverse-CDF for each shape}
-  Work in $x=\cos\theta$ (so $d\Omega=d\varphi\,dx$):
+\begin{frame}{Tier 2b -- the OpenMC model (the actual simulation)}
   \begin{itemize}
-    \item \alert{$\sin^2\theta$ shape:} $p(x)\propto 1-x^2$. Inverse-CDF solves the depressed cubic
+    \item \keyword{Geometry}: a square-cross-section torus (matching Schwartz exactly), interior set to \alert{void} $\Rightarrow$ neutrons free-stream.
+    \item \keyword{Source}: our compiled spin-polarized source, with the parabolic plasma profile and toroidal field.
+    \item \keyword{Measurement}: a \alert{surface-current tally on a mesh} -- we count neutrons crossing each wall, binned into $\ge 50$ patches per wall, giving the NWL map.
+    \item \keyword{Runs}: the unpolarized case and each pure mode (A, B, C), plus a mixture.
+  \end{itemize}
+  \vfill
+  \begin{block}{Sanity check built in}
+    With a void interior every neutron must hit a wall exactly once. We confirmed the total counted current $=1.0000$ per neutron -- nothing lost, nothing double-counted.
+  \end{block}
+\end{frame}
+
+\begin{frame}{How we compare OpenMC to the analytic (the ``recovery'')}
+  \begin{itemize}
+    \item For each wall patch we have \alert{two numbers}: the OpenMC count (with its statistical error bar) and the analytic value.
+    \item We compare the \alert{directionality} (each mode \emph{relative to} unpolarized) -- this cancels overall scale and isolates the physics.
+    \item The headline metric is the \keyword{standardized residual}:
       \[
-        x^3-3x+(4u-2)=0,\qquad x=2\cos\!\Big(\tfrac13\arccos(1-2u)-\tfrac{2\pi}{3}\Big).
-      \]
-    \item \alert{$\tfrac14+\tfrac34\cos^2\theta$ shape:} $p(x)=\tfrac14+\tfrac34 x^2$. Inverse-CDF solves
-      \[
-        x^3+x+(2-4u)=0\quad(\text{single real root, Cardano}).
+        \frac{(\text{OpenMC} - \text{analytic})}{\text{statistical error}} .
       \]
   \end{itemize}
   \vfill
-  Both roots are endpoint-verified ($u\!=\!0\!\to\!x\!=\!-1$, $u\!=\!1\!\to\!x\!=\!+1$) and \alert{cross-checked against a rejection sampler} (two-sample KS).
-  \vfill
-  \footnotesize (The form in my notes, $x^3-3x+2(1-2u)=0$, is the same sampler under $u\!\to\!1-u$ --- equivalent, but we use the endpoint-verified version.)
-\end{frame}
-
-\begin{frame}{Method: local $\to$ global rotation (no gimbal trap)}
-  Sample in a frame with $\hat z_{\text{loc}}\parallel\Bhat$, then rotate to lab. \alert{Avoid} building the basis from $\Bhat\times\hat z_{\text{world}}$ (degenerate when $\Bhat\parallel\hat z$). Instead:
-  \begin{enumerate}
-    \item pick reference axis $\mathbf r$ = whichever of $\hat x,\hat y,\hat z$ has the smallest $|\Bhat\cdot\hat e|$;
-    \item $\hat x_{\text{loc}}=\text{normalize}(\mathbf r-(\mathbf r\!\cdot\!\Bhat)\Bhat)$, \;$\hat y_{\text{loc}}=\Bhat\times\hat x_{\text{loc}}$, \;$\hat z_{\text{loc}}=\Bhat$;
-    \item $\mathbf u_{\text{global}} = x_{\text{loc}}\hat x_{\text{loc}}+y_{\text{loc}}\hat y_{\text{loc}}+z_{\text{loc}}\Bhat$.
-  \end{enumerate}
-  \vfill
-  Robust for \alert{any} $\Bhat$ (including $\pm\hat z$); the result is asserted unit to $10^{-12}$.
+  \begin{block}{What ``success'' looks like}
+    These residuals should be \alert{random scatter centered on zero with spread $\approx 1$} (a standard bell curve). A consistent offset would mean a \alert{bug}; pure scatter means \alert{OpenMC reproduces the analytic to within noise}.
+  \end{block}
 \end{frame}
 
 % ======================================================================
-\section{Part IV --- Results}
+\section{Part 6 -- Results, findings, and outlook}
 % ======================================================================
-\begin{frame}{Tier 1 --- the sampler is provably correct}
-  All checks call the math directly (no transport). Highlights:
+\begin{frame}{Tier 1 result -- the sampler is correct}
   \begin{itemize}
-    \item \alert{Mode identities (sympy):} $\int d\sigma/d\Omega\dOmega=\sigma_0(a+\tfrac23 b+\tfrac13 c)$; corners $2/3,1,2/3,1/3$; B and C share shape.
-    \item \alert{C++ vs Python parity:} max $|\Delta|=\mathbf{6\times10^{-16}}$ on identical seeds (RNG, both cubics, rotation all match).
-    \item \alert{Per-mode $\cos\theta$:} $\chi^2/\text{dof}\approx 1$; A vanishes at $\cos\theta=\pm1$, B/C peak there, unpolarized is flat.
-    \item \alert{Steering oracle} $\langle\cos^2\theta\rangle$: A $=1/5$, B/C $=7/15$, iso $=1/3$ --- all reproduced; rotation preserves isotropy; $\Bhat=\pm\hat z$ fine.
+    \item \keyword{C++ vs.\ Python twins} agree to $\mathbf{6\times10^{-16}}$ (machine precision) -- no transcription errors.
+    \item \keyword{Distributions match theory}: the drawn $\cos\theta$ histograms sit on the analytic curves (statistical test passes for every mode).
+    \item \keyword{Steering is correct}: average ``alignment'' $\langle\cos^2\theta\rangle$ = $0.20$ (A, across), $0.47$ (B/C, along), $0.33$ (isotropic) -- all reproduced.
   \end{itemize}
+  \vfill
+  \footnotesize Plain reading: the source draws directions from \alert{exactly} the intended spin-polarized pattern.
 \end{frame}
 
-\begin{frame}{Tier 1 --- per-mode birth distribution vs analytic}
+\begin{frame}{Tier 1 result -- seeing the patterns}
   \begin{center}
-    \includegraphics[width=0.76\linewidth]{tier1_costheta_per_mode.png}
+    \includegraphics[width=0.74\linewidth]{tier1_costheta_per_mode.png}
   \end{center}
-  \footnotesize Sampled $\cos\theta$ (bars) vs analytic pdf (red). Unpolarized flat; A $=\sin^2\theta$ dome (zero at $\pm1$); \alert{B and C the identical} $\tfrac14+\tfrac34\cos^2\theta$ U-shape; $\varphi$ uniform. Confirms B$\equiv$C.
+  \footnotesize Histograms = directions drawn by our source; red = exact theory. \keyword{Unpolarized} is flat; \keyword{A} is the $\sin^2\theta$ dome (no emission along $\Bhat$); \keyword{B and C are identical} U-shapes (confirming ``C is not isotropic''); the azimuth is uniform.
 \end{frame}
 
-\begin{frame}{Tier 2a --- an independent analytic NWL}
-  Three \alert{independent} engines for the single-ring reduced intensity $g$:
-  \begin{enumerate}
-    \item our vectorized \alert{Gauss--Legendre quadrature} of the $g$ integral;
-    \item \alert{\texttt{anarr\'ima}} (Schwartz's closed forms);
-    \item our own transcription of the \alert{Eq.~5} elliptic closed form.
-  \end{enumerate}
-  \vfill
+\begin{frame}{Tier 2a result -- our analytic matches the reference}
+  Before trusting any single calculation, we computed the analytic wall load \alert{three independent ways}: our own numerical integral, Schwartz's \texttt{anarr\'ima}, and our own transcription of his closed form.
   \begin{itemize}
-    \item Single central ring: all three agree to $\mathbf{1.8\times10^{-15}}$ (all walls, all modes).
-    \item Free internal identities hold exactly: $g_{\text{iso}}=g_A+g_{\cos^2}$ and $g_{\text{B/C}}=\tfrac14 g_{\text{iso}}+\tfrac34 g_{\cos^2}$.
-    \item Parabolic plasma $=\sum$ rings weighted by $1-\rho^2$: quadrature vs \texttt{anarr\'ima} agree to $\mathbf{5\times10^{-8}}$ over all wall points.
+    \item All three agree to $\mathbf{\sim 10^{-15}}$ (machine precision) for a single ring.
+    \item For the full parabolic plasma, our integral and \texttt{anarr\'ima} agree to $\mathbf{\sim 10^{-8}}$.
+    \item We reproduce Schwartz's Figure 2 numbers (A: $+41\%$ inboard, $-21\%$ outboard).
   \end{itemize}
+  \vfill
+  \footnotesize Why bother? So that when OpenMC is compared to ``the analytic,'' we are certain the analytic itself is right.
 \end{frame}
 
-\begin{frame}{Tier 2a --- reproducing Schwartz Figure 2}
+\begin{frame}{Tier 2a result -- reproducing Schwartz's Figure 2}
   \begin{center}
     \includegraphics[width=0.86\linewidth]{tier2a_nwl_walls.png}
   \end{center}
-  \footnotesize Constant-rate directional NWL on the three walls. A (red) loads the inboard, B/C (blue) the outboard; floor shows the cross-over. Scalar oracles: A $+40.6\%$ inboard, $-21.2\%$ outboard; iso outboard/inboard $+14.6\%$. \alert{These match \texttt{anarr\'ima}'s own example exactly} (paper text rounds to $43/22/12$).
+  \footnotesize Wall load vs.\ position on each wall (relative to isotropic). \keyword{A} (red) loads the inboard wall; \keyword{B/C} (blue) loads the outboard wall; the floor shows the cross-over. This is the steering effect, computed analytically.
 \end{frame}
 
-\begin{frame}{Tier 2a --- two findings to carry forward}
-  \begin{itemize}
-    \item \alert{iso $\ne$ C.} The normalized pattern of C is the \alert{mirror of B}, not isotropic (C is $-40.6\%$ at the center stack, like B). The valid cheap equivalence is \alert{B $\equiv$ C}, which holds exactly. (A spec that says ``iso $\equiv$ C'' is wrong.)
-    \item \alert{Aspect ratio.} The paper \emph{text} says aspect ratio 2.5, but the figure-generating code uses \alert{2.0} ($R_0{=}1,a{=}0.5$, walls $u{=}0.4,w{=}1.6,z{=}\pm0.6$). We match the reference \emph{implementation}.
-  \end{itemize}
+\begin{frame}{Tier 2b result -- \alert{OpenMC recovers the analytic}}
+  \begin{center}
+    \includegraphics[width=0.58\linewidth]{tier2b_nwl_compare.png}
+  \end{center}
+  \footnotesize \alert{Points = OpenMC; lines = analytic theory} -- they overlie each other on every wall. Bottom-right: standardized residuals form a \alert{bell curve centered at 0} (spread $\approx 0.7$) -- pure statistical scatter, \alert{no bias}.
 \end{frame}
 
-\begin{frame}{Tier 2b --- full Monte-Carlo in OpenMC}
+\begin{frame}{What ``recovery'' bought us (why this slide matters)}
+  \begin{block}{The central result}
+    In the no-scattering limit, the OpenMC spin-polarized source \alert{reproduces the exact analytic wall load to within statistical noise} -- across all four walls and all polarization modes.
+  \end{block}
+  \vfill
+  Concretely, OpenMC independently confirms:
   \begin{itemize}
-    \item Compiled the source into a \texttt{.so} (\texttt{find\_package(OpenMC)} + \texttt{OpenMC::libopenmc}).
-    \item Square-cross-section torus, \alert{near-void interior} $\Rightarrow$ free-streaming (Leakage $=1$; boundary-current conservation $=1.0000$).
-    \item Tally: \alert{surface current} on a \texttt{CylindricalMesh} (\texttt{MeshSurfaceFilter}), $\ge 50$ poloidal bins per wall.
-    \item Configs $\{$iso, A, B, C, mixed$\}$; compare \alert{directionality} (mode/iso, normalization-free) to the exact $D=\text{bracket}/\eta$.
+    \item the steering magnitudes (A: $+39\%$ inboard / $-21\%$ outboard; B/C the mirror);
+    \item that \keyword{B and C are identical} (not C $=$ isotropic);
+    \item \keyword{linearity}: a fuel mixture's pattern is the weighted sum of the pure-mode patterns.
   \end{itemize}
   \vfill
-  \footnotesize Geometry identical to the analytic, so bins map 1:1.
+  \alert{This is the license to go further:} the machinery is trustworthy, so results it produces \emph{beyond} the analytic regime can be believed.
 \end{frame}
 
-\begin{frame}{Tier 2b --- OpenMC reproduces the analytic}
-  \begin{center}
-    \includegraphics[width=0.60\linewidth]{tier2b_nwl_compare.png}
-  \end{center}
-  \footnotesize Points = OpenMC, lines = analytic. Residual $(\text{MC}-\text{analytic})/\sigma$: \alert{mean $\approx0$}, $\sigma\approx0.69$. MC oracles match the analytic (A $+39\%$ inboard, $-21\%$ outboard); \alert{B$\equiv$C} and \alert{linearity} ($\text{mixed}=0.5A{+}0.3B{+}0.2C$) hold.
-\end{frame}
-
-\begin{frame}{Tier 3 --- engineering scalars (the honest part)}
-  Postprocessing the existing Tier-2b data (no new runs). Per mode, constant fusion rate:
+\begin{frame}{Tier 3 -- turning it into engineering numbers}
+  Holding total fusion power fixed, per mode:
   \begin{center}\footnotesize
-  \begin{tabular}{lcccc}
+  \begin{tabular}{lccc}
     \toprule
-    & iso & A & B/C \\
+     & unpolarized & A & B/C \\
     \midrule
-    inboard peak vs iso & --- & $+39.5\%$ & $-40.9\%$ \\
-    outboard peak vs iso & --- & $-21.0\%$ & $+21.1\%$ \\
-    inboard current fraction & $8.7\%$ & $12.3\%$ & $\mathbf{5.1\%}$ \\
-    \alert{overall peaking factor} & $\mathbf{1.33}$ & $\mathbf{1.65}$ & $\mathbf{1.61}$ \\
+    inboard (center-stack) peak vs.\ iso & --- & $+40\%$ & $\mathbf{-41\%}$ \\
+    outboard peak vs.\ iso & --- & $-21\%$ & $+21\%$ \\
+    fraction of all neutrons hitting inboard & $8.7\%$ & $12.3\%$ & $\mathbf{5.1\%}$ \\
+    overall peaking factor (peak/avg) & $1.33$ & $1.65$ & $1.61$ \\
     \bottomrule
   \end{tabular}
   \end{center}
   \vfill
-  \alert{Counter-intuitive, but real:} in a \emph{fixed} geometry, polarization \alert{raises} the overall peaking factor (directional emission concentrates load; isotropic is the most uniform). B/C's benefit is the \alert{center-stack reduction} (inboard current $8.7\%\!\to\!5.1\%$), \alert{not} a lower peaking factor. Schwartz's peaking \emph{reduction} comes from then re-shaping the wall --- not modeled here.
+  \begin{block}{The good news (the design payoff)}
+    B/C polarization \alert{moves $\sim$3.6\% of all wall neutrons off the inboard center stack} (8.7\%$\to$5.1\%) and onto the robust outboard wall, and cuts the center-stack peak load by $\sim$41\% -- at \alert{the same fusion power}.
+  \end{block}
 \end{frame}
 
-\begin{frame}{Tier 3 --- the picture for a one-glance audience}
+\begin{frame}{An honest, slightly counter-intuitive finding}
+  \alert{Polarization does not lower the \emph{overall} peaking factor here} -- it actually raises it (1.33 $\to$ 1.61).
+  \vfill
+  \begin{block}{Why -- and why it's fine}
+    Any directional emission \emph{concentrates} the load, so the most uniform case is the boring isotropic one. The benefit of B/C is \alert{not} a flatter wall overall; it is \alert{specifically protecting the center stack}. Schwartz's flatter-wall result comes from \emph{then re-shaping the wall} to exploit the steering -- which we did not model.
+  \end{block}
+  \vfill
+  \footnotesize We report this plainly rather than imply a benefit the model doesn't show -- correctness of interpretation matters as much as the numbers.
+\end{frame}
+
+\begin{frame}{One picture for the whole idea}
   \begin{center}
     \includegraphics[width=0.82\linewidth]{tier3_torus3d.png}
   \end{center}
-  \footnotesize \alert{Schematic} box-torus render of the computed free-streaming NWL (not CAD/DAGMC). Shared colorbar. Right (B/C) clearly \alert{darkens the center stack} and brightens the outboard wall vs the uniform isotropic case (left). Orange = schematic plasma source.
+  \footnotesize \alert{Schematic} render (not a CAD model) of the computed wall load, same colour scale on both. Left = unpolarized (fairly uniform). Right = B/C: the \alert{center stack (inner cylinder) goes dark} -- fewer neutrons -- while the outboard wall brightens. That darkening is the engineering win.
 \end{frame}
 
-% ======================================================================
-\section{Part V --- Scope, limitations, and what's next}
-% ======================================================================
-\begin{frame}{What this model is --- and is not}
+\begin{frame}{Be precise: what this model is, and is not}
+  \begin{block}{It IS}
+    A \alert{geometric, free-streaming} neutron wall load: where neutrons would land if they flew straight from the plasma to the wall.
+  \end{block}
+  \begin{block}{It is NOT (yet)}
+    \begin{itemize}\footnotesize
+      \item a \alert{shielded dose / heating} in real materials (no scattering);
+      \item a \alert{tritium breeding ratio} (no breeder blanket) -- our inboard/outboard fractions are only a \emph{geometric precursor};
+      \item a realistic field (purely toroidal only), realistic plasma, D-shaped wall, or divertor.
+    \end{itemize}
+  \end{block}
+  \vfill
+  \footnotesize These are deliberate simplifications that made rigorous verification possible -- not oversights.
+\end{frame}
+
+\begin{frame}{Where this sits in the literature}
   \begin{itemize}
-    \item \alert{Geometric, free-streaming NWL} (scattering OFF) --- \alert{not} a shielded dose, \alert{not} a TBR.
-    \item \alert{Purely toroidal} field only (the angled-field \S3.2 kernels are not exercised).
-    \item \alert{Filamentary / parabolic-ring} source; polarization $(a,b,c)$ a \alert{uniform} input (no depolarization).
-    \item \alert{Single energy} (14.1 MeV); \alert{neutron channel only} (no alphas).
-    \item \alert{Convex rectangular} cross section (no D-shape, no divertor, no occlusion).
+    \item The spin-polarized cross section is \alert{old physics}; the \alert{analytic wall load} is new (Schwartz 2025) -- and explicitly \alert{free-streaming}.
+    \item Mainstream fusion neutronics uses \alert{isotropic} sources; a \alert{Monte-Carlo transport} treatment of the polarized emission appears to be \alert{open ground} (worth confirming with experts).
   \end{itemize}
   \vfill
-  The current ``inboard vs outboard'' fractions are a \alert{geometric precursor} to a TBR argument --- a real TBR needs a breeder blanket + scattering.
+  \begin{block}{So what's the value of our work?}
+    The reproduction \alert{validates the machinery}. The genuinely new results come from the steps the analytic theory \emph{cannot} take -- which our verified source is now positioned to deliver.
+  \end{block}
 \end{frame}
 
-\begin{frame}{Where does this sit in the literature?}
-  \begin{itemize}
-    \item The \alert{physics} is old (Kulsrud 1982); the \alert{analytic NWL} is Schwartz 2025 --- explicitly \emph{free-streaming}, positioned as the fast alternative to Monte-Carlo.
-    \item Mainstream fusion-neutronics MC (ARC, ITER) uses \alert{isotropic} sources --- not a spin-polarization angular distribution tied to local $\Bhat$.
-    \item A \alert{Monte-Carlo transport} implementation of the polarized emission appears \alert{open} (verify with domain experts; a search is not exhaustive).
-  \end{itemize}
-  \vfill
-  So the reproduction \alert{validates the machinery}; the novel results come from the steps the analytic \emph{cannot} reach.
-\end{frame}
-
-\begin{frame}{Next steps (ranked, cost-honest)}
+\begin{frame}{Next steps (ranked, with honest cost)}
   \begin{enumerate}
-    \item \alert{Angled / spatially-varying $\Bhat$} (cheapest). The sampler already rotates for any $\Bhat$; \texttt{anarr\'ima} has the angled kernels. \alert{The bridge to a physics-informed equilibrium source.}
-    \item \alert{Scattering ON, real first wall} (moderate). The first result OpenMC gives that the analytic \emph{structurally cannot} --- the first honest step toward \alert{dose}. Loses the analytic ground truth $\Rightarrow$ new verification strategy.
-    \item \alert{Breeder blanket $\to$ TBR} (new physics tier). Li enrichment, multiplier, tritium-production tallies. Highest effort, highest payoff.
+    \item \keyword{Angled / realistic field} (cheap): our sampler already handles any field direction; \texttt{anarr\'ima} has the matching analytic. \alert{The bridge to coupling with a real plasma-physics source.}
+    \item \keyword{Turn scattering on} (moderate): the first result OpenMC can give that the analytic \alert{cannot} -- the first real step toward an actual wall \alert{dose}. (We lose the analytic check, so a new verification strategy is needed.)
+    \item \keyword{Add a breeder blanket} (a new project): compute a true \alert{tritium breeding ratio} -- the headline reactor metric.
   \end{enumerate}
 \end{frame}
 
 \begin{frame}{Summary}
   \begin{itemize}
-    \item Spin polarization steers DT neutrons via $d\sigma/d\Omega(\theta\text{ to }\Bhat)$; A peaks $\perp$, B/C peak $\parallel$ (B$\equiv$C).
-    \item Schwartz turns this into a fast, differentiable, \alert{free-streaming} analytic wall load.
-    \item We built a \alert{validated} OpenMC polarization source: sampler ($6\times10^{-16}$ parity) $\to$ independent analytic ($\sim\!10^{-8}$ vs \texttt{anarr\'ima}) $\to$ full MC (residuals $\sim N(0,1)$).
-    \item Honest engineering read: polarization \alert{redistributes} load (center-stack relief), and \alert{raises} peaking in a fixed geometry.
-    \item The transport-capable source is the launchpad for scattering, blankets, and integration with a real plasma source.
+    \item Fusion neutrons carry most of the energy and pound the wall; \alert{spin polarization can steer them} off fragile parts.
+    \item Schwartz gives a fast \alert{analytic} (no-scattering) wall load; OpenMC is the general \alert{Monte-Carlo} tool.
+    \item We built a spin-polarized OpenMC source and \alert{verified it three ways}: the sampler (machine-precision), an independent analytic ($10^{-8}$), and -- the headline -- \alert{OpenMC recovers the analytic wall load to within statistical noise.}
+    \item Engineering read: B/C polarization \alert{protects the center stack} ($-41\%$ peak, current fraction $8.7\%\to5.1\%$) at equal fusion power.
+    \item The verified source is the \alert{launchpad} for scattering, blankets, and a realistic field.
   \end{itemize}
   \vfill
-  \centering \footnotesize Reference: Schwartz, arXiv:2507.11758 (2025). \quad Code: \texttt{spf\_prototype/}.
+  \centering\footnotesize Reference: Schwartz, arXiv:2507.11758 (2025).\quad Code \& full results: \texttt{spf\_prototype/}.
 \end{frame}
 
 \begin{frame}[plain]
-  \centering
-  \vfill
-  {\Large Thank you}\\[4pt]
-  \small Questions, derivations, and the full \texttt{RESULTS\_tier\{1,2a,2b,3\}.md} are in \texttt{spf\_prototype/}.
+  \centering\vfill
+  {\Large Thank you}\\[6pt]
+  \small Backup derivations and the full \texttt{RESULTS\_tier\{1,2a,2b,3\}.md} live in \texttt{spf\_prototype/}.
   \vfill
 \end{frame}
 
