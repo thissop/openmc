@@ -38,35 +38,20 @@ the Monte-Carlo spin-polarized-fuel neutronics of Bae et al.\ (\emph{Nucl.\ Fusi
 (1--2) use a filamentary/parabolic-ring source in a purely toroidal field with scattering
 disabled; quantities are per source neutron unless noted.
 
-\vspace{0.6em}
-\noindent\footnotesize
-\textbf{Scope / honesty.} The verification (Figs.~1--2) is free-streaming (no scattering),
-single-energy (14.1\,MeV), with a filamentary/parabolic-ring source and a purely toroidal
-field in a square (not D-shaped) cross-section. Figures~3--5 add scattering and a
-single-zone FLiBe blanket (no depletion, coolant, or tritium-extraction detail; 294\,K
-cross sections with 900\,K FLiBe density). No new physics is claimed: the rate/anisotropy
-is Kulsrud (1982), the analytic NWL is Schwartz (2025), and Monte-Carlo SPF neutronics was
-first reported by Bae et al.\ (2025). The contribution is an independently verified,
-reusable OpenMC source---anchored by an analytic$\leftrightarrow$MC recovery
-check---and an independent cross-validation of the published TBR-vs-polarization trend.
-
 \clearpage
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.95\textwidth]{tier3_analytic_vs_numerical.png}
-  \caption{\textbf{OpenMC transport reproduces the analytic free-streaming NWL
-  directionality.} Per-bin ratio of the neutron wall load for each pure polarization mode
-  to the isotropic case, along the inboard, outboard, and floor walls of a
-  square-cross-section torus (parabolic multi-ring plasma, toroidal field, scattering off).
-  Markers are OpenMC Monte-Carlo transport; solid lines are the independent Schwartz
-  analytic solution. The A mode ($\propto\sin^2\theta$) raises the inboard load by
-  ${\sim}41\%$ and lowers the outboard by ${\sim}21\%$; the B/C mode
-  ($\propto 1+3\cos^2\theta$) is the mirror image. Bottom-right: the standardized residual
-  $(\mathrm{OpenMC}-\mathrm{analytic})/\sigma$ pooled over all walls and modes is
-  consistent with a unit normal ($\mu=+0.02$, $\sigma=0.69$): the code reproduces the
-  analytic directionality to within statistics with no detectable bias (the sub-unity
-  $\sigma$ reflects mildly conservative per-bin tally errors).}
+  \caption{OpenMC Monte-Carlo transport (markers) reproduces the independent Schwartz
+  analytic free-streaming wall load (lines). Each panel is the per-bin ratio of neutron
+  wall load for a pure polarization mode to the isotropic case, along one wall of a
+  square-cross-section torus (parabolic ring plasma, toroidal field, no scattering). The
+  A mode ($\sin^2\theta$) raises the inboard load ${\sim}41\%$ and lowers the outboard
+  ${\sim}21\%$; the B/C mode ($1+3\cos^2\theta$) is the mirror image. Bottom-right: the
+  standardized residual $(\mathrm{OpenMC}-\mathrm{analytic})/\sigma$ over all walls and
+  modes follows $N(0,1)$ ($\mu=+0.02$, $\sigma=0.69$), so the code matches the analytic
+  directionality with no detectable bias.}
 \end{figure}
 
 \clearpage
@@ -74,13 +59,11 @@ check---and an independent cross-validation of the published TBR-vs-polarization
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.93\textwidth]{tier3_torus3d.png}
-  \caption{\textbf{Where the polarized source steers the wall load.} Computed
-  free-streaming NWL on the four walls of the square-cross-section torus for the
-  non-polarized (left) and polarized B/C (right) cases at constant total fusion rate
-  (shared colour scale). This is a render of the tallied wall load, not a CAD/DAGMC
+  \caption{Computed free-streaming wall load on the four walls of the square-cross-section
+  torus, non-polarized (left) versus polarized B/C (right) at constant fusion rate (shared
+  colour scale, blue low to red high). This is a render of the tallied load, not a CAD
   geometry. The B/C mode steers neutrons off the inboard center stack toward the outboard
-  wall---the qualitative benefit relevant to space-constrained (spherical-tokamak) center
-  stacks.}
+  wall---the benefit relevant to space-constrained spherical-tokamak center stacks.}
 \end{figure}
 
 \vspace{1em}
@@ -88,13 +71,12 @@ check---and an independent cross-validation of the published TBR-vs-polarization
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{tier5_heating_spectrum.png}
-  \caption{\textbf{Scattering and real materials} (cavity $\to$ W first wall $\to$ steel
-  $\to$ Be multiplier $\to$ FLiBe breeder). Left: neutron energy deposition per source
-  neutron by layer (log scale); the FLiBe blanket absorbs ${\sim}91\%$ of the deposited
-  energy while the 1\,mm tungsten first wall takes only ${\sim}0.1\%$. Right: the FLiBe
-  neutron flux spectrum, showing the 14.1\,MeV source line plus a large down-scattered
-  tail to keV energies---the direct signature that scattering is active, and what drives
-  low-energy $^{6}$Li breeding and material damage. Isotropic source.}
+  \caption{Scattering with real materials (cavity, W first wall, steel, Be multiplier,
+  FLiBe breeder). Left: energy deposition per source neutron by layer; the FLiBe blanket
+  takes ${\sim}91\%$ and the 1\,mm tungsten first wall only ${\sim}0.1\%$. Right: the FLiBe
+  flux spectrum shows the 14.1\,MeV source line plus a large down-scattered tail to keV
+  energies, the signature of active scattering that drives low-energy $^{6}$Li breeding and
+  material damage. Isotropic source.}
 \end{figure}
 
 \clearpage
@@ -102,14 +84,13 @@ check---and an independent cross-validation of the published TBR-vs-polarization
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{tier6_tbr.png}
-  \caption{\textbf{Tritium breeding in the FLiBe blanket} (TBR $=$ tritium atoms produced
-  per source neutron). Left: TBR versus $^{6}$Li enrichment (isotropic source) rises then
-  plateaus near 30--50\%, reproducing the published optimum; the 30\% baseline gives
-  TBR $=1.15$, in the ARC/LIBRA band at the DEMO goal. Right: TBR by polarization mode at
-  constant fusion rate is only modestly polarization-dependent ($\pm0.6\%$; B/C higher,
-  A lower)---the same sign as Bae et al.\ (2025) ($+2.7\%$ for parallel emission in a Pb-Li
-  spherical tokamak). Steering to protect the center stack therefore costs little breeding.
-  Error bars are Monte-Carlo $1\sigma$.}
+  \caption{Tritium breeding in the FLiBe blanket (TBR $=$ tritium per source neutron).
+  Left: TBR versus $^{6}$Li enrichment rises then plateaus near 30--50\%, reproducing the
+  published optimum; the 30\% baseline gives TBR $=1.15$ (ARC/LIBRA band, DEMO goal).
+  Right: TBR by polarization mode at constant fusion rate is only modestly
+  polarization-dependent ($\pm0.6\%$; B/C higher, A lower), the same sign as Bae et al.\
+  (2025) ($+2.7\%$ parallel, Pb-Li spherical tokamak). Steering to protect the center stack
+  costs little breeding. Error bars are Monte-Carlo $1\sigma$.}
 \end{figure}
 
 \vspace{1em}
@@ -117,15 +98,13 @@ check---and an independent cross-validation of the published TBR-vs-polarization
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.78\textwidth]{tier7_absolute.png}
-  \caption{\textbf{The absolute (un-normalized) effect once the reaction-rate enhancement
-  is restored.} At fixed fuel density the neutron yield scales with the total-rate factor
-  $\eta = a + \tfrac23 b + \tfrac13 c$, so the fully aligned A mode produces $+50\%$ more
-  neutrons and the C mode $-50\%$. Bars show fusion rate, absolute tritium production, and
-  absolute center-stack (inboard) load, each relative to unpolarized fuel. A is a power
-  play ($+50\%$ power and tritium) but compounds the center-stack load to $1.7\times$; B
-  uniquely buys directional steering ($0.85\times$ center stack) at no rate or breeding
-  penalty; C halves everything. The TBR \emph{per neutron} is mode-independent, so tritium
-  self-sufficiency is preserved across modes.}
+  \caption{Absolute (un-normalized) effect with the reaction-rate enhancement restored. At
+  fixed fuel density the neutron yield scales with $\eta = a + \tfrac23 b + \tfrac13 c$, so
+  A produces $+50\%$ neutrons and C $-50\%$. Bars: fusion rate, absolute tritium production,
+  and absolute center-stack load, each relative to unpolarized fuel. A is a power play
+  ($+50\%$ power and tritium) but compounds the center-stack load to $1.7\times$; B buys
+  steering ($0.85\times$ center stack) at no rate or breeding penalty; C halves everything.
+  The TBR per neutron is mode-independent, so self-sufficiency is preserved.}
 \end{figure}
 
 \end{document}

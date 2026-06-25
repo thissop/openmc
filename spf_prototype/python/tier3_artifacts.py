@@ -186,7 +186,7 @@ def fig_analytic_vs_numerical(W, I, S, D):
     resid = np.concatenate(resid)
     axes[1, 1].hist(resid, bins=35, density=True, histtype="bar",
                     facecolor="white", edgecolor="black", linewidth=0.9,
-                    label=fr"Residual ($\mu={resid.mean():+.2f},\ \sigma={resid.std():.2f}$)")
+                    label=fr"$\mu={resid.mean():+.2f},\ \sigma={resid.std():.2f}$")
     xx = np.linspace(-4, 4, 200)
     axes[1, 1].plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), "k-", lw=2, label=r"$N(0,1)$ fit")
     axes[1, 1].set_title("Standardized Residual (A / B / C)", fontsize=TS)
@@ -223,7 +223,7 @@ def _wall_surface(ax, kind, coord_centers, vals, cmap, norm, phi0, phi1, nphi=60
 
 
 def fig_torus3d(W, I):
-    cmap = cm.viridis
+    cmap = cm.coolwarm   # blue (low) -> red (high) NWL
     allvals = np.concatenate([I[m][w] for m in ("iso", "B") for w in WALLS])
     norm = Normalize(vmin=allvals.min(), vmax=allvals.max())
     phi0, phi1 = 0.0, 1.5 * np.pi  # 3/4 cutaway to see inside

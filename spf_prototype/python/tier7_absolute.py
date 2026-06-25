@@ -64,10 +64,12 @@ def main():
     metrics = [("rate", "Fusion Rate / Total Wall Load"), ("tritium", "Absolute Tritium Production"),
                ("inboard", "Center-Stack (Inboard) Load")]
     x = np.arange(len(ms)); wbar = 0.25
+    hatches = ["///", "...", "xxx"]   # distinguish series in black & white
     fig, ax = plt.subplots(figsize=(9.5, 5))
     for i, (k, lab) in enumerate(metrics):
-        ax.bar(x + (i - 1) * wbar, [table[m][k] for m in ms], wbar, label=lab)
-    ax.axhline(1.0, color="0.5", ls="dashed", lw=1)
+        ax.bar(x + (i - 1) * wbar, [table[m][k] for m in ms], wbar, label=lab,
+               facecolor="white", edgecolor="black", linewidth=1.1, hatch=hatches[i])
+    ax.axhline(1.0, color="black", ls="dashed", lw=1)
     ax.set_xticks(x); ax.set_xticklabels([mlabel[m] for m in ms], fontsize=13)
     ax.set_ylabel("Relative to Unpolarized Fuel (= 1)", fontsize=14)
     ax.set_title("Absolute Effect at Fixed Fuel Density (Rate Restored)", fontsize=16)
