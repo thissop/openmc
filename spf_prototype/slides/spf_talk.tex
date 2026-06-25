@@ -583,7 +583,7 @@
   \end{center}
   \vfill
   \begin{block}{Why this matters}
-    \alert{Free-streaming overestimates the center-stack benefit by $\sim$3$\times$.} B/C still protects the center stack, but by $\sim$15\%, not 41\% -- a correction \emph{only} the transport model can give.
+    \alert{Free-streaming overestimates the center-stack benefit by $\sim$3$\times$ here:} B/C still protects the center stack, but by $\sim$15\%, not 41\%. The size is \alert{geometry-dependent} -- a \emph{thin} inboard blanket (as in Bae et al.\ 2025's spherical tokamak, which preserves a $-40\%$ inboard flux) scatters less and keeps more of the steering. The explicit free-stream$\to$transport \emph{ratio} is something only the transport model gives.
   \end{block}
 \end{frame}
 
@@ -610,7 +610,7 @@
   \begin{center}
     \includegraphics[width=0.9\linewidth]{tier6_tbr.png}
   \end{center}
-  \footnotesize \alert{TBR = 1.15} (in the ARC/LIBRA band, at the DEMO goal). \alert{Left:} TBR rises with $^6$Li enrichment then \emph{peaks near 50\%} -- reproducing the published ``20--50\% optimal'' result (a real verification). \alert{Right:} TBR is \alert{nearly the same for every polarization mode} ($\pm0.6\%$): \textbf{B/C protects the center stack without sacrificing breeding} -- the clean design message.
+  \footnotesize \alert{TBR = 1.15} (in the ARC/LIBRA band, at the DEMO goal). \alert{Left:} TBR rises with $^6$Li enrichment then \emph{peaks near 50\%} -- reproducing the published ``20--50\% optimal'' result (a real verification). \alert{Right:} TBR is \alert{modestly polarization-dependent} ($\pm0.6\%$ here; B/C higher, A lower) -- the \alert{same sign as Bae et al.\ 2025} ($+2.7\%$ parallel, Pb--Li spherical tokamak). Takeaway: steering to protect the center stack costs \alert{little} breeding -- an \alert{independent cross-check} of Bae, not a new result.
 \end{frame}
 
 \begin{frame}{Tier 7 -- restoring the rate (the famous +50\%)}
@@ -680,12 +680,12 @@
 
 \begin{frame}{Where this sits in the literature}
   \begin{itemize}
-    \item The spin-polarized cross section is \alert{old physics}; the \alert{analytic wall load} is new (Schwartz 2025) -- and explicitly \alert{free-streaming}.
-    \item Mainstream fusion neutronics uses \alert{isotropic} sources; a \alert{Monte-Carlo transport} treatment of the polarized emission appears to be \alert{open ground} (worth confirming with experts).
+    \item The spin-polarized cross section is \alert{old physics} (Kulsrud 1982); the \alert{analytic free-streaming wall load} is new (Schwartz 2025) -- which we reproduce.
+    \item \alert{Monte-Carlo transport of a polarized source is \emph{not} open ground:} \keyword{Bae et al.\ 2025} (\emph{Nucl.\ Fusion} \textbf{65}, 086051; OpenMC, Pb--Li spherical tokamak) already report polarization-dependent TBR (parallel $+2.7\%$) and \alert{$+68\%$ magnet lifetime}. This \alert{predates and overlaps our Tiers 5--7}.
   \end{itemize}
   \vfill
-  \begin{block}{So what's the value of our work?}
-    The reproduction \alert{validates the machinery}; the new results are the steps the analytic theory \emph{cannot} take -- which our verified source \alert{now delivers} (Part 7): scattering dilutes the steering, a real TBR, and the rate trade-off.
+  \begin{block}{So what is the value of our work? (honest)}
+    \alert{Independent validation + a reusable, verified tool} -- not new physics. We reproduce Schwartz \emph{analytically} \emph{and} independently reproduce Bae's TBR-vs-polarization \alert{trend} via a different route: a compiled C++ source, a different breeder (FLiBe), a different geometry (square torus). Agreement across all three is real cross-validation. The reusable piece is a verified \texttt{openmc::Source} with an analytic$\leftrightarrow$MC recovery anchor, ready for a real field / Peterson's source.
   \end{block}
 \end{frame}
 
@@ -703,11 +703,12 @@
     \item Spin polarization \alert{steers DT neutrons} (via the cross section's angle to $\hat B$) and \alert{boosts the rate} -- two effects in different spin states.
     \item We built a spin-polarized OpenMC source and \alert{verified it}: sampler (machine-precision), independent analytic ($10^{-8}$), and OpenMC \alert{recovers the analytic} to within noise.
     \item \keyword{Free-streaming:} B/C cuts the geometric center-stack load (Tier 3). \keyword{With scattering:} backscatter \alert{dilutes that benefit $\sim$3$\times$} (to $\sim$15\%) -- the analytic was optimistic.
-    \item \keyword{Blanket:} \alert{TBR = 1.15} (ARC/LIBRA band), and \alert{steering barely changes it} -- protect the center stack without costing breeding.
+    \item \keyword{Blanket:} \alert{TBR = 1.15} (ARC/LIBRA band); steering changes it \alert{modestly} ($\pm0.6\%$, same sign as Bae et al.\ 2025) -- the center stack is protected at little breeding cost.
     \item \keyword{Rate:} A mode $+50\%$ power (and tritium), but compounds the center-stack load; B is the steering sweet spot. The bigger SPF gains (net electricity, burn efficiency) live upstream in plasma/systems physics.
+    \item \keyword{Positioning:} \alert{independent validation + a reusable verified tool}, not new physics -- Bae et al.\ 2025 already did MC neutronics of SPF; we cross-validate it via a different code path, breeder, and geometry.
   \end{itemize}
   \vfill
-  \centering\footnotesize Reference: Schwartz, arXiv:2507.11758 (2025).\quad Code \& full results: \texttt{spf\_prototype/}.
+  \centering\scriptsize Refs: Schwartz arXiv:2507.11758; Bae et al., \emph{Nucl.\ Fusion} \textbf{65}, 086051 (2025).\quad Code: \texttt{spf\_prototype/}.
 \end{frame}
 
 \begin{frame}[plain]

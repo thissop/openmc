@@ -10,6 +10,19 @@ measured from the local B̂. Mode fractions `(a,b,c)` (Schwartz Eq. 1); total-ra
 factor `η = a+⅔b+⅓c`; birth-direction pdf depends only on
 `w_perp=¾a`, `w_par=⅔b+⅓c`.
 
+## Positioning (read first): this is validation + tooling, not new physics
+Monte-Carlo neutronics of spin-polarized fuel was already done by **Bae et al.
+2025** (*Nucl. Fusion* **65**, 086051; OpenMC, Pb–Li spherical tokamak: TBR
+parallel +2.7%, +68% magnet lifetime). This prototype's contribution is
+**independent cross-validation + a reusable, verified tool**: a compiled
+`openmc::Source` anchored by an analytic↔MC recovery check against Schwartz, which
+independently reproduces Bae's TBR-vs-polarization *trend* via a different code
+path (compiled C++ source), breeder (FLiBe), and geometry (square torus). The
+naming maps as: Bae **"perpendicular"** = our **A** (∝sin²θ, +50% rate); Bae
+**"parallel"** = our **B/C** (∝1+3cos²θ); Bae **"unpolarized"** = iso. Full
+point-by-point comparison and the honest contribution statement are in
+**`PRIOR_WORK_BAE2025.md`**.
+
 ## Layout
 ```
 spf_prototype/
@@ -80,5 +93,16 @@ PATH="$HOME/spf_venv/bin:$PATH" OMP_NUM_THREADS=2 \
    error §1.2 warned about). Verified analytically and in OpenMC.
 2. The paper text says aspect ratio 2.5, but its figure-generating code uses 2.0;
    we match the reference implementation (anarrima). See `RESULTS_tier2a.md`.
+
+## References
+- **Schwartz**, "Analytic neutron wall loading for spin-polarized fusion,"
+  arXiv:2507.11758 (2025) — the analytic free-streaming NWL we reproduce; his
+  `anarríma` package is our analytic ground truth.
+- **Bae, Borowiec, Badalassi, Parisi, Diallo, Menard, Khodak, Brown**,
+  "Neutronics analysis of spin-polarized fuel in spherical tokamaks,"
+  *Nuclear Fusion* **65**, 086051 (2025), DOI 10.1088/1741-4326/adf3c6 — the
+  closest prior work (OpenMC MC neutronics of SPF); see `PRIOR_WORK_BAE2025.md`.
+- **Kulsrud, Furth, Valeo, Goldhaber**, PRL **49**, 1248 (1982) — original
+  spin-polarized DT rate/anisotropy.
 
 OpenMC: `0.15.4-dev` @ commit `608a1c338`.
