@@ -33,6 +33,13 @@ contrast:
 center stack, but by **~15%**, not the ~41% the geometric model suggested. This is
 exactly the kind of correction the analytic theory cannot provide.
 
+> **Prior work / positioning.** The MC center-stack benefit of polarization is
+> already established -- **Bae et al. 2025** (*Nucl. Fusion* 65, 086051; OpenMC,
+> Pb-Li spherical tokamak) report +68% magnet lifetime (−40% inboard flux) for
+> parallel polarization. Our value-add is the **explicit free-streaming vs.
+> full-transport comparison** (the ~3× dilution), which Bae did not isolate -- a
+> caution that geometric/analytic steering numbers are optimistic. See PRIOR_WORK_BAE2025.md.
+
 ## Where the neutron energy deposits (per source neutron, iso)
 | layer | heating [eV] | % of total | damage-energy [eV] |
 |---|---|---|---|
