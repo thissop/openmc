@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+import smplotlib 
 
 import numpy as np
 
@@ -152,36 +153,48 @@ def single_ring_tightest():
 # Figure 1: analytic vs numerical (multi-ring overlay + residual)
 # --------------------------------------------------------------------------
 def fig_analytic_vs_numerical(W, I, S, D):
+    from matplotlib.lines import Line2D
+    # smplotlib renders small; set explicit professional sizes
+    TS, LS, LG = 16, 14, 13   # title / axis-label / legend font sizes
+    mode_label = {"iso": "Isotropic", "A": "A mode", "B": "B/C mode"}
     fig, axes = plt.subplots(2, 2, figsize=(13, 9))
     resid = []
-    for ax, w, xl in [(axes[0, 0], "inboard", "z [norm]"),
-                      (axes[0, 1], "outboard", "z [norm]"),
-                      (axes[1, 0], "floor", "R [norm]")]:
+    for ax, w, xl, wt in [(axes[0, 0], "inboard", "Axial Position Z [normalized]", "Inboard"),
+                          (axes[0, 1], "outboard", "Axial Position Z [normalized]", "Outboard"),
+                          (axes[1, 0], "floor", "Radial Position R [normalized]", "Floor")]:
         c = W["iso"][w]["centers"]
         for m, col in [("iso", "k"), ("A", "r"), ("B", "b")]:
             mr = I[m][w] / I["iso"][w]
             sg = mr * np.sqrt((S[m][w] / I[m][w]) ** 2 + (S["iso"][w] / I["iso"][w]) ** 2)
             ar = D[m][w] / D["iso"][w]
             ax.plot(c, ar, col + "-", lw=1.5)
-            ax.errorbar(c, mr, yerr=sg, fmt=col + ".", ms=3, alpha=0.5, label=m)
+            ax.errorbar(c, mr, yerr=sg, fmt=col + ".", ms=3, alpha=0.5, label=mode_label[m])
             if m != "iso":
                 good = sg > 0
                 resid.append((mr[good] - ar[good]) / sg[good])
         ax.axhline(1.0, color="0.6", ls="dashed", lw=1)
-        ax.set_title(f"{w}: NWL ratio to isotropic")
-        ax.set_xlabel(xl); ax.set_ylabel("mode / iso")
-    axes[0, 0].legend(fontsize=8)
+        ax.set_title(f"{wt}: NWL Ratio to Isotropic", fontsize=TS)
+        ax.set_xlabel(xl, fontsize=LS)
+        ax.set_ylabel("NWL Ratio (Mode / Isotropic)", fontsize=LS)
+    # mode-colour legend (top-left panel) — larger, as requested
+    axes[0, 0].legend(fontsize=LG + 3, loc="center right")
+    # line-style legend (floor panel, top-right) — black so it reads as "for all modes"
+    style_handles = [Line2D([], [], color="k", ls="-", lw=1.6, label="Analytic (Schwartz)"),
+                     Line2D([], [], color="k", ls="none", marker=".", ms=7, label="OpenMC (Monte Carlo)")]
+    axes[1, 0].legend(handles=style_handles, fontsize=LG, loc="upper right")
+    # residual histogram: black-outlined, white-filled bars; μ,σ in the legend
     resid = np.concatenate(resid)
-    axes[1, 1].hist(resid, bins=35, density=True, alpha=0.6, color="purple")
+    axes[1, 1].hist(resid, bins=35, density=True, histtype="bar",
+                    facecolor="white", edgecolor="black", linewidth=0.9,
+                    label=fr"Residual ($\mu={resid.mean():+.2f},\ \sigma={resid.std():.2f}$)")
     xx = np.linspace(-4, 4, 200)
-    axes[1, 1].plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), "k-", lw=2, label="N(0,1)")
-    axes[1, 1].set_title(f"standardized residual A/B/C (μ={resid.mean():+.2f}, σ={resid.std():.2f})")
-    axes[1, 1].set_xlabel("(OpenMC − analytic)/σ"); axes[1, 1].legend()
-    fig.suptitle("Tier 3 — OpenMC (points) reproduces analytic NWL directionality (lines).  "
-                 "Parabolic multi-ring plasma, toroidal field, scattering OFF (free-streaming).",
-                 fontsize=11)
+    axes[1, 1].plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), "k-", lw=2, label=r"$N(0,1)$ fit")
+    axes[1, 1].set_title("Standardized Residual (A / B / C)", fontsize=TS)
+    axes[1, 1].set_xlabel(r"(OpenMC $-$ Analytic) / $\sigma$", fontsize=LS)
+    axes[1, 1].set_ylabel("Probability Density", fontsize=LS)
+    axes[1, 1].legend(fontsize=LG)
     fig.tight_layout()
-    fig.savefig(FIGDIR / "tier3_analytic_vs_numerical.png", dpi=110)
+    fig.savefig(FIGDIR / "tier3_analytic_vs_numerical.png", dpi=130)
     plt.close(fig)
     return resid.mean(), resid.std()
 
@@ -215,8 +228,8 @@ def fig_torus3d(W, I):
     norm = Normalize(vmin=allvals.min(), vmax=allvals.max())
     phi0, phi1 = 0.0, 1.5 * np.pi  # 3/4 cutaway to see inside
     fig = plt.figure(figsize=(14, 6.5))
-    for idx, (m, title) in enumerate([("iso", "Non-polarized (isotropic)"),
-                                      ("B", "Polarized B/C mode")]):
+    for idx, (m, title) in enumerate([("iso", "Non-Polarized (Isotropic)"),
+                                      ("B", "Polarized B/C Mode")]):
         ax = fig.add_subplot(1, 2, idx + 1, projection="3d")
         zc = W[m]["inboard"]["centers"]; rc = W[m]["floor"]["centers"]
         _wall_surface(ax, "inboard", zc, I[m]["inboard"], cmap, norm, phi0, phi1)
@@ -233,17 +246,17 @@ def fig_torus3d(W, I):
         ph = np.linspace(phi0, phi1, 120)
         ax.plot(br.R0 * np.cos(ph), br.R0 * np.sin(ph), np.zeros_like(ph),
                 color="darkorange", lw=2.5, label="plasma (R0 ring)")
-        ax.set_title(title, fontsize=11)
-        ax.set_box_aspect((1, 1, 0.5)); ax.set_xticks([]); ax.set_yticks([]); ax.set_zticks([])
+        # strip the gray panes, gridlines, ticks and bounding box: leave only the render
+        ax.set_box_aspect((1, 1, 0.5))
+        ax.set_axis_off()
+        ax.set_title(title, fontsize=20, pad=0)   # large title (smplotlib renders small)
         ax.view_init(elev=32, azim=-60)
     sm = cm.ScalarMappable(cmap=cmap, norm=norm); sm.set_array([])
-    cax = fig.add_axes([0.92, 0.2, 0.015, 0.6])
-    fig.colorbar(sm, cax=cax, label="NWL [normalized, constant fusion rate]")
-    fig.suptitle("Schematic box-torus render of computed free-streaming NWL (NOT CAD/DAGMC). "
-                 "Orange = schematic plasma source. Shared colorbar.\n"
-                 "B/C steers neutrons OFF the inboard center stack toward the outboard wall.",
-                 fontsize=10)
-    fig.savefig(FIGDIR / "tier3_torus3d.png", dpi=110, bbox_inches="tight")
+    cax = fig.add_axes([0.92, 0.2, 0.018, 0.6])
+    cb = fig.colorbar(sm, cax=cax)
+    cb.set_label("NWL [normalized, constant fusion rate]", fontsize=14)
+    cb.ax.tick_params(labelsize=11)
+    fig.savefig(FIGDIR / "tier3_torus3d.png", dpi=130, bbox_inches="tight")
     plt.close(fig)
 
 
