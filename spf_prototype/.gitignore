@@ -9,6 +9,17 @@ run_*/
 # Reference papers kept locally for reference, not committed (large/copyright)
 *.pdf
 
+# Data bundles for moving between instances
+*.tgz
+
+# LaTeX build artifacts (slide .tex is tracked; PDF handled by *.pdf above)
+*.aux
+*.nav
+*.snm
+*.toc
+*.out
+*.log
+
 # Figures ARE tracked on this branch: override OpenMC's repo-wide *.png ignore
 !figs/
 !figs/*.png
