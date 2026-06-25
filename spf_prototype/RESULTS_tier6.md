@@ -11,7 +11,14 @@ FLiBe (Li2BeF4) breeder, 40 cm (LIBRA-scale), Li-6 enriched; TBR = tritium produ
 | B | 1.155 +/- 0.001 | +0.57% |
 | C | 1.155 +/- 0.001 | +0.57% |
 
-**Headline:** with a blanket that fully surrounds the plasma, polarization steering changes the TOTAL TBR by only ~0.6% -- i.e. B/C can protect the center stack (Tier 3) **without sacrificing breeding**, the key design message.
+**Headline (honest, vs prior work):** TBR is **modestly polarization-dependent** --
+here ~0.6% (B/C parallel-emitting higher, A perpendicular lower). This **reproduces
+the sign/trend of Bae et al. 2025** (*Nucl. Fusion* 65, 086051: parallel +2.7%,
+perpendicular -1.8% in a Pb-Li spherical tokamak) in an independent code path
+(compiled source), breeder (FLiBe), and geometry (square torus). So this is
+**independent cross-validation, not a new result**, and the takeaway is: steering
+to protect the center stack costs **little** breeding (not *zero* -- the strict
+"TBR-independent" claim is wrong; Bae's +2.7% is the careful number).
 
 ## TBR vs Li-6 enrichment (iso) -- verification + physics
 
