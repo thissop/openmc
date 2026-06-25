@@ -24,6 +24,7 @@ FIGDIR = REPO / "spf_prototype" / "figs"
 
 import matplotlib  # noqa: E402
 matplotlib.use("Agg")
+import smplotlib  # noqa: E402,F401  (scientific style; sets rcParams on import)
 import matplotlib.pyplot as plt  # noqa: E402
 import openmc  # noqa: E402
 
@@ -34,6 +35,12 @@ ID2NAME = {2: "W", 3: "steel", 4: "Be", 5: "FLiBe"}
 MODES = {"iso": (1/3, 1/3, 1/3), "A": (1, 0, 0), "B": (0, 1, 0), "C": (0, 0, 1)}
 PARTICLES, BATCHES, NR, NZ = 40000, 10, 40, 40
 SPEC_BINS = np.concatenate([np.logspace(3, 7, 40), [1.2e7, 1.3e7, 1.4e7, 1.41e7, 1.5e7, 2e7]])
+
+# --- presentation (smplotlib renders small; set explicit professional sizes) ---
+NAMES = ["W", "steel", "Be", "FLiBe"]                  # cell_table data keys
+NAME_DISP = {"W": "W", "steel": "Steel", "Be": "Be", "FLiBe": "FLiBe"}
+MODE_DISP = {"iso": "Isotropic", "A": "A", "B": "B", "C": "C"}
+TS, LS, LG = 16, 14, 12   # title / axis-label / legend font sizes
 
 
 def run(tag, abc, enr=30.0, scale=1.0, spec=False):
@@ -48,7 +55,82 @@ def _flat(df, name):
     return df[name] if name in df.columns else df[(name, "")]
 
 
+def spectrum_arrays(sp_path):
+    """FLiBe flux spectrum -> (bin-centre energy, flux per unit lethargy)."""
+    with openmc.StatePoint(sp_path) as spo:
+        dfs = spo.get_tally(name="flibe_spectrum").get_pandas_dataframe()
+    elo = _flat(dfs, "energy low [eV]").to_numpy(); ehi = _flat(dfs, "energy high [eV]").to_numpy()
+    flux = _flat(dfs, "mean").to_numpy()
+    ecen = np.sqrt(elo * ehi)
+    leth = flux / np.diff(np.log(np.concatenate([elo[:1], ehi])))
+    return ecen, leth
+
+
+def make_tier5_fig(heat, ecen, leth):
+    fig, ax = plt.subplots(1, 2, figsize=(13, 4.8))
+    ax[0].bar([NAME_DISP[n] for n in NAMES], heat,
+              color=["slategray", "darkgray", "khaki", "orange"])
+    ax[0].set_yscale("log")
+    ax[0].set_ylabel("Heating [eV per Source Neutron]", fontsize=LS)
+    ax[0].set_xlabel("Wall / Blanket Layer", fontsize=LS)
+    ax[0].tick_params(axis="x", labelsize=12)
+    ax[0].set_title("Neutron Energy Deposition by Layer", fontsize=TS)
+    ax[1].loglog(ecen, leth, color="navy")
+    ax[1].axvline(1.41e7, color="r", ls="dashed", lw=1, label="14.1 MeV Source")
+    ax[1].set_xlabel("Neutron Energy [eV]", fontsize=LS)
+    ax[1].set_ylabel("Flux per Unit Lethargy [arb. units]", fontsize=LS)
+    ax[1].set_title("FLiBe Flux Spectrum", fontsize=TS)
+    ax[1].legend(fontsize=LG)
+    fig.tight_layout(); fig.savefig(FIGDIR / "tier5_heating_spectrum.png", dpi=130); plt.close(fig)
+
+
+def make_tier6_fig(tbr_scan, tbr_by_mode, iso_tbr):
+    fig, ax = plt.subplots(1, 2, figsize=(13, 4.8))
+    es = sorted(tbr_scan)
+    ax[0].errorbar(es, [tbr_scan[e][0] for e in es], yerr=[tbr_scan[e][1] for e in es],
+                   fmt="o-", color="teal")
+    ax[0].axhline(1.0, color="0.6", ls="dashed", lw=1, label="Self-Sufficiency (TBR = 1)")
+    ax[0].axhline(1.15, color="green", ls=":", lw=1.5, label="DEMO Goal (TBR = 1.15)")
+    ax[0].set_xlabel(r"$^{6}$Li Enrichment [%]", fontsize=LS)
+    ax[0].set_ylabel("TBR [Tritium per Source Neutron]", fontsize=LS)
+    ax[0].set_title(r"TBR vs. $^{6}$Li Enrichment", fontsize=TS)
+    ax[0].legend(fontsize=LG)
+    ms = list(tbr_by_mode)
+    ax[1].bar([MODE_DISP[m] for m in ms], [tbr_by_mode[m][0] for m in ms],
+              yerr=[tbr_by_mode[m][1] for m in ms], color="purple", alpha=0.75)
+    ax[1].axhline(iso_tbr, color="k", ls="dashed", lw=1)
+    ax[1].set_ylabel("TBR [Tritium per Source Neutron]", fontsize=LS)
+    ax[1].tick_params(axis="x", labelsize=12)
+    ax[1].set_ylim(min(tbr_by_mode[m][0] for m in ms) * 0.97,
+                   max(tbr_by_mode[m][0] for m in ms) * 1.03)
+    ax[1].set_title("TBR per Polarization Mode", fontsize=TS)
+    fig.tight_layout(); fig.savefig(FIGDIR / "tier6_tbr.png", dpi=130); plt.close(fig)
+
+
+def gather_for_figs():
+    """Read the existing /tmp/spf_t56_* statepoints (no transport) for re-plotting."""
+    res = {m: dict(ct=rm.cell_table(f"/tmp/spf_t56_{m}/statepoint.10.h5", ID2NAME),
+                   tbr=rm.tbr(f"/tmp/spf_t56_{m}/statepoint.10.h5", 5)) for m in MODES}
+    tbr_scan = {30.0: res["iso"]["tbr"]}
+    for e, tag in [(7.5, "enr7"), (50.0, "enr50"), (90.0, "enr90")]:
+        tbr_scan[e] = rm.tbr(f"/tmp/spf_t56_{tag}/statepoint.10.h5", 5)
+    heat = [res["iso"]["ct"][n].get("heating", 0) for n in NAMES]
+    ecen, leth = spectrum_arrays("/tmp/spf_t56_iso/statepoint.10.h5")
+    return res, tbr_scan, heat, ecen, leth
+
+
 def main():
+    if "--replot" in sys.argv:
+        FIGDIR.mkdir(parents=True, exist_ok=True)
+        res, tbr_scan, heat, ecen, leth = gather_for_figs()
+        make_tier5_fig(heat, ecen, leth)
+        make_tier6_fig(tbr_scan, {m: res[m]["tbr"] for m in MODES}, res["iso"]["tbr"][0])
+        print("re-plotted figs/tier5_*, figs/tier6_* from existing /tmp statepoints (no transport)")
+        return
+    _full_run()
+
+
+def _full_run():
     FIGDIR.mkdir(parents=True, exist_ok=True)
     br.build_so()
 
@@ -92,42 +174,12 @@ def main():
     nuc = _flat(dfn, "nuclide").to_numpy(); nmean = _flat(dfn, "mean").to_numpy()
     tbr_li6 = float(nmean[nuc == "Li6"].sum()); tbr_li7 = float(nmean[nuc == "Li7"].sum())
 
-    # ---------- spectrum (iso) ----------
-    with openmc.StatePoint(res["iso"]["sp"]) as spo:
-        dfs = spo.get_tally(name="flibe_spectrum").get_pandas_dataframe()
-    elo = _flat(dfs, "energy low [eV]").to_numpy(); ehi = _flat(dfs, "energy high [eV]").to_numpy()
-    flux = _flat(dfs, "mean").to_numpy()
-    ecen = np.sqrt(elo * ehi)
-
-    # ================= figures =================
-    # Tier 5: heating split + spectrum
-    fig, ax = plt.subplots(1, 2, figsize=(13, 4.8))
-    names = ["W", "steel", "Be", "FLiBe"]
+    # ================= figures (shared with the --replot path) =================
+    names = NAMES
+    ecen, leth = spectrum_arrays(res["iso"]["sp"])
     heat = [res["iso"]["ct"][n].get("heating", 0) for n in names]
-    ax[0].bar(names, heat, color=["slategray", "darkgray", "khaki", "orange"])
-    ax[0].set_yscale("log"); ax[0].set_ylabel("heating [eV per source neutron]")
-    ax[0].set_title("Where the neutron energy deposits (iso)")
-    ax[1].loglog(ecen, flux / np.diff(np.log(np.concatenate([elo[:1], ehi]))), color="navy")
-    ax[1].axvline(1.41e7, color="r", ls="dashed", lw=1, label="14.1 MeV source")
-    ax[1].set_xlabel("neutron energy [eV]"); ax[1].set_ylabel("flux per unit lethargy [arb]")
-    ax[1].set_title("FLiBe flux spectrum: down-scattered tail = scattering"); ax[1].legend(fontsize=8)
-    fig.tight_layout(); fig.savefig(FIGDIR / "tier5_heating_spectrum.png", dpi=110); plt.close(fig)
-
-    # Tier 6: TBR vs enrichment + TBR per mode
-    fig, ax = plt.subplots(1, 2, figsize=(13, 4.8))
-    es = sorted(tbr_scan); ax[0].errorbar(es, [tbr_scan[e][0] for e in es],
-                                          yerr=[tbr_scan[e][1] for e in es], fmt="o-", color="teal")
-    ax[0].axhline(1.0, color="0.6", ls="dashed", lw=1, label="self-sufficiency (TBR=1)")
-    ax[0].axhline(1.15, color="green", ls=":", lw=1, label="DEMO goal 1.15")
-    ax[0].set_xlabel("Li-6 enrichment [%]"); ax[0].set_ylabel("TBR [tritium / source neutron]")
-    ax[0].set_title("TBR vs Li-6 enrichment (iso) -- rise then plateau"); ax[0].legend(fontsize=8)
-    ms = list(MODES); ax[1].bar(ms, [res[m]["tbr"][0] for m in ms],
-                                yerr=[res[m]["tbr"][1] for m in ms], color="purple", alpha=0.7)
-    ax[1].axhline(res["iso"]["tbr"][0], color="k", ls="dashed", lw=1)
-    ax[1].set_ylabel("TBR"); ax[1].set_ylim(min(res[m]["tbr"][0] for m in ms) * 0.97,
-                                            max(res[m]["tbr"][0] for m in ms) * 1.03)
-    ax[1].set_title("TBR per polarization mode (does steering change breeding?)")
-    fig.tight_layout(); fig.savefig(FIGDIR / "tier6_tbr.png", dpi=110); plt.close(fig)
+    make_tier5_fig(heat, ecen, leth)
+    make_tier6_fig(tbr_scan, {m: res[m]["tbr"] for m in MODES}, res["iso"]["tbr"][0])
 
     # ================= RESULTS_tier5.md =================
     tot_h = sum(res["iso"]["ct"][n].get("heating", 0) for n in names)

@@ -21,6 +21,7 @@ FIGDIR = REPO / "spf_prototype" / "figs"
 
 import matplotlib  # noqa: E402
 matplotlib.use("Agg")
+import smplotlib  # noqa: E402,F401  (scientific style; sets rcParams on import)
 import matplotlib.pyplot as plt  # noqa: E402
 
 import reactor_model as rm  # noqa: E402
@@ -59,21 +60,22 @@ def main():
 
     # ---- figure: grouped bars vs unpolarized = 1 ----
     ms = ["nonpol", "A", "B", "C"]
-    metrics = [("rate", "fusion rate / total wall load"), ("tritium", "absolute tritium prod."),
-               ("inboard", "center-stack (inboard) load")]
+    mlabel = {"nonpol": "Unpolarized", "A": "A", "B": "B", "C": "C"}
+    metrics = [("rate", "Fusion Rate / Total Wall Load"), ("tritium", "Absolute Tritium Production"),
+               ("inboard", "Center-Stack (Inboard) Load")]
     x = np.arange(len(ms)); wbar = 0.25
     fig, ax = plt.subplots(figsize=(9.5, 5))
     for i, (k, lab) in enumerate(metrics):
         ax.bar(x + (i - 1) * wbar, [table[m][k] for m in ms], wbar, label=lab)
     ax.axhline(1.0, color="0.5", ls="dashed", lw=1)
-    ax.set_xticks(x); ax.set_xticklabels(ms)
-    ax.set_ylabel("relative to unpolarized fuel (= 1)")
-    ax.set_title("Tier 7 -- ABSOLUTE effect at fixed fuel density (rate restored)")
-    ax.legend(fontsize=9)
+    ax.set_xticks(x); ax.set_xticklabels([mlabel[m] for m in ms], fontsize=13)
+    ax.set_ylabel("Relative to Unpolarized Fuel (= 1)", fontsize=14)
+    ax.set_title("Absolute Effect at Fixed Fuel Density (Rate Restored)", fontsize=16)
+    ax.legend(fontsize=12)
     for i, m in enumerate(ms):  # annotate rate
-        ax.text(x[i] - wbar, table[m]["rate"] + 0.02, f"{table[m]['rate']:.2f}x",
-                ha="center", fontsize=8)
-    fig.tight_layout(); fig.savefig(FIGDIR / "tier7_absolute.png", dpi=110); plt.close(fig)
+        ax.text(x[i] - wbar, table[m]["rate"] + 0.02, f"{table[m]['rate']:.2f}×",
+                ha="center", fontsize=10)
+    fig.tight_layout(); fig.savefig(FIGDIR / "tier7_absolute.png", dpi=130); plt.close(fig)
 
     # ---- RESULTS_tier7.md ----
     L = ["# RESULTS - Tier 7 (absolute rate effect: rate restored)\n",
