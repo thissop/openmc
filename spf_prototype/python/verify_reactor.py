@@ -69,14 +69,14 @@ def spectrum_arrays(sp_path):
 def make_tier5_fig(heat, ecen, leth):
     fig, ax = plt.subplots(1, 2, figsize=(13, 4.8))
     ax[0].bar([NAME_DISP[n] for n in NAMES], heat,
-              color=["slategray", "darkgray", "khaki", "orange"])
+              facecolor="white", edgecolor="black", linewidth=1.3)
     ax[0].set_yscale("log")
     ax[0].set_ylabel("Heating [eV per Source Neutron]", fontsize=LS)
     ax[0].set_xlabel("Wall / Blanket Layer", fontsize=LS)
     ax[0].tick_params(axis="x", labelsize=12)
     ax[0].set_title("Neutron Energy Deposition by Layer", fontsize=TS)
-    ax[1].loglog(ecen, leth, color="navy")
-    ax[1].axvline(1.41e7, color="r", ls="dashed", lw=1, label="14.1 MeV Source")
+    ax[1].loglog(ecen, leth, color="black")
+    ax[1].axvline(1.41e7, color="black", ls="dashed", lw=1.2, label="14.1 MeV Source")
     ax[1].set_xlabel("Neutron Energy [eV]", fontsize=LS)
     ax[1].set_ylabel("Flux per Unit Lethargy [arb. units]", fontsize=LS)
     ax[1].set_title("FLiBe Flux Spectrum", fontsize=TS)
@@ -88,17 +88,19 @@ def make_tier6_fig(tbr_scan, tbr_by_mode, iso_tbr):
     fig, ax = plt.subplots(1, 2, figsize=(13, 4.8))
     es = sorted(tbr_scan)
     ax[0].errorbar(es, [tbr_scan[e][0] for e in es], yerr=[tbr_scan[e][1] for e in es],
-                   fmt="o-", color="teal")
-    ax[0].axhline(1.0, color="0.6", ls="dashed", lw=1, label="Self-Sufficiency (TBR = 1)")
-    ax[0].axhline(1.15, color="green", ls=":", lw=1.5, label="DEMO Goal (TBR = 1.15)")
+                   fmt="o-", color="black")
+    ax[0].axhline(1.0, color="black", ls=":", lw=1.3, label="Self-Sufficiency (TBR = 1)")
+    ax[0].axhline(1.15, color="black", ls="--", lw=1.3, label="DEMO Goal (TBR = 1.15)")
     ax[0].set_xlabel(r"$^{6}$Li Enrichment [%]", fontsize=LS)
     ax[0].set_ylabel("TBR [Tritium per Source Neutron]", fontsize=LS)
     ax[0].set_title(r"TBR vs. $^{6}$Li Enrichment", fontsize=TS)
     ax[0].legend(fontsize=LG)
     ms = list(tbr_by_mode)
     ax[1].bar([MODE_DISP[m] for m in ms], [tbr_by_mode[m][0] for m in ms],
-              yerr=[tbr_by_mode[m][1] for m in ms], color="purple", alpha=0.75)
-    ax[1].axhline(iso_tbr, color="k", ls="dashed", lw=1)
+              yerr=[tbr_by_mode[m][1] for m in ms],
+              facecolor="white", edgecolor="black", linewidth=1.3,
+              error_kw=dict(ecolor="black"))
+    ax[1].axhline(iso_tbr, color="black", ls="--", lw=1)
     ax[1].set_ylabel("TBR [Tritium per Source Neutron]", fontsize=LS)
     ax[1].tick_params(axis="x", labelsize=12)
     ax[1].set_ylim(min(tbr_by_mode[m][0] for m in ms) * 0.97,
