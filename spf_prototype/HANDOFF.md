@@ -68,12 +68,30 @@ ab0070663 Tier3 · 7248b21eb beamer deck · 802ae9c69 deck rewrite (non-expert) 
 - **Bae et al., Nucl. Fusion 65, 086051 (2025)** "Neutronics analysis of spin-polarized fuel in spherical tokamaks" — **OpenMC (40M particles)**, TBR vs polarization (parallel/anti-aligned +2.7% = 1.111 vs 1.082; perpendicular lower), inboard/outboard TBR variation, **+68% magnet (center-stack) lifetime**. **This scoops our Tier 5/6.** (Also OSTI 2583820.)
 - Schwartz arXiv:2507.11758 (2025) — analytic free-streaming NWL (we reproduce).
 - Kulsrud PRL 49,1248 (1982) — +50% rate, perpendicular emission. Ciullo (ed.) Springer 2016 — rate-OR-directionality. Segantin FED 154,111531 (2020) — 20-50% Li-6 optimum. arXiv:2502.15941 (2025) — power enhancement. Peterson LIBRA (FST 2022) — FLiBe immersion blanket.
-- Verdict: our work = **independent validation + reusable verified tool**, not discovery. We independently reproduce Schwartz (analytic+MC) AND Bae's TBR-polarization trend (our parallel-emitting B/C higher TBR, perp A lower — same sign). Possible thin novelty: explicit **free-streaming-vs-transport "analytic overestimates steering ~3×"** quantification (not found in lit; verify vs Bae).
+- Verdict: our work = **independent validation + reusable verified tool**, not discovery. We independently reproduce Schwartz (analytic+MC) AND Bae's TBR-polarization trend (our parallel-emitting B/C higher TBR, perp A lower — same sign). Possible thin novelty: explicit **free-streaming-vs-transport "analytic overestimates steering ~3×"** quantification — **verified vs Bae's full text: complementary, not a flaw** (Bae shows pre-scatter Fig 4 + transport separately but doesn't tabulate the ratio; dilution is geometry-dependent). Do not oversell.
 
-## 8. CURRENT TASK (in progress when this was written)
-1. **Fetch Bae et al. 2025** (Nucl Fusion 65 086051 / OSTI 2583820 / any arXiv) and do a point-by-point comparison (what they did vs us; agreements; what — if anything — we add, esp. the free-stream-vs-scattering dilution).
-2. **Fix docs/deck to cite Bae honestly**: soften Tier-6 "steering doesn't cost breeding / TBR ~independent" → "modestly polarization-dependent (±0.6% here; consistent with Bae's ±2.7%)"; add Bae citation to RESULTS_tier6.md, the deck (Part 7 + literature slide), and reposition the whole project as validation/tooling (not novelty) in README/deck.
-3. Then user emails Ethan; reposition results as independent validation + tool.
+## 8. CURRENT TASK — Bae comparison + repositioning: DONE
+1. **Bae et al. 2025 read in full** (saved PDF, Nucl Fusion 65 086051, 9pp).
+   `PRIOR_WORK_BAE2025.md` refined against the full text: airtight mode mapping
+   (Bae perp = our A ∝sin²θ +50% rate; Bae parallel = our B/C ∝1+3cos²θ; unpol =
+   iso), symbol-collision warning (Bae's a,b,c are Hupin–Navrátil vector/tensor
+   polarizations, NOT Schwartz's collision-mode fractions), 10M samples/40M
+   particles, ENDF/B-7.1, MAGIC, 90° sector. Bae's parallel→higher-TBR mechanism
+   is ST-geometric (outboard ~78.5% of breeder vol) → explains our smaller ±0.6%
+   vs their ±2.7% in a ~symmetric square torus.
+2. **Softened "delta":** Bae DOES show a pre-scatter first-interaction view (Fig 4)
+   separately from transport, and validates its sampler vs W(θ)sinθ (Fig 3, =our
+   Tier-1). Our free-stream→transport *dilution ratio* (~3×) is COMPLEMENTARY, not
+   a correction; magnitude is geometry-dependent (their thin ST inboard preserves
+   −40%; our thick symmetric blanket dilutes more). Do not oversell.
+3. **All docs/deck cite Bae (DONE):** RESULTS_tier5/6.md; deck literature slide
+   rewritten (removed "open ground" overclaim), Tier-5/Tier-6/Summary slides cite
+   Bae & reposition as validation/tooling; deck recompiled clean (52pp, 0 overfull,
+   pdflatex ×2, TEXINPUTS=.:../figs). README "Positioning" section + References
+   (Schwartz/Bae/Kulsrud).
+4. **Next (not started):** user emails Ethan Peterson — reposition as independent
+   validation + reusable verified tool (cite Schwartz AND Bae), then Peterson-source
+   integration.
 
 ## 9. Next steps (post-Bae)
 Angled/realistic field → couple Peterson's physics-informed source (sampler + anarrima g_*a kernels ready); depletion/multi-zone blanket; D-shape geometry; plasma/systems coupling for net-electricity & burn-efficiency (the upstream SPF benefits, out of neutron-transport scope).
