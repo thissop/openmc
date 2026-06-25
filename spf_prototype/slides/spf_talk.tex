@@ -439,7 +439,7 @@
 \end{frame}
 
 % ======================================================================
-\section{Part 6 -- Results, findings, and outlook}
+\section{Part 6 -- Results (free-streaming tiers)}
 % ======================================================================
 \begin{frame}{Tier 1 result -- the sampler is correct}
   \begin{itemize}
@@ -535,19 +535,147 @@
   \footnotesize \alert{Schematic} render (not a CAD model) of the computed wall load, same colour scale on both. Left = unpolarized (fairly uniform). Right = B/C: the \alert{center stack (inner cylinder) goes dark} -- fewer neutrons -- while the outboard wall brightens. That darkening is the engineering win.
 \end{frame}
 
-\begin{frame}{Be precise: what this model is, and is not}
-  \begin{block}{It IS}
-    A \alert{geometric, free-streaming} neutron wall load: where neutrons would land if they flew straight from the plasma to the wall.
+% ======================================================================
+\section{Part 7 -- Beyond free-streaming: scattering, breeding, the rate}
+% ======================================================================
+\begin{frame}{Turning on the real physics}
+  Everything so far was \alert{free-streaming} (geometry only), checked against the exact analytic answer. Now we give the wall \alert{real materials}:
+  \begin{itemize}
+    \item neutrons \keyword{scatter}, deposit \keyword{heat}, cause \keyword{damage}, and \keyword{breed tritium} -- the things the analytic \emph{cannot} do.
+    \item the catch: \alert{no closed-form answer any more}, so each new step needs a fresh way to stay honest (limiting cases, conservation, benchmarks).
+  \end{itemize}
+  \vfill
+  \begin{block}{The reactor model (paper-grounded: ARC / Peterson's LIBRA)}
+    A layered box-torus: \keyword{tungsten} first wall (1 mm) $\to$ steel $\to$ \keyword{beryllium} multiplier $\to$ \keyword{FLiBe} breeder blanket (40 cm), at ARC scale. Same compiled spin-polarized source inside.
   \end{block}
-  \begin{block}{It is NOT (yet)}
+\end{frame}
+
+\begin{frame}{Tier 5 -- what scattering changes, and staying honest}
+  \begin{columns}[T]
+    \begin{column}{0.54\linewidth}
+      \begin{block}{New things we can now measure}
+        \footnotesize wall \keyword{heating} (MW/m$^2$), material \keyword{damage} (dpa), the neutron \keyword{energy spectrum}, and \keyword{tritium}.
+      \end{block}
+    \end{column}
+    \begin{column}{0.46\linewidth}
+      \begin{block}{The anchor (no analytic now)}
+        \footnotesize Make the walls nearly transparent (density $\div 10^4$) $\to$ neutrons free-stream again $\to$ must \alert{recover Tier 2b}.
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vfill
+  \keyword{Anchor result:} in the thin-wall limit the steering returns to
+  \alert{A $+40\%$ inboard, B/C $-40\%$} -- exactly the validated free-streaming
+  values. So the full layered model + source are correct.
+\end{frame}
+
+\begin{frame}{Tier 5 -- the key new finding: scattering \alert{dilutes} the steering}
+  With the \emph{real} blanket, neutrons bounce back out of the wall as a diffuse, direction-blind glow that washes out the directional contrast:
+  \begin{center}\footnotesize
+  \begin{tabular}{lcc}
+    \toprule
+    inboard (center stack) & free-streaming & \alert{with scattering} \\
+    \midrule
+    A mode & $+40\%$ & $\mathbf{+13\%}$ \\
+    B/C mode & $-40\%$ & $\mathbf{-15\%}$ \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vfill
+  \begin{block}{Why this matters}
+    \alert{Free-streaming overestimates the center-stack benefit by $\sim$3$\times$.} B/C still protects the center stack, but by $\sim$15\%, not 41\% -- a correction \emph{only} the transport model can give.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Tier 5 -- where the energy goes, and the scattering fingerprint}
+  \begin{center}
+    \includegraphics[width=0.9\linewidth]{tier5_heating_spectrum.png}
+  \end{center}
+  \footnotesize Left: heating splits -- the \alert{FLiBe blanket takes $\sim$91\%}, the thin tungsten first wall only $\sim$0.1\%. Right: the FLiBe flux shows the 14.1 MeV source peak \alert{plus a large down-scattered tail} to keV energies -- the direct proof scattering is active, and what drives low-energy breeding and damage.
+\end{frame}
+
+\begin{frame}{Tier 6 -- why a breeder blanket? (tritium self-sufficiency)}
+  DT fusion \emph{burns} tritium, which barely exists in nature (12-year half-life). \alert{A reactor must make its own.}
+  \begin{itemize}
+    \item A \keyword{lithium blanket} does it: $n + {}^6\mathrm{Li} \to {}^4\mathrm{He} + \mathrm{T}$.
+    \item Metric: \keyword{TBR} (tritium breeding ratio) = tritium made per fusion neutron. Need \alert{TBR $\gtrsim 1$} to be self-sufficient.
+  \end{itemize}
+  \vfill
+  \begin{block}{Our blanket = FLiBe (after ARC / Peterson's LIBRA)}
+    \footnotesize A molten Li--Be--F salt (Li$_2$BeF$_4$), $^6$Li-enriched, with a beryllium neutron multiplier -- exactly the molten-salt immersion concept your group studies.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Tier 6 -- the TBR result}
+  \begin{center}
+    \includegraphics[width=0.9\linewidth]{tier6_tbr.png}
+  \end{center}
+  \footnotesize \alert{TBR = 1.15} (in the ARC/LIBRA band, at the DEMO goal). \alert{Left:} TBR rises with $^6$Li enrichment then \emph{peaks near 50\%} -- reproducing the published ``20--50\% optimal'' result (a real verification). \alert{Right:} TBR is \alert{nearly the same for every polarization mode} ($\pm0.6\%$): \textbf{B/C protects the center stack without sacrificing breeding} -- the clean design message.
+\end{frame}
+
+\begin{frame}{Tier 7 -- restoring the rate (the famous +50\%)}
+  Until now we held the fusion \emph{rate} fixed, to isolate steering. But aligning spins \alert{also boosts the reaction rate} -- and that was in our model all along, as the factor $\eta = a + \tfrac23 b + \tfrac13 c$:
+  \begin{center}\footnotesize
+  \begin{tabular}{lcc}
+    \toprule
+    mode & $\eta$ & fusion rate vs unpolarized \\
+    \midrule
+    unpolarized & 2/3 & --- \\
+    \alert{A} & 1 & \alert{$+50\%$} \\
+    B & 2/3 & 0 \\
+    \alert{C} & 1/3 & \alert{$-50\%$} \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vfill
+  \footnotesize At fixed fuel density the neutron yield scales with $\eta$ -- so we just multiply the per-neutron results by it (pure postprocessing, no new runs).
+\end{frame}
+
+\begin{frame}{Tier 7 -- the rate-vs-steering trade-off}
+  \begin{columns}[T]
+    \begin{column}{0.52\linewidth}
+      \includegraphics[width=\linewidth]{tier7_absolute.png}
+    \end{column}
+    \begin{column}{0.48\linewidth}
+      \footnotesize (all relative to unpolarized fuel = 1)
+      \begin{itemize}\footnotesize
+        \item \keyword{A:} $1.5\times$ power \& tritium -- but $1.7\times$ center-stack load (rate \emph{compounds} the inboard steering). \alert{Power play; hard on the center stack.}
+        \item \keyword{B:} same power, $0.85\times$ center stack -- \alert{free steering}, the sweet spot.
+        \item \keyword{C:} $0.5\times$ everything -- lowest center-stack, but half the power.
+        \item \alert{TBR per neutron is unchanged} $\Rightarrow$ the rate boost breeds proportionally more; self-sufficiency is preserved.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vfill
+  \footnotesize \alert{Tension:} the rate boost (A) and the center-stack protection (B/C) are \emph{different spin states} -- you cannot maximize both. B uniquely buys steering at no rate cost.
+\end{frame}
+
+\begin{frame}{Where the big SPF benefits actually live}
+  The headline spin-polarized-fuel claims span \alert{three different physics layers}; we model only the last:
+  \begin{itemize}
+    \item \keyword{$+50\%$ cross section} -- \alert{in our model} (the factor $\eta$, Tier 7).
+    \item \keyword{$+70$--$80\%$ net electricity, lower density} -- a plasma + \alert{systems} power-balance result (gain $Q$, recirculating power) -- \emph{upstream} of neutron transport.
+    \item \keyword{$\sim$10$\times$ tritium burn efficiency / lower inventory} -- a plasma \alert{fuel-cycle} effect (how much injected T burns) -- \emph{distinct} from our blanket TBR (breeding \emph{supply} vs burn \emph{demand}).
+  \end{itemize}
+  \vfill
+  \begin{block}{The honest framing}
+    Our code is the \alert{neutron-transport block}: source $\to$ wall $\to$ blanket. The other benefits couple in from plasma and systems codes -- a natural next integration, not something a transport tally can show.
+  \end{block}
+\end{frame}
+
+% ======================================================================
+\section{Part 8 -- Scope, novelty, and outlook}
+% ======================================================================
+\begin{frame}{The full model now -- what it is, and its scoping limits}
+  \begin{block}{It now IS}
+    A transport model with \alert{scattering}, a \alert{tungsten first wall} (heating/damage/spectrum), and a \alert{FLiBe breeder blanket} (a real TBR) -- plus the \alert{rate} effect.
+  \end{block}
+  \begin{block}{Still a scoping model (deliberate, for verifiability)}
     \begin{itemize}\footnotesize
-      \item a \alert{shielded dose / heating} in real materials (no scattering);
-      \item a \alert{tritium breeding ratio} (no breeder blanket) -- our inboard/outboard fractions are only a \emph{geometric precursor};
-      \item a realistic field (purely toroidal only), realistic plasma, D-shaped wall, or divertor.
+      \item purely \alert{toroidal} field; single-zone blanket; \alert{no depletion}/burnup, no coolant or tritium-extraction detail;
+      \item \alert{square} cross-section (not ARC's D-shape), no divertor; neutron channel only; 294 K data with 900 K density.
     \end{itemize}
   \end{block}
-  \vfill
-  \footnotesize These are deliberate simplifications that made rigorous verification possible -- not oversights.
 \end{frame}
 
 \begin{frame}{Where this sits in the literature}
@@ -557,25 +685,26 @@
   \end{itemize}
   \vfill
   \begin{block}{So what's the value of our work?}
-    The reproduction \alert{validates the machinery}. The genuinely new results come from the steps the analytic theory \emph{cannot} take -- which our verified source is now positioned to deliver.
+    The reproduction \alert{validates the machinery}; the new results are the steps the analytic theory \emph{cannot} take -- which our verified source \alert{now delivers} (Part 7): scattering dilutes the steering, a real TBR, and the rate trade-off.
   \end{block}
 \end{frame}
 
-\begin{frame}{Next steps (ranked, with honest cost)}
+\begin{frame}{Next steps (scattering + blanket now done)}
   \begin{enumerate}
-    \item \keyword{Angled / realistic field} (cheap): our sampler already handles any field direction; \texttt{anarr\'ima} has the matching analytic. \alert{The bridge to coupling with a real plasma-physics source.}
-    \item \keyword{Turn scattering on} (moderate): the first result OpenMC can give that the analytic \alert{cannot} -- the first real step toward an actual wall \alert{dose}. (We lose the analytic check, so a new verification strategy is needed.)
-    \item \keyword{Add a breeder blanket} (a new project): compute a true \alert{tritium breeding ratio} -- the headline reactor metric.
+    \item \keyword{Realistic / angled field} (next up): couple a real equilibrium field / \alert{Peterson's physics-informed plasma source}. The sampler already handles any field direction and \texttt{anarr\'ima} has the matching angled analytic, so the free-streaming check survives.
+    \item \keyword{Depletion \& multi-zone blanket}: $^6$Li burnup, activation, coolant channels -- a time-dependent, more realistic TBR.
+    \item \keyword{Realistic geometry}: D-shaped cross-section, divertor (drop the square-section simplification).
+    \item \keyword{Couple to plasma + systems codes}: capture the \emph{upstream} SPF benefits -- net electricity / $Q$ and tritium burn-efficiency -- with our neutronics as one block in the loop.
   \end{enumerate}
 \end{frame}
 
 \begin{frame}{Summary}
   \begin{itemize}
-    \item Fusion neutrons carry most of the energy and pound the wall; \alert{spin polarization can steer them} off fragile parts.
-    \item Schwartz gives a fast \alert{analytic} (no-scattering) wall load; OpenMC is the general \alert{Monte-Carlo} tool.
-    \item We built a spin-polarized OpenMC source and \alert{verified it three ways}: the sampler (machine-precision), an independent analytic ($10^{-8}$), and -- the headline -- \alert{OpenMC recovers the analytic wall load to within statistical noise.}
-    \item Engineering read: B/C polarization \alert{protects the center stack} ($-41\%$ peak, current fraction $8.7\%\to5.1\%$) at equal fusion power.
-    \item The verified source is the \alert{launchpad} for scattering, blankets, and a realistic field.
+    \item Spin polarization \alert{steers DT neutrons} (via the cross section's angle to $\hat B$) and \alert{boosts the rate} -- two effects in different spin states.
+    \item We built a spin-polarized OpenMC source and \alert{verified it}: sampler (machine-precision), independent analytic ($10^{-8}$), and OpenMC \alert{recovers the analytic} to within noise.
+    \item \keyword{Free-streaming:} B/C cuts the geometric center-stack load (Tier 3). \keyword{With scattering:} backscatter \alert{dilutes that benefit $\sim$3$\times$} (to $\sim$15\%) -- the analytic was optimistic.
+    \item \keyword{Blanket:} \alert{TBR = 1.15} (ARC/LIBRA band), and \alert{steering barely changes it} -- protect the center stack without costing breeding.
+    \item \keyword{Rate:} A mode $+50\%$ power (and tritium), but compounds the center-stack load; B is the steering sweet spot. The bigger SPF gains (net electricity, burn efficiency) live upstream in plasma/systems physics.
   \end{itemize}
   \vfill
   \centering\footnotesize Reference: Schwartz, arXiv:2507.11758 (2025).\quad Code \& full results: \texttt{spf\_prototype/}.
@@ -584,7 +713,7 @@
 \begin{frame}[plain]
   \centering\vfill
   {\Large Thank you}\\[6pt]
-  \small Backup derivations and the full \texttt{RESULTS\_tier\{1,2a,2b,3\}.md} live in \texttt{spf\_prototype/}.
+  \small Methods, derivations, and the full \texttt{RESULTS\_tier\{1,2a,2b,3,5,6,7\}.md} live in \texttt{spf\_prototype/}.
   \vfill
 \end{frame}
 
