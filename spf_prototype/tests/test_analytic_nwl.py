@@ -83,3 +83,49 @@ def test_linearity(oracle):
                         - (0.5 * oracle["A_bracket"] + 0.3 * oracle["B_bracket"]
                            + 0.2 * oracle["C_bracket"])))
     assert lin < 1e-9
+
+
+# ----------------------------------------------------------------------------
+# Tier-8 angled field (Part A): the generalized cosθ = Δ̂·B̂(α,β) quad must match
+# anarrima's angled kernels g_*a, and β=0 must recover the toroidal result.
+# Inboard/outboard/floor only (α≠0 breaks up-down symmetry → ceiling is deferred).
+# ----------------------------------------------------------------------------
+WALLS_ANG = [("inboard", an.R_IN, 0.3), ("outboard", an.R_OUT, 0.2), ("floor", an.R0, 0.9)]
+FACS_ANG = ["A", "cos2", "BC"]
+ANGLES = [(0.3, 0.5), (1.5, 1.2), (-0.4, 0.6)]
+
+
+@pytest.mark.parametrize("wall,r,z", WALLS_ANG)
+@pytest.mark.parametrize("fac", FACS_ANG)
+@pytest.mark.parametrize("ang", ANGLES)
+def test_quad_matches_anarrima_angled_single_ring(wall, r, z, fac, ang):
+    q = an.g_ring_quad_scalar(P, z, r, wall, fac, an.R_IN, angle=ang)
+    a = an.g_ring_anarrima(P, z, r, wall, fac, an.R_IN, angle=ang)
+    assert abs(q - a) < 1e-6 * (abs(a) + 1e-9), f"{wall}/{fac}/{ang}: quad={q} an={a}"
+
+
+@pytest.mark.parametrize("wall,r,z", WALLS_ANG)
+@pytest.mark.parametrize("fac", FACS_ANG)
+def test_angled_beta0_recovers_toroidal(wall, r, z, fac):
+    """β=0 (any α) must reduce the angled quad to the toroidal quad exactly."""
+    ang0 = an.g_ring_quad_scalar(P, z, r, wall, fac, an.R_IN, angle=(0.7, 0.0))
+    tor = an.g_ring_quad_scalar(P, z, r, wall, fac, an.R_IN)
+    assert abs(ang0 - tor) < 1e-12 * (abs(tor) + 1e-9)
+
+
+def test_plasma_quad_vs_anarrima_angled():
+    """Parabolic-plasma angled pattern: our quad vs anarrima's angled kernels."""
+    targets = [t for t in an.wall_targets(n_per_wall=12) if t["wall"] != "ceiling"]
+    ang = (0.6, 0.7)
+    pq = an.plasma_patterns(targets, n_grid=60, engine=an.g_ring_quad, angle=ang)
+    pa = an.plasma_patterns(targets, n_grid=60, engine=an.g_ring_anarrima_vec, angle=ang)
+    for k in ("iso_g", "A_g", "cos2_g"):
+        rel = np.max(np.abs(pq[k] - pa[k]) / (np.abs(pa[k]) + 1e-300))
+        assert rel < 1e-6, f"{k}: max rel diff {rel}"
+
+
+def test_angled_ceiling_is_rejected():
+    """An α≠0 ceiling target must raise (up-down symmetry broken) — honest guard."""
+    with pytest.raises(NotImplementedError):
+        an.plasma_patterns([dict(wall="ceiling", R=an.R0, Z=an.Z_WALL, s=0.0)],
+                           n_grid=20, angle=(0.5, 0.5))

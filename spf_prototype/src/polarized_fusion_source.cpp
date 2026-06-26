@@ -8,13 +8,15 @@
 //
 // Parameter string (comma-separated key=value, lengths in cm):
 //   a,b,c          polarization mode fractions (renormalized; warn if |sum-1|>1e-6)
-//   bmode          field model: "toroidal" (B̂=φ̂) or "constant"
+//   bmode          field model: "toroidal" (B̂=φ̂), "constant", or "angled" (pitched)
 //   bx,by,bz       field direction for bmode=constant (default +z)
+//   alpha,beta     pitch angles (rad) for bmode=angled (see spf_field.hpp; beta=0=toroidal)
 //   shape          "ring" (filamentary) or "plasma" (parabolic circular)
 //   r0,z0          ring major radius & height            (shape=ring)
 //   R0,aminor      plasma major & minor radius           (shape=plasma)
 //   energy         birth energy in eV (default 14.1e6, monoenergetic)
-// Example: "a=1,b=0,c=0,bmode=toroidal,shape=plasma,R0=100,aminor=50"
+//                  INJECT(helios): Ballabio/D-D broadening hook -- NOT implemented.
+// Example: "a=1,b=0,c=0,bmode=angled,alpha=0.0,beta=0.4,shape=plasma,R0=100,aminor=50"
 #include <cmath>
 #include <cstdio>
 #include <memory>
@@ -27,6 +29,7 @@
 #include "openmc/random_lcg.h"
 #include "openmc/source.h"
 
+#include "spf_field.hpp"
 #include "spf_sampler.hpp"
 
 namespace {
@@ -88,13 +91,19 @@ public:
     }
     mw_ = spf::make_mode_weights(a, b, c); // renormalizes + asserts invariants
 
-    // --- field model ---
-    bmode_ = get_s(kv, "bmode", "toroidal");
-    if (bmode_ == "constant") {
+    // --- field model: build a MagneticField (B-hat(x); see spf_field.hpp) ---
+    const std::string bmode = get_s(kv, "bmode", "toroidal");
+    if (bmode == "toroidal") {
+      field_ = std::make_unique<spf::ToroidalField>();
+    } else if (bmode == "constant") {
       spf::Vec3 b0 {get_d(kv, "bx", 0.0), get_d(kv, "by", 0.0), get_d(kv, "bz", 1.0)};
-      bconst_ = spf::normalized(b0);
-    } else if (bmode_ != "toroidal") {
-      throw std::invalid_argument("bmode must be 'toroidal' or 'constant'");
+      field_ = std::make_unique<spf::ConstantField>(b0);
+    } else if (bmode == "angled") {
+      field_ = std::make_unique<spf::AngledField>(
+        get_d(kv, "alpha", 0.0), get_d(kv, "beta", 0.0));
+    } else {
+      throw std::invalid_argument(
+        "bmode must be 'toroidal', 'constant', or 'angled'");
     }
 
     // --- spatial shape ---
@@ -143,14 +152,8 @@ public:
       pz = z0w;
     }
 
-    // 2. local magnetic field direction
-    spf::Vec3 Bhat;
-    if (bmode_ == "toroidal") {
-      double rxy = std::sqrt(px * px + py * py);
-      Bhat = {-py / rxy, px / rxy, 0.0}; // φ̂ = (-sinφ, cosφ, 0)
-    } else {
-      Bhat = bconst_;
-    }
+    // 2. local magnetic field direction B-hat(x) (see spf_field.hpp)
+    const spf::Vec3 Bhat = field_->bhat({px, py, pz});
 
     // 3. birth direction from the verified angular sampler
     spf::Vec3 u = spf::sample_global_direction(mw_, Bhat, rng);
@@ -171,10 +174,10 @@ public:
   }
 
 private:
-  // All const after construction (no mutable state -> thread-safe sample()).
+  // All set in the constructor and only read in sample() -> thread-safe.
+  // (field_->bhat() is const and has no mutable state.)
   spf::ModeWeights mw_;
-  std::string bmode_;
-  spf::Vec3 bconst_ {0.0, 0.0, 1.0};
+  std::unique_ptr<const spf::MagneticField> field_;
   std::string shape_;
   double r0_ {100.0}, z0_ {0.0};
   double R0_ {100.0}, aminor_ {50.0}, pmax_ {150.0};
