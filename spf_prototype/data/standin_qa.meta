@@ -1,0 +1,13 @@
+magic spf_fieldmap_v1
+ndim 3
+nR 25
+nphi 16
+nZ 25
+R_min 500.0
+R_max 1100.0
+phi_min 0.0
+period 3.141592653589793
+Z_min -300.0
+Z_max 300.0
+nfp 2
+endian little

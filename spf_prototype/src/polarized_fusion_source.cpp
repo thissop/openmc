@@ -30,6 +30,7 @@
 #include "openmc/source.h"
 
 #include "spf_field.hpp"
+#include "spf_fieldmap.hpp"
 #include "spf_sampler.hpp"
 
 namespace {
@@ -101,9 +102,11 @@ public:
     } else if (bmode == "angled") {
       field_ = std::make_unique<spf::AngledField>(
         get_d(kv, "alpha", 0.0), get_d(kv, "beta", 0.0));
+    } else if (bmode == "fieldmap") {
+      field_ = std::make_unique<spf::FieldMapField>(get_s(kv, "fieldmap", ""));
     } else {
       throw std::invalid_argument(
-        "bmode must be 'toroidal', 'constant', or 'angled'");
+        "bmode must be 'toroidal', 'constant', 'angled', or 'fieldmap'");
     }
 
     // --- spatial shape ---
