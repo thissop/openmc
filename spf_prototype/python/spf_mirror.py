@@ -190,3 +190,56 @@ def pdf_costheta(m: ModeWeights, x: float) -> float:
     I = m.w_perp * (1.0 - x * x) + m.w_par * (0.25 + 0.75 * x * x)
     Z = m.w_perp * (4.0 / 3.0) + m.w_par * 1.0
     return I / Z
+
+
+# ---------------------------------------------------------------------------
+# Magnetic-field direction models -- 1:1 mirror of src/spf_field.hpp.
+# Parity is checked in tests/test_field_parity.py (C++ vs Python bhat).
+# B-hat conventions are documented in spf_field.hpp; the AngledField (alpha,beta)
+# convention is pinned to anarrima's angled kernels (see analytic_nwl.angled_*).
+# ---------------------------------------------------------------------------
+class ConstantField:
+    __slots__ = ("b",)
+
+    def __init__(self, b0):
+        self.b = _normalized(b0)
+
+    def bhat(self, r):
+        return self.b
+
+
+class ToroidalField:
+    __slots__ = ()
+
+    def bhat(self, r):
+        x, y, _z = r
+        rxy = math.sqrt(x * x + y * y)
+        return (-y / rxy, x / rxy, 0.0)  # phi_hat
+
+
+class AngledField:
+    """B-hat = cosβ·phi_hat + sinβ·(cosα·R_hat − sinα·z_hat). Unit; β=0 ⇒ toroidal."""
+    __slots__ = ("ca", "sa", "cb", "sb")
+
+    def __init__(self, alpha, beta):
+        self.ca, self.sa = math.cos(alpha), math.sin(alpha)
+        self.cb, self.sb = math.cos(beta), math.sin(beta)
+
+    def bhat(self, r):
+        x, y, _z = r
+        rxy = math.sqrt(x * x + y * y)
+        cphi, sphi = x / rxy, y / rxy
+        return (self.cb * (-sphi) + self.sb * self.ca * cphi,
+                self.cb * (cphi) + self.sb * self.ca * sphi,
+                -self.sb * self.sa)
+
+
+def make_field(bmode: str, alpha: float = 0.0, beta: float = 0.0, b=(0.0, 0.0, 1.0)):
+    """Mirror of the C++ plugin's field-selection (bmode parsing)."""
+    if bmode == "toroidal":
+        return ToroidalField()
+    if bmode == "constant":
+        return ConstantField(b)
+    if bmode == "angled":
+        return AngledField(alpha, beta)
+    raise ValueError(f"unknown bmode {bmode!r}")

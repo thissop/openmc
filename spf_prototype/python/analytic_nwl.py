@@ -55,15 +55,29 @@ def _cosnu(p, r, z, cphi, d, wall):
     raise ValueError(wall)
 
 
+def _ct_angled(p, r, z, cphi, sphi, d, angle):
+    """cosθ = Δ̂·B̂ for the axisymmetric pitched field
+        B̂ = cosβ·φ̂ + sinβ·(cosα·R̂ − sinα·ẑ)
+    (same convention as src/spf_field.hpp AngledField). z = z_source − z_wall
+    (the module's relative-z convention). Validated against anarrima's angled
+    kernels g_*a to ~2e-14 (β=0 recovers the toroidal cosθ = r sinφ/|Δ| exactly).
+    Geometry: Δ·φ̂ = −r sinφ ; Δ·R̂ = r cosφ − p ; Δ·ẑ = −z."""
+    alpha, beta = angle
+    ca, sa, cb, sb = np.cos(alpha), np.sin(alpha), np.cos(beta), np.sin(beta)
+    return (-cb * (r * sphi) + sb * (ca * (r * cphi - p) + sa * z)) / d
+
+
 # --------------------------------------------------------------------------
 # Engine 1: our vectorized Gauss-Legendre quadrature (p, z may be arrays)
 # --------------------------------------------------------------------------
 _GL_NODES, _GL_WTS = np.polynomial.legendre.leggauss(256)
 
 
-def g_ring_quad(p, z, r, wall, factor, u_in):
+def g_ring_quad(p, z, r, wall, factor, u_in, angle=None):
     """Reduced intensity from ring(s) at (p, z) onto a target of radius r.
-    p, z broadcastable arrays; r, u_in scalars. Returns array like p."""
+    p, z broadcastable arrays; r, u_in scalars. Returns array like p.
+    angle=None → purely toroidal B̂ (cosθ = r sinφ/|Δ|); angle=(α,β) → pitched
+    field via _ct_angled (the toroidal case is the β=0 limit, unchanged)."""
     p = np.asarray(p, dtype=float)
     z = np.asarray(z, dtype=float)
     f = FACTORS[factor]
@@ -72,23 +86,28 @@ def g_ring_quad(p, z, r, wall, factor, u_in):
     phi = phim[..., None] * _GL_NODES                    # shape p + (G,)
     cphi = np.cos(phi)
     sphi = np.sin(phi)
-    d2 = p[..., None] ** 2 + r ** 2 + z[..., None] ** 2 - 2 * p[..., None] * r * cphi
+    pe = p[..., None]
+    ze = z[..., None]
+    d2 = pe ** 2 + r ** 2 + ze ** 2 - 2 * pe * r * cphi
     d = np.sqrt(d2)
-    cosnu = _cosnu(p[..., None], r, z[..., None], cphi, d, wall)
-    ct = r * sphi / d
-    integ = p[..., None] * cosnu * f(ct) / d2
+    cosnu = _cosnu(pe, r, ze, cphi, d, wall)
+    ct = (r * sphi / d) if angle is None else _ct_angled(pe, r, ze, cphi, sphi, d, angle)
+    integ = pe * cosnu * f(ct) / d2
     return phim * np.sum(integ * _GL_WTS, axis=-1)
 
 
-def g_ring_quad_scalar(p, z, r, wall, factor, u_in):
-    """High-accuracy scalar quadrature (scipy.quad) for the validation table."""
+def g_ring_quad_scalar(p, z, r, wall, factor, u_in, angle=None):
+    """High-accuracy scalar quadrature (scipy.quad) for the validation table.
+    angle=None → toroidal; angle=(α,β) → pitched field (see _ct_angled)."""
     f = FACTORS[factor]
 
     def integrand(phi):
-        d2 = p * p + r * r + z * z - 2 * p * r * np.cos(phi)
+        cphi = np.cos(phi)
+        sphi = np.sin(phi)
+        d2 = p * p + r * r + z * z - 2 * p * r * cphi
         d = np.sqrt(d2)
-        cosnu = _cosnu(p, r, z, np.cos(phi), d, wall)
-        ct = r * np.sin(phi) / d
+        cosnu = _cosnu(p, r, z, cphi, d, wall)
+        ct = (r * sphi / d) if angle is None else _ct_angled(p, r, z, cphi, sphi, d, angle)
         return p * cosnu * f(ct) / d2
 
     lim = float(_phi_limit(np.asarray(p), r, wall, u_in))
@@ -114,30 +133,53 @@ def _an_fn(comp, factor):
     }[(comp, factor)]
 
 
-def g_ring_anarrima(p, z, r, wall, factor, u_in):
+def _an_fn_angled(comp, factor):
+    """Angled-field kernels g_*a(p,z,r,α,β,φ). NOTE: no g_HIa/g_VIa — the
+    isotropic kernel is field-direction-independent, so an angled iso reuses the
+    toroidal g_HI/g_VI (see RESULTS_tier8_angled.md)."""
+    ri = _anarrima()
+    return {
+        ("H", "A"): ri.g_HAa, ("H", "cos2"): ri.g_Hca, ("H", "BC"): ri.g_HBa,
+        ("V", "A"): ri.g_VAa, ("V", "cos2"): ri.g_Vca, ("V", "BC"): ri.g_VBa,
+    }[(comp, factor)]
+
+
+def g_ring_anarrima(p, z, r, wall, factor, u_in, angle=None):
     comp = "V" if wall == "floor" else "H"
-    fn = _an_fn(comp, factor)
     phim = float(_phi_limit(np.asarray(p), r, wall, u_in))
-    val = float(fn(p, z, r, phim))
+    if angle is None or factor == "iso":
+        val = float(_an_fn(comp, factor)(p, z, r, phim))      # toroidal (iso has no angled form)
+    else:
+        alpha, beta = angle
+        val = float(_an_fn_angled(comp, factor)(p, z, r, alpha, beta, phim))
     return -val if wall == "outboard" else val  # outboard normal is -R̂
 
 
 _AN_VEC = {}
 
 
-def g_ring_anarrima_vec(p, z, r, wall, factor, u_in):
+def g_ring_anarrima_vec(p, z, r, wall, factor, u_in, angle=None):
     """Vectorized anarrima engine (jit+jnp.vectorize) -- engine-compatible with
-    g_ring_quad so plasma_patterns can run on the published closed forms."""
+    g_ring_quad so plasma_patterns can run on the published closed forms.
+    angle=None → toroidal kernels; angle=(α,β) → angled kernels g_*a (iso reuses
+    the toroidal kernel, which is field-direction-independent)."""
     import jax
     import jax.numpy as jnp
     comp = "V" if wall == "floor" else "H"
-    key = (comp, factor)
-    if key not in _AN_VEC:
-        _AN_VEC[key] = jax.jit(jnp.vectorize(_an_fn(comp, factor)))
     p = np.asarray(p, dtype=float)
     z = np.asarray(z, dtype=float)
     phim = _phi_limit(p, r, wall, u_in)
-    val = np.asarray(_AN_VEC[key](p, z, r, phim), dtype=float)
+    if angle is None or factor == "iso":
+        key = (comp, factor, "tor")
+        if key not in _AN_VEC:
+            _AN_VEC[key] = jax.jit(jnp.vectorize(_an_fn(comp, factor)))
+        val = np.asarray(_AN_VEC[key](p, z, r, phim), dtype=float)
+    else:
+        alpha, beta = angle
+        key = (comp, factor, "ang")
+        if key not in _AN_VEC:
+            _AN_VEC[key] = jax.jit(jnp.vectorize(_an_fn_angled(comp, factor)))
+        val = np.asarray(_AN_VEC[key](p, z, r, alpha, beta, phim), dtype=float)
     return -val if wall == "outboard" else val
 
 
@@ -206,20 +248,27 @@ def _ring_grid(n=120):
     return P[inside], Z[inside], w[inside]
 
 
-def _target_primitives(target, P, Z0, engine=g_ring_quad):
+def _target_primitives(target, P, Z0, engine=g_ring_quad, angle=None):
     """g_iso, g_A, g_cos2 summed over rings for one wall target (with relative z)."""
     wall = target["wall"]
     r = target["R"]
     if wall == "ceiling":
+        if angle is not None:
+            # An α≠0 pitch breaks up-down (z→−z) symmetry, so the ceiling=floor
+            # mirror is invalid. The angled gate uses inboard/outboard/floor only;
+            # a symmetry-aware ceiling is a DEFERRED item (see DEFERRED.md).
+            raise NotImplementedError(
+                "angled ceiling needs up-down-symmetry-aware handling; "
+                "use inboard/outboard/floor for the angled comparison")
         # up-down symmetry: ceiling(Z=+a) == floor(Z=-a) for symmetric plasma
         wall_eff, z_rel = "floor", Z_WALL - Z0   # = (Z0 - (-(Z_WALL)))->mirror
     elif wall == "floor":
         wall_eff, z_rel = "floor", Z0 - (-Z_WALL)
     else:  # inboard / outboard vertical walls
         wall_eff, z_rel = wall, Z0 - target["Z"]
-    gi = engine(P, z_rel, r, wall_eff, "iso", R_IN)
-    ga = engine(P, z_rel, r, wall_eff, "A", R_IN)
-    gc = engine(P, z_rel, r, wall_eff, "cos2", R_IN)
+    gi = engine(P, z_rel, r, wall_eff, "iso", R_IN, angle=angle)
+    ga = engine(P, z_rel, r, wall_eff, "A", R_IN, angle=angle)
+    gc = engine(P, z_rel, r, wall_eff, "cos2", R_IN, angle=angle)
     return gi, ga, gc
 
 
@@ -244,13 +293,15 @@ def bracket(a, b, c, G_iso, G_A, G_cos2):
     return 0.75 * a * G_A + (2 * b / 3 + c / 3) * G_BC
 
 
-def plasma_patterns(targets, n_grid=120, engine=g_ring_quad):
+def plasma_patterns(targets, n_grid=120, engine=g_ring_quad, angle=None):
     """Return dict wall-load arrays {iso,A,cos2} (∫∫(1-ρ²) g dp dz0) over targets,
-    plus per-mode bracket and constant-rate-directional patterns."""
+    plus per-mode bracket and constant-rate-directional patterns.
+    angle=None → toroidal field; angle=(α,β) → pitched field (inboard/outboard/
+    floor targets only; see _target_primitives)."""
     P, Z0, w = _ring_grid(n_grid)
     Gi = np.empty(len(targets)); Ga = np.empty(len(targets)); Gc = np.empty(len(targets))
     for k, t in enumerate(targets):
-        gi, ga, gc = _target_primitives(t, P, Z0, engine)
+        gi, ga, gc = _target_primitives(t, P, Z0, engine, angle=angle)
         Gi[k] = np.sum(w * gi); Ga[k] = np.sum(w * ga); Gc[k] = np.sum(w * gc)
     res = {"iso_g": Gi, "A_g": Ga, "cos2_g": Gc}
     for name, (a, b, c) in MODES.items():
