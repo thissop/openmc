@@ -4,10 +4,18 @@
 the C++/Python sampler parity test (test_sampler_stats.test_cpp_python_parity) and
 keeps the bit-parity discipline as the field grows (toroidal/constant/angled).
 """
+import math
+import subprocess
+import sys
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 import spf_mirror as mir
+
+DATA = Path(__file__).resolve().parents[1] / "data"
+PYDIR = Path(__file__).resolve().parents[1] / "python"
 
 # A spread of positions (cm). Avoid the z-axis (rxy = 0 is undefined for the
 # toroidal/angled local cylindrical basis).
@@ -61,3 +69,42 @@ def test_angled_beta0_is_toroidal(run_field_driver):
     a = run_field_driver("angled", POSITIONS, alpha=0.4, beta=0.9)
     norms = np.sqrt((a ** 2).sum(axis=1))
     assert float(np.max(np.abs(norms - 1.0))) <= 1e-12
+
+
+# ----------------------------------------------------------------------------
+# Field-map parity (Part B): C++ FieldMapField (spf_fieldmap.hpp) vs the Python
+# mirror (fieldmap.FieldMapField) on the checked-in stand-in maps. Exercises the
+# clamped R/Z + periodic-phi trilinear interp; positions sweep phi to hit the wrap.
+# ----------------------------------------------------------------------------
+def _fieldmap_positions():
+    pts = []
+    for R in (550.0, 700.0, 850.0, 1050.0):
+        for phi in (0.0, 0.3, 1.1, 2.0, 3.0, -0.5, 5.5):  # exercise periodic wrap
+            for Z in (-250.0, -50.0, 0.0, 120.0, 280.0):
+                pts.append((R * math.cos(phi), R * math.sin(phi), Z))
+    return pts
+
+
+@pytest.mark.parametrize("stem", ["standin_qa", "standin_toroidal"])
+def test_fieldmap_parity(run_field_driver, stem):
+    from fieldmap import FieldMapField
+    path = str(DATA / stem)
+    pts = _fieldmap_positions()
+    cpp = run_field_driver("fieldmap", pts, path=path)
+    fm = FieldMapField(path)
+    py = np.array([fm.bhat(p) for p in pts])
+    mx = float(np.max(np.abs(cpp - py)))
+    print(f"\n[field parity] fieldmap {stem} max|C++-Py| = {mx:.2e}")
+    assert mx <= 1e-12
+    norms = np.sqrt((cpp ** 2).sum(axis=1))
+    assert float(np.max(np.abs(norms - 1.0))) <= 1e-12  # renormalized to unit
+
+
+def test_fieldmap_generator_reproducible():
+    """make_standin_field.py is a pure function of grid indices -> byte-identical
+    output on re-run (no RNG/timestamp). Guards the committed .bin."""
+    f = DATA / "standin_qa.bin"
+    before = f.read_bytes()
+    subprocess.run([sys.executable, str(PYDIR / "make_standin_field.py")],
+                   check=True, capture_output=True)
+    assert f.read_bytes() == before

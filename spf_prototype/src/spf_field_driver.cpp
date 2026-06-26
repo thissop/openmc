@@ -10,6 +10,7 @@
 //   toroidal
 //   constant bx by bz
 //   angled   alpha beta        (radians)
+//   fieldmap <stem>            (reads <stem>.meta + <stem>.bin)
 // Output: one line "bx by bz" per input position (17 sig figs).
 #include <cstdio>
 #include <cstdlib>
@@ -18,6 +19,7 @@
 #include <string>
 
 #include "spf_field.hpp"
+#include "spf_fieldmap.hpp"
 
 int main(int argc, char** argv)
 {
@@ -37,6 +39,9 @@ int main(int argc, char** argv)
   } else if (bmode == "angled") {
     if (argc < 4) { std::fprintf(stderr, "angled needs alpha beta\n"); return 2; }
     field = std::make_unique<spf::AngledField>(std::atof(argv[2]), std::atof(argv[3]));
+  } else if (bmode == "fieldmap") {
+    if (argc < 3) { std::fprintf(stderr, "fieldmap needs <stem>\n"); return 2; }
+    field = std::make_unique<spf::FieldMapField>(std::string(argv[2]));
   } else {
     std::fprintf(stderr, "unknown bmode '%s'\n", bmode.c_str());
     return 2;

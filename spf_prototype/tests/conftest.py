@@ -80,6 +80,8 @@ def run_field_driver(field_driver):
                      repr(float(params["b"][2]))]
         elif bmode == "angled":
             args += [repr(float(params["alpha"])), repr(float(params["beta"]))]
+        elif bmode == "fieldmap":
+            args += [str(params["path"])]
         stdin = "\n".join(f"{x!r} {y!r} {z!r}" for x, y, z in positions)
         out = subprocess.run(args, input=stdin, check=True,
                              capture_output=True, text=True)

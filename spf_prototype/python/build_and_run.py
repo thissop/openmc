@@ -22,7 +22,9 @@ PYDIR = REPO / "spf_prototype" / "python"
 SRCDIR = REPO / "spf_prototype" / "src"
 SO = SRCDIR / "build" / "libpolarized_fusion_source.so"
 VENV = Path(os.path.expanduser("~/spf_venv"))
-XS = Path(os.path.expanduser("~/nndc_hdf5/cross_sections.xml"))
+# Cross sections: honor OPENMC_CROSS_SECTIONS if set, else the NNDC default.
+XS = Path(os.environ.get("OPENMC_CROSS_SECTIONS",
+                         os.path.expanduser("~/nndc_hdf5/cross_sections.xml")))
 
 sys.path.insert(0, str(PYDIR))
 import openmc  # noqa: E402

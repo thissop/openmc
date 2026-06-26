@@ -234,7 +234,8 @@ class AngledField:
                 -self.sb * self.sa)
 
 
-def make_field(bmode: str, alpha: float = 0.0, beta: float = 0.0, b=(0.0, 0.0, 1.0)):
+def make_field(bmode: str, alpha: float = 0.0, beta: float = 0.0,
+               b=(0.0, 0.0, 1.0), path: str = None):
     """Mirror of the C++ plugin's field-selection (bmode parsing)."""
     if bmode == "toroidal":
         return ToroidalField()
@@ -242,4 +243,7 @@ def make_field(bmode: str, alpha: float = 0.0, beta: float = 0.0, b=(0.0, 0.0, 1
         return ConstantField(b)
     if bmode == "angled":
         return AngledField(alpha, beta)
+    if bmode == "fieldmap":
+        from fieldmap import FieldMapField  # lazy: needs numpy
+        return FieldMapField(path)
     raise ValueError(f"unknown bmode {bmode!r}")
