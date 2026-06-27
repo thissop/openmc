@@ -23,3 +23,6 @@ run_*/
 # Figures ARE tracked on this branch: override OpenMC's repo-wide *.png ignore
 !figs/
 !figs/*.png
+data/*_s[0-9]*.meta
+data/*_s[0-9]*.bin
+data/*_geom/

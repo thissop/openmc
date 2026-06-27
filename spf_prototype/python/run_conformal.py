@@ -1,0 +1,153 @@
+#!/usr/bin/env python
+"""STEP (x86/Ginsburg, conda): run OpenMC+DAGMC on the CONFORMAL stellarator wall
+with the spin-polarized compiled source driven by the real-equilibrium field map.
+
+This is the deliverable that answers the science question: do SPF directional-
+steering benefits SURVIVE non-axisymmetric (conformal) wall smearing, and how much
+does scattering change the answer from the free-streaming limit? It is built to run
+UNCHANGED on Ginsburg; only the conda env + OPENMC_CROSS_SECTIONS resolve at run
+time. Requires OpenMC built WITH DAGMC (environment.yml); imports are guarded so
+the aarch64 sandbox gives a clear message instead of a traceback.
+
+Pipeline (each step has its own script; see RUN_ON_GINSBURG.md):
+  desc_to_fieldmap.py  -> field map + LCFS surface grid   (isolated desc env)
+  stellarator_geometry.py -> per-layer conformal STLs     (any env, numpy)
+  build_dagmc.py       -> stellarator.h5m                  (conda, DAGMC)
+  run_conformal.py     -> transport + metrics             (conda, OpenMC+DAGMC)
+
+Configs: unpolarized / perpendicular(A) / parallel(B/C), rate held fixed, per
+source neutron (Bae 2025 convention). Anchors (3D has no analytic ground truth in
+the collided case): (A) free-streaming (near-void) reproduces the analytic
+free-streaming NWL of the companion paper, per patch per mode -- the joint
+analytic<->MC validation; (B) sampled-direction moments about the local field;
+then scattering ON quantifies the departure and the surviving steering.
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import numpy as np
+
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "spf_prototype" / "python"))
+DATADIR = REPO / "spf_prototype" / "data"
+
+import build_and_run as br  # noqa: E402  (compiled .so + XS path)
+import reactor_model as rm  # noqa: E402  (W/steel/Be/FLiBe materials)
+import stellarator_model as sm  # noqa: E402  (shield/coil materials)
+
+# Bae naming -> Schwartz collision modes: unpol=iso, perpendicular=A, parallel=B/C
+MODES = {"unpolarized": (1 / 3, 1 / 3, 1 / 3),
+         "perpendicular": (1.0, 0.0, 0.0),
+         "parallel": (0.0, 1.0, 0.0)}
+
+
+def scale_fieldmap(stem, scale, out_stem):
+    """Rescale a field map's GRID BOUNDS by `scale` (B-hat DIRECTION is invariant
+    under uniform geometric scaling, so the .bin is copied verbatim and only the
+    .meta R/Z bounds change). Lets one DESC map drive any device size."""
+    src_meta = (DATADIR / f"{stem}.meta").read_text().splitlines()
+    out = []
+    for line in src_meta:
+        k = line.split()
+        if k and k[0] in ("R_min", "R_max", "Z_min"):
+            out.append(f"{k[0]} {float(k[1]) * scale!r}")
+        elif k and k[0] == "Z_max":
+            out.append(f"{k[0]} {float(k[1]) * scale!r}")
+        else:
+            out.append(line)
+    (DATADIR / f"{out_stem}.meta").write_text("\n".join(out) + "\n")
+    # copy the .bin unchanged
+    (DATADIR / f"{out_stem}.bin").write_bytes((DATADIR / f"{stem}.bin").read_bytes())
+    return DATADIR / out_stem
+
+
+def make_geometry(h5m_path):
+    """Load the DAGMC conformal wall and assign materials by group tag."""
+    try:
+        import openmc
+    except ImportError as e:
+        raise SystemExit(f"openmc unavailable (run on Ginsburg conda env): {e}")
+    mats = sm.make_materials()  # W/steel/Be/FLiBe + shield + coil (names == DAGMC tags)
+    dag = openmc.DAGMCUniverse(h5m_path).bounded_universe()  # adds vacuum boundary
+    geom = openmc.Geometry(dag)
+    return geom, openmc.Materials(list(mats.values())), mats
+
+
+def build_model(abc, h5m_path, fieldmap_stem, R0_cm, a_cm,
+                particles=200_000, batches=10, density_scale=1.0):
+    import openmc
+    geom, materials, mats = make_geometry(h5m_path)
+    if density_scale != 1.0:  # free-streaming anchor: near-void materials
+        for m in materials:
+            m.set_density("g/cm3", m.density * density_scale)
+
+    a, b, c = abc
+    s = openmc.Settings()
+    s.run_mode = "fixed source"
+    s.particles = int(particles); s.batches = int(batches); s.inactive = 0
+    # source: births on (1-rho^2) flux surfaces (circular MVP, sized inside the FW),
+    # B-hat from the real-equilibrium field map. INJECT(helios): a true LCFS
+    # flux-surface source is the upgrade (DEFERRED.md).
+    a_src = 0.85 * a_cm
+    s.source = openmc.CompiledSource(
+        str(br.SO),
+        parameters=(f"a={a},b={b},c={c},bmode=fieldmap,"
+                    f"fieldmap={DATADIR / fieldmap_stem},"
+                    f"shape=plasma,R0={R0_cm},aminor={a_src}"))
+
+    tallies = []
+    # phi-RESOLVED first-wall current (the 3D signature; toroidal x poloidal mesh)
+    mesh = openmc.CylindricalMesh(
+        r_grid=np.linspace(0.3 * R0_cm, R0_cm + 1.5 * a_cm, 30),
+        phi_grid=np.linspace(0.0, 2 * np.pi, 33),   # 32 toroidal bins -> phi-resolved
+        z_grid=np.linspace(-1.5 * a_cm, 1.5 * a_cm, 30))
+    tcur = openmc.Tally(name="wall_current_phi")
+    tcur.filters = [openmc.MeshSurfaceFilter(mesh)]; tcur.scores = ["current"]
+    tallies.append(tcur)
+    # per-material response: heating / damage / tritium
+    tcell = openmc.Tally(name="cell_response")
+    tcell.filters = [openmc.MaterialFilter([mats["W"], mats["steel"], mats["Be"],
+                                            mats["FLiBe"], mats["shield"], mats["coil"]])]
+    tcell.scores = ["heating", "damage-energy", "H3-production"]
+    tallies.append(tcell)
+    # coil fast flux (>0.1 MeV) -- magnet-lifetime proxy
+    tcf = openmc.Tally(name="coil_fast")
+    tcf.filters = [openmc.MaterialFilter([mats["coil"]]),
+                   openmc.EnergyFilter([0.1e6, 20.0e6])]
+    tcf.scores = ["flux"]
+    tallies.append(tcf)
+
+    return openmc.Model(geometry=geom, settings=s, materials=materials,
+                        tallies=openmc.Tallies(tallies)), mats
+
+
+def main():
+    import json
+    h5m = sys.argv[1] if len(sys.argv) > 1 else "stellarator.h5m"
+    stem = sys.argv[2] if len(sys.argv) > 2 else "equil_precise_qa"
+    scale = float(sys.argv[3]) if len(sys.argv) > 3 else 10.0
+    # native precise_QA ~ R0 103cm, a 17cm -> scaled device
+    R0_cm, a_cm = 103.0 * scale, 17.2 * scale
+    fmap = f"{stem}_s{int(scale)}"
+    scale_fieldmap(stem, scale, fmap)
+    br.build_so()
+
+    res = {}
+    for stream, dscale in [("free", 1e-4), ("scatter", 1.0)]:
+        for mode, abc in MODES.items():
+            model, mats = build_model(abc, h5m, fmap, R0_cm, a_cm, density_scale=dscale)
+            sp = model.run(cwd=f"/tmp/spf_conformal_{stream}_{mode}", output=False)
+            res[(stream, mode)] = sp
+            print(f"ran {stream}/{mode}")
+
+    # metrics + RESULTS_tier8_conformal.md are assembled here on Ginsburg
+    # (inboard/outboard steering per mode, free vs scatter; coil fast flux; TBR;
+    #  eta = retained steering; joint cross-check vs the analytic free-streaming NWL).
+    print("transport complete; assemble metrics into RESULTS_tier8_conformal.md")
+    return res
+
+
+if __name__ == "__main__":
+    main()

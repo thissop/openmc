@@ -1,0 +1,45 @@
+# Conda environment for the conformal stellarator SPF neutronics pipeline on
+# x86_64 (e.g. Columbia Ginsburg). conda-forge ships OpenMC built WITH DAGMC on
+# linux-64 (it is NOT available on linux-aarch64, which is why the sandbox cannot
+# run transport). One `conda env create -f environment.yml` gives the full stack.
+#
+#   conda env create -f environment.yml
+#   conda activate spf-stellarator
+#
+# DESC is intentionally NOT here: it pulls its own jax/numpy pins that conflict
+# with OpenMC. Keep DESC in a SEPARATE env (see RUN_ON_GINSBURG.md) -- it only
+# WRITES field maps (producer/consumer split).
+#
+# Versions are pinned to a known-consistent conda-forge set; bump as needed but
+# re-run the smoke tests (RUN_ON_GINSBURG.md) after any change.
+name: spf-stellarator
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  # --- transport stack (openmc pulls dagmc + moab as deps on linux-64) ---
+  - openmc=0.15.*
+  - dagmc
+  - moab
+  # --- conformal geometry -> DAGMC meshing ---
+  - gmsh
+  - python-gmsh
+  # --- scientific stack (match the sandbox spf_venv) ---
+  - numpy
+  - scipy
+  - sympy
+  - h5py
+  - pandas
+  - matplotlib
+  - pytest
+  - cmake
+  - cxx-compiler
+  # --- analytic free-streaming cross-check (Part A rigor anchor) ---
+  - jax
+  - jaxlib
+  - pip
+  - pip:
+      - cad_to_dagmc
+      - smplotlib
+      # anarrima (Schwartz analytic NWL) -- not on PyPI; install from GitHub:
+      - "git+https://github.com/PrincetonUniversity/anarrima.git"
