@@ -22,6 +22,30 @@ baseline run needs no DESC at all.**
 
 ---
 
+## 0.5 Storage: put everything in GROUP space, not home
+
+The two heavy items are the **conda env (~5–8 GB)** and the **cross sections
+(~1–10 GB)** — these, not the outputs, are what blow a small home quota. Per-run
+output is ~0.1 GB; a 10-equilibrium scan ~1 GB. So **work in your `astro` group
+allocation** (`/burg/astro/...` — confirm your writable path), not `/burg/home`.
+
+```bash
+checkquota                      # confirm home vs group quota (or gpfsquota/mmlsquota)
+WORK=/burg/astro/users/$USER    # <-- your writable group dir (adjust to your allocation)
+```
+
+- **conda env in group space** (so it doesn't eat home quota): create/activate by
+  PATH — `conda env create -p $WORK/envs/spf-stellarator -f spf_prototype/environment.yml`
+  then `conda activate $WORK/envs/spf-stellarator`.
+- **cross sections**: reuse a SHARED cluster ENDF/B library if one exists (ask RCS /
+  your group) and just point `OPENMC_CROSS_SECTIONS` at it — don't download your own
+  multi-GB copy. Otherwise put it under `$WORK`.
+- **repo + job output under `$WORK`**, and submit from there so `$SLURM_SUBMIT_DIR`
+  (where results land) is group space. Set `REPO=$WORK/.../openmc` in
+  `ginsburg_job.sh`.
+- statepoints already avoid node-local `/tmp` (purged at job end) — they go to the
+  persistent `--results-dir`.
+
 ## 1. Login-node setup (once; needs internet)
 
 > **Library note (vs your GPU jobs):** OpenMC+DAGMC needs **no CUDA modules and no
