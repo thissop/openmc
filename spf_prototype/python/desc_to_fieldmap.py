@@ -109,12 +109,38 @@ def build(name="precise_QA", stem="equil_precise_qa",
     with open(binf, "wb") as fh:
         for arr in (Bx_o, By_o, Bz_o):
             fh.write(np.ascontiguousarray(arr, dtype="<f8").tobytes())
-    # provenance: also save the LCFS boundary harmonics for the conformal wall
+    # provenance for the conformal wall builder: the LCFS evaluated on a
+    # (theta, phi) grid in cm -- CONVENTION-FREE (no Fourier sign ambiguity).
+    _write_surface_grid(eq, DATADIR / f"{stem}_surface.npz", nfp)
+    # also the raw boundary harmonics (reference)
     _write_boundary(eq, DATADIR / f"{stem}_boundary.txt", nfp)
     print(f"[desc_to_fieldmap] wrote {meta.name} + {binf.name} "
           f"({nR}x{nphi}x{nZ}, nfp={nfp}, R[{Rmin:.1f},{Rmax:.1f}]cm) "
-          f"+ {stem}_boundary.txt")
+          f"+ {stem}_surface.npz + {stem}_boundary.txt")
     return binf
+
+
+def _write_surface_grid(eq, path, nfp, n_theta=64, n_phi=96):
+    """Evaluate the LCFS on a (theta, phi) grid over the FULL torus and store R,Z
+    in cm. Convention-free input for the conformal wall builder. Reshape is done by
+    explicit lexsort on (theta, zeta) so it is INDEPENDENT of DESC node ordering
+    (DESC LinearGrid orders theta-fastest and restricts zeta to one field period;
+    we set NFP=1 to span the full torus and sort to a clean (theta,phi) grid)."""
+    from desc.grid import LinearGrid
+    g = LinearGrid(rho=np.array([1.0]), theta=n_theta, zeta=n_phi, NFP=1, sym=False)
+    d = eq.compute(["R", "phi", "Z"], grid=g)
+    nodes = g.nodes  # (N,3) columns (rho, theta, zeta)
+    th = nodes[:, 1]; ze = nodes[:, 2]
+    order = np.lexsort((ze, th))  # theta outer, zeta inner -> C-order (n_theta,n_phi)
+    R = (np.asarray(d["R"])[order]).reshape(n_theta, n_phi) * LENGTH_SCALE_CM
+    Z = (np.asarray(d["Z"])[order]).reshape(n_theta, n_phi) * LENGTH_SCALE_CM
+    phi = (np.asarray(d["phi"])[order]).reshape(n_theta, n_phi)
+    # sanity: each row (fixed theta) must sweep phi over the full torus; each column
+    # (fixed phi) must sweep theta -> the cross-section the builder offsets.
+    assert np.ptp(phi[0, :]) > 5.0, "surface grid axis order wrong (phi not on axis1)"
+    np.savez(path, R=R, Z=Z, phi=phi, nfp=nfp,
+             theta=np.linspace(0, 2 * np.pi, n_theta, endpoint=False),
+             phi_axis=np.linspace(0, 2 * np.pi, n_phi, endpoint=False))
 
 
 def _write_boundary(eq, path, nfp):
