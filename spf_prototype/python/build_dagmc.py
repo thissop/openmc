@@ -8,11 +8,17 @@ available on the aarch64 sandbox -- it is part of the portable package that runs
 on Ginsburg via environment.yml. Imports are guarded so running it here gives a
 clear message rather than a traceback.
 
-Primary path: cad_to_dagmc (maintained, handles the DAGMC entity-set structure).
-The material tag for each layer is its name; OpenMC materials in run_conformal.py
-must use the same names. VERIFY the add_stl_file signature against the pinned
-cad_to_dagmc version (environment.yml) -- the API has shifted across releases; the
-single call site is isolated below for a one-line fix if needed.
+Path: stl_to_h5m (fusion-energy/stl_to_h5m) -- the dedicated STL->DAGMC tool.
+NOTE: cad_to_dagmc does NOT read STL (it ingests STEP / CadQuery only), so it is
+the wrong tool here; stl_to_h5m is purpose-built and runs make_watertight to merge
+coincident surfaces (our nested shells share identical offset surfaces by
+construction, so they weld cleanly). The per-layer material tag is the layer name;
+run_conformal.py forces each OpenMC Material.name to that same tag (DAGMC matches
+volumes to Material.name). VERIFY the stl_to_h5m call signature against the pinned
+version (environment.yml) -- isolated at the single call site below.
+
+The SOL/plasma interior is intentionally NOT a tagged volume; it becomes the DAGMC
+implicit complement, which run_conformal assigns to vacuum.
 
 Usage (Ginsburg):
     python build_dagmc.py <geom_dir> [out.h5m]
@@ -28,7 +34,7 @@ from pathlib import Path
 VACUUM_LAYERS = {"sol"}
 
 
-def build(geom_dir, out_h5m="stellarator.h5m", min_mesh_size=2.0, max_mesh_size=20.0):
+def build(geom_dir, out_h5m="stellarator.h5m"):
     geom_dir = Path(geom_dir)
     manifest = json.loads((geom_dir / "manifest.json").read_text())
     layers = manifest["layers"]
@@ -42,26 +48,21 @@ def build(geom_dir, out_h5m="stellarator.h5m", min_mesh_size=2.0, max_mesh_size=
             "the build (see DEFERRED.md).")
 
     try:
-        from cad_to_dagmc import CadToDagmc
+        from stl_to_h5m import stl_to_h5m
     except ImportError as e:
         raise SystemExit(
-            "cad_to_dagmc not available -- this step runs on x86/Ginsburg in the "
+            "stl_to_h5m not available -- this step runs on x86/Ginsburg in the "
             f"conda env (environment.yml). Underlying import error: {e}")
 
-    c = CadToDagmc()
-    tagged = []
-    for L in layers:
-        if L["name"] in VACUUM_LAYERS:
-            continue
-        stl = geom_dir / L["stl"]
-        # >>> single API call site: verify against the pinned cad_to_dagmc version <<<
-        c.add_stl_file(str(stl), material_tags=[L["name"]])
-        tagged.append(L["name"])
-    c.export_dagmc_h5m_file(
-        filename=out_h5m,
-        min_mesh_size=min_mesh_size, max_mesh_size=max_mesh_size,
-    )
-    print(f"[build_dagmc] wrote {out_h5m} with material volumes: {tagged}")
+    files_with_tags = [
+        {"material_tag": L["name"], "stl_filename": str(geom_dir / L["stl"])}
+        for L in layers if L["name"] not in VACUUM_LAYERS
+    ]
+    tagged = [f["material_tag"] for f in files_with_tags]
+    # >>> single API call site: verify against the pinned stl_to_h5m version <<<
+    stl_to_h5m(files_with_tags=files_with_tags, h5m_filename=str(out_h5m))
+    print(f"[build_dagmc] wrote {out_h5m} with material volumes: {tagged} "
+          f"(SOL/plasma interior -> DAGMC implicit complement -> vacuum in run_conformal)")
     return out_h5m
 
 

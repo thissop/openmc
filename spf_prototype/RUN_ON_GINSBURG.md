@@ -5,11 +5,17 @@ the compiled DAGMC/OpenMC-with-DAGMC stack (conda-forge has no `openmc`/`dagmc`
 for linux-aarch64). Everything architecture-independent (the spin-polarized
 source, the field map, the conformal geometry, the analytic cross-check) is built
 and validated; the **conformal transport runs on Ginsburg (x86)** via the conda
-env below. Nothing in the code needs editing — only the env and cross-section path
-resolve at run time.
+env below.
+
+> **x86 paths are untested on the aarch64 dev box** (no DAGMC/OpenMC-with-DAGMC
+> there), so treat the first run as bring-up: the env + cross-section path resolve
+> at run time, and the §1 smoke-test ladder exists to catch any version drift in
+> the compiled stack before a long job. The version-sensitive call sites are
+> isolated and flagged (the `stl_to_h5m` call in `build_dagmc.py`; the OpenMC build
+> prefix, which now honors `$CONDA_PREFIX`).
 
 > **Pipeline at a glance** (each step is one script):
-> `desc_to_fieldmap.py` (field map + LCFS surface, *desc env*) → `stellarator_geometry.py` (conformal STLs, *any env*) → `build_dagmc.py` (`.h5m`, *conda*) → `run_conformal.py` (transport + metrics, *conda*).
+> `desc_to_fieldmap.py` (field map + LCFS surface, *desc env*) → `stellarator_geometry.py` (conformal STLs, *any env*) → `build_dagmc.py` (`.h5m`, *conda*) → `run_conformal.py` (transport statepoints, *conda*) → assemble metrics (separate step, see §2).
 
 ## 0. One-time setup
 
@@ -43,12 +49,14 @@ python -m pytest spf_prototype/tests -q
 #     EXPECT: all pass (sampler C++/Py parity, anarrima angled-kernel <1e-6,
 #     field-map parity, geometry watertight/simple/nested).
 
-# (ii) DAGMC round-trip on a tiny build (confirms moab/dagmc/openmc-with-dagmc):
-python spf_prototype/python/desc_to_fieldmap.py precise_QA equil_precise_qa   # in desc env if needed
+# (ii) DAGMC round-trip on a tiny build (confirms moab/dagmc/openmc-with-dagmc).
+#      The field map + surface are already committed, so the desc step is optional;
+#      if you do regenerate, run it in the SEPARATE desc env:
+~/desc_venv/bin/python spf_prototype/python/desc_to_fieldmap.py precise_QA equil_precise_qa  # optional (desc env)
 python spf_prototype/python/stellarator_geometry.py equil_precise_qa 10.0
 python spf_prototype/python/build_dagmc.py spf_prototype/data/equil_precise_qa_geom stellarator.h5m
 #     EXPECT: "wrote stellarator.h5m with material volumes: [W, steel, Be, FLiBe, shield, coil]"
-#     If add_stl_file errors, the cad_to_dagmc API moved — fix the single call site
+#     If the stl_to_h5m call errors, its API moved — fix the single call site
 #     flagged in build_dagmc.py against the installed version.
 
 # (iii) low-history FREE-STREAMING conformal run -> must reproduce the analytic
@@ -68,11 +76,16 @@ sampling, the polarized angular distribution, and the line-of-sight geometry
 
 `run_conformal.py` runs **unpolarized / perpendicular(A) / parallel(B/C)**, each in
 **free-streaming** and **scattering**, at fixed neutron rate, per source neutron
-(Bae 2025 convention), and reports: φ-resolved first-wall load, per-material
-heating/damage/TBR, coil fast flux (>0.1 MeV), and the directional efficiency η
-(steering retained). The headline question — **does SPF steering survive
-non-axisymmetric conformal smearing, and how much does scattering dilute it** — is
-answered by comparing free-streaming vs scattering steering on the conformal wall.
+(Bae 2025 convention), and **writes the OpenMC statepoints** (it does not yet
+assemble the summary metrics — that is a separate postprocessing step to write on
+Ginsburg, analogous to `verify_reactor.py`/`verify_stellarator.py`). The tallies it
+records are: a φ-resolved cylindrical-mesh current (a toroidal/poloidal **leakage
+proxy** — for the load on the actual conformal first wall, tally on the DAGMC FW
+surfaces or per-cell heating in the W/steel first wall), per-material
+heating/damage/H3-production, and coil fast flux (>0.1 MeV). The headline question —
+**does SPF steering survive non-axisymmetric conformal smearing, and how much does
+scattering dilute it** — is then answered by comparing free-streaming vs scattering
+steering (the directional efficiency η) on the conformal wall, mode by mode.
 
 ### The QA→QH quasisymmetry scan (the main result)
 Loop the whole pipeline over a controlled family of equilibria and correlate η

@@ -55,9 +55,7 @@ def poloidal_outward_normals(R, Z):
     """Outward unit normals in the (R,Z) cross-section plane at each (theta,phi).
     Tangent t = d/dtheta (R,Z); normal n = (t_Z, -t_R) or its negation, chosen to
     point away from the per-phi cross-section centroid. R,Z shape (ntheta,nphi)."""
-    dR = np.gradient(R, axis=0, edge_order=2)   # periodic-ish; theta is periodic
-    dZ = np.gradient(Z, axis=0, edge_order=2)
-    # use a true periodic difference for the theta derivative
+    # true periodic central difference for the theta derivative (theta is periodic)
     dR = 0.5 * (np.roll(R, -1, axis=0) - np.roll(R, 1, axis=0))
     dZ = 0.5 * (np.roll(Z, -1, axis=0) - np.roll(Z, 1, axis=0))
     nR, nZ = dZ.copy(), -dR.copy()
@@ -98,15 +96,18 @@ def _torus_triangles(ntheta, nphi, flip=False):
     return np.asarray(tris, dtype=np.int64)
 
 
-def write_stl_shell(inner_surf, outer_surf, phi_axis, path):
+def write_stl_shell(inner_surf, outer_surf, phi_axis, path, outer_flip=False):
     """Write a watertight shell-solid STL = region between inner and outer toroidal
-    surfaces (outer normals out, inner normals in). Each surf is (R,Z) tuple."""
+    surfaces (outer normals out, inner normals in). Each surf is (R,Z) tuple.
+    `outer_flip` selects the triangle winding so the outer normals point OUTWARD;
+    build_layers determines it from the base-surface signed volume so the
+    orientation is correct for any equilibrium's theta handedness (verifier G6)."""
     Ri, Zi = inner_surf; Ro, Zo = outer_surf
     nt, npH = Ri.shape
     Vi = _verts(Ri, Zi, phi_axis).reshape(-1, 3)
     Vo = _verts(Ro, Zo, phi_axis).reshape(-1, 3)
-    Ti = _torus_triangles(nt, npH, flip=True)    # inner: inward-facing
-    To = _torus_triangles(nt, npH, flip=False)   # outer: outward-facing
+    To = _torus_triangles(nt, npH, flip=outer_flip)        # outer: outward
+    Ti = _torus_triangles(nt, npH, flip=not outer_flip)    # inner: inward
     V = np.vstack([Vo, Vi]); T = np.vstack([To, Ti + len(Vo)])
     _write_binary_stl(V, T, path)
     return V, T
@@ -187,17 +188,20 @@ def build_layers(stem, layers=DEFAULT_LAYERS, scale=1.0, outdir=None):
     outdir = Path(outdir) if outdir else (DATADIR / f"{stem}_geom")
     outdir.mkdir(parents=True, exist_ok=True)
 
+    # orientation guard (G6): choose the outer winding so its normals point OUTWARD
+    # (positive signed volume), correct for any equilibrium's theta handedness.
+    base_T = _torus_triangles(nt, npH, flip=False)
+    base_V = _verts(R, Z, phi_axis).reshape(-1, 3)
+    outer_flip = signed_volume(base_V, base_T) < 0.0
+
     manifest = {"stem": stem, "nfp": nfp, "scale": scale, "layers": []}
     cum = 0.0
-    Rin, Zin = R.copy(), Z.copy()
-    prev_vol = signed_volume(_verts(Rin, Zin, phi_axis).reshape(-1, 3),
-                             _torus_triangles(nt, npH))
     for name, thick in layers:
         cum_out = cum + thick
         Ro, Zo = offset_surface(R, Z, nR, nZ, cum_out)
         Ri, Zi = offset_surface(R, Z, nR, nZ, cum)
         stl = outdir / f"{name}.stl"
-        V, T = write_stl_shell((Ri, Zi), (Ro, Zo), phi_axis, stl)
+        V, T = write_stl_shell((Ri, Zi), (Ro, Zo), phi_axis, stl, outer_flip=outer_flip)
         wt = is_edge_manifold(T)
         simple, n_bad = cross_sections_simple(Ro, Zo)
         vol = abs(signed_volume(_verts(Ro, Zo, phi_axis).reshape(-1, 3),

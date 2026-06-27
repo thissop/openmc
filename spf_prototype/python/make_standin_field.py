@@ -12,7 +12,12 @@ Field-map format (portable, hand-read identically by C++ and Python):
 Grids:
   R[iR]   = R_min + iR*(R_max-R_min)/(nR-1)      (uniform, inclusive; clamp interp)
   Z[iZ]   = Z_min + iZ*(Z_max-Z_min)/(nZ-1)      (uniform, inclusive; clamp interp)
-  phi[ip] = phi_min + ip*(period/nphi)           (PERIODIC; phi=period wraps to ip=0)
+  phi[ip] = phi_min + ip*(2pi/nphi)              (FULL torus; phi=2pi wraps to ip=0)
+
+NOTE: stored over the FULL torus (period=2pi), not one field period -- Cartesian B
+components are not invariant under a field-period rotation, so a one-period
+Cartesian map would give a wrong (rotated) B-hat outside period 1. (Same reasoning
+as desc_to_fieldmap.py.)
 
 The field is a pure closed-form function of position (no RNG, no timestamp), so
 the .bin is reproducible byte-for-byte (tests re-run this and diff).
@@ -43,7 +48,7 @@ DATADIR = REPO / "spf_prototype" / "data"
 # INJECT(helios): real plasma extent / equilibrium domain.
 DEFAULTS = dict(R0c=800.0, a=300.0, B0=1.0,
                 R_min=500.0, R_max=1100.0, Z_min=-300.0, Z_max=300.0,
-                nR=25, nphi=16, nZ=25, nfp=2)
+                nR=25, nphi=32, nZ=25, nfp=2)  # nphi over FULL torus
 
 
 def _field_cyl(R, phi, Z, R0c, a, B0, iota, delta, nfp):
@@ -63,10 +68,10 @@ def _field_cyl(R, phi, Z, R0c, a, B0, iota, delta, nfp):
 def write_map(name, iota, delta, **kw):
     p = dict(DEFAULTS, **kw)
     nR, nphi, nZ, nfp = p["nR"], p["nphi"], p["nZ"], p["nfp"]
-    period = 2.0 * np.pi / nfp
+    period = 2.0 * np.pi                                  # FULL torus (see header)
     R = np.linspace(p["R_min"], p["R_max"], nR)
     Z = np.linspace(p["Z_min"], p["Z_max"], nZ)
-    phi = 0.0 + np.arange(nphi) * (period / nphi)        # phi_min = 0, periodic
+    phi = 0.0 + np.arange(nphi) * (period / nphi)        # phi_min = 0, full torus
     # C-order grids (nR, nphi, nZ)
     RR = R[:, None, None]; PP = phi[None, :, None]; ZZ = Z[None, None, :]
     Bx, By, Bz = _field_cyl(RR, PP, ZZ, p["R0c"], p["a"], p["B0"], iota, delta, nfp)

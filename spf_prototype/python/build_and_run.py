@@ -21,7 +21,12 @@ REPO = Path(__file__).resolve().parents[2]
 PYDIR = REPO / "spf_prototype" / "python"
 SRCDIR = REPO / "spf_prototype" / "src"
 SO = SRCDIR / "build" / "libpolarized_fusion_source.so"
-VENV = Path(os.path.expanduser("~/spf_venv"))
+# OpenMC install prefix for the compiled-source build. Honor an explicit override,
+# then a conda env ($CONDA_PREFIX, the Ginsburg case), else the sandbox venv. This
+# lets the .so build against whatever OpenMC will run it (the verifier's F3/D2 fix).
+VENV = Path(os.environ.get("OPENMC_PREFIX")
+            or os.environ.get("CONDA_PREFIX")
+            or os.path.expanduser("~/spf_venv"))
 # Cross sections: honor OPENMC_CROSS_SECTIONS if set, else the NNDC default.
 XS = Path(os.environ.get("OPENMC_CROSS_SECTIONS",
                          os.path.expanduser("~/nndc_hdf5/cross_sections.xml")))
@@ -35,11 +40,19 @@ U, W, ZW = an.R_IN, an.R_OUT, an.Z_WALL   # 0.4, 1.6, 0.6
 R0, AM = an.R0, an.A_MINOR                 # 1.0, 0.5
 
 
-def build_so():
+def build_so(force=False):
+    """Build the compiled-source .so against the OpenMC at VENV (override with
+    OPENMC_PREFIX / CONDA_PREFIX). On cmake failure, surface stderr instead of
+    swallowing it (find_package(OpenMC) errors were previously opaque)."""
     SO.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["cmake", "-B", str(SO.parent), f"-DCMAKE_PREFIX_PATH={VENV}", str(SRCDIR)],
-                   check=True, capture_output=True)
-    subprocess.run(["cmake", "--build", str(SO.parent)], check=True, capture_output=True)
+    for cmd in (["cmake", "-B", str(SO.parent), f"-DCMAKE_PREFIX_PATH={VENV}", str(SRCDIR)],
+                ["cmake", "--build", str(SO.parent)]):
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError(
+                f"build_so: '{' '.join(cmd[:2])}' failed (OpenMC prefix={VENV}). "
+                f"Set OPENMC_PREFIX/CONDA_PREFIX to the OpenMC install.\n"
+                f"--- stderr ---\n{r.stderr}\n--- stdout ---\n{r.stdout}")
     return SO
 
 

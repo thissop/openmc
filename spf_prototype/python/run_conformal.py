@@ -64,15 +64,29 @@ def scale_fieldmap(stem, scale, out_stem):
 
 
 def make_geometry(h5m_path):
-    """Load the DAGMC conformal wall and assign materials by group tag."""
+    """Load the DAGMC conformal wall and assign materials by group tag.
+
+    DAGMC matches each volume's 'mat:NAME' group to an openmc.Material whose .name
+    == NAME (NOT the python dict key). build_dagmc.py tags volumes with the LAYER
+    names (W/steel/Be/FLiBe/shield/coil), so we force each Material.name to equal
+    its layer key here (the verifier's F2/D3 fix; otherwise 5 of 6 mismatch and the
+    run aborts at geometry load)."""
     try:
         import openmc
     except ImportError as e:
         raise SystemExit(f"openmc unavailable (run on Ginsburg conda env): {e}")
-    mats = sm.make_materials()  # W/steel/Be/FLiBe + shield + coil (names == DAGMC tags)
-    dag = openmc.DAGMCUniverse(h5m_path).bounded_universe()  # adds vacuum boundary
-    geom = openmc.Geometry(dag)
-    return geom, openmc.Materials(list(mats.values())), mats
+    mats = sm.make_materials()  # keys W/steel/Be/FLiBe/shield/coil
+    for tag, m in mats.items():
+        m.name = tag            # Material.name must equal the DAGMC 'mat:TAG'
+    # implicit complement (SOL + plasma interior + exterior) -> vacuum, else OpenMC
+    # errors on an unassigned complement (verifier D10).
+    vac = openmc.Material(name="vacuum"); vac.add_nuclide("H1", 1.0)
+    vac.set_density("g/cm3", 1e-12)
+    dag = openmc.DAGMCUniverse(h5m_path)
+    dag.material_names  # noqa: B018 (touch to surface a clear error if tags missing)
+    bounded = dag.bounded_universe()  # adds a vacuum-boundary bounding cell
+    geom = openmc.Geometry(bounded)
+    return geom, openmc.Materials(list(mats.values()) + [vac]), mats
 
 
 def build_model(abc, h5m_path, fieldmap_stem, R0_cm, a_cm,
@@ -124,7 +138,6 @@ def build_model(abc, h5m_path, fieldmap_stem, R0_cm, a_cm,
 
 
 def main():
-    import json
     h5m = sys.argv[1] if len(sys.argv) > 1 else "stellarator.h5m"
     stem = sys.argv[2] if len(sys.argv) > 2 else "equil_precise_qa"
     scale = float(sys.argv[3]) if len(sys.argv) > 3 else 10.0
