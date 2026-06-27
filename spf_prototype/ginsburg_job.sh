@@ -21,8 +21,9 @@ echo "==== SLURM job on $(hostname); $(date) ===="
 module load anaconda/3-2023.09                          # <-- adjust to the available version
 source /burg/opt/anaconda3-2023.09/etc/profile.d/conda.sh
 conda activate spf-stellarator                          # created on the login node (env yml)
-REPO="/burg/home/$USER/src/GitHub/openmc"               # <-- path to the cloned repo
-export OPENMC_CROSS_SECTIONS="/burg/home/$USER/endf_b_viii/cross_sections.xml"  # <-- your XS
+WHO="${SLURM_JOB_USER:-${USER:-$(whoami)}}"             # robust under set -u
+REPO="/burg/home/$WHO/src/GitHub/openmc"                # <-- path to the cloned repo
+export OPENMC_CROSS_SECTIONS="/burg/home/$WHO/endf_b_viii/cross_sections.xml"  # <-- your XS
 
 # --- 2. threads + persistent output (NOT /tmp: it is node-local on SLURM) ---
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-16}"
@@ -38,12 +39,17 @@ print("preflight OK: DAGMC-enabled OpenMC + cross sections present")
 PY
 
 # --- 4. the run (single offline entrypoint; bootstraps .so/geometry/.h5m offline) ---
+# In an `if` condition so `set -e` doesn't abort before we can report status.
 cd "$REPO"
-python spf_prototype/python/run_ginsburg.py \
-    --stem equil_precise_qa \
-    --scale 10 \
-    --particles 2000000 \
-    --batches 20 \
-    --results-dir "$RESULTS"
-
-echo "DONE -> $RESULTS/RESULTS_tier8_conformal.md"
+if python spf_prototype/python/run_ginsburg.py \
+        --stem equil_precise_qa \
+        --scale 10 \
+        --particles 2000000 \
+        --batches 20 \
+        --results-dir "$RESULTS" \
+   && [ -f "$RESULTS/RESULTS_tier8_conformal.md" ]; then
+    echo "DONE -> $RESULTS/RESULTS_tier8_conformal.md"
+else
+    echo "RUN FAILED -- check stderr; any completed statepoints are in $RESULTS/statepoints" >&2
+    exit 1
+fi

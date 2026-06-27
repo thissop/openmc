@@ -126,26 +126,39 @@ The headline result correlates the steering benefit η with quasisymmetry. Each
 equilibrium needs a field map, which uses DESC — so **pre-generate all field maps
 on the login node**, then submit an array job that is fully offline.
 
+Stems must be **lowercase** (`equil_precise_qa`) to match the committed files on
+case-sensitive `/burg`; the DESC example NAME is mixed-case (`precise_QA`), so map
+it down explicitly:
+
 ```bash
 # (login node, desc env — DESC pins conflict with OpenMC, keep it separate)
 python -m venv $HOME/desc_venv && $HOME/desc_venv/bin/pip install desc-opt
 for EQ in precise_QA precise_QH ; do          # add QUASR devices for a denser scan
-  $HOME/desc_venv/bin/python spf_prototype/python/desc_to_fieldmap.py $EQ equil_$EQ
-  conda run -n spf-stellarator python spf_prototype/python/stellarator_geometry.py equil_$EQ 10.0
+  STEM="equil_$(echo "$EQ" | tr 'A-Z' 'a-z')"   # -> equil_precise_qa / equil_precise_qh
+  $HOME/desc_venv/bin/python spf_prototype/python/desc_to_fieldmap.py "$EQ" "$STEM"
+  conda run -n spf-stellarator python spf_prototype/python/stellarator_geometry.py "$STEM" 10.0
 done
-# now data/equil_*.{meta,bin}, data/equil_*_surface.npz, data/equil_*_geom/ exist
+# now data/equil_precise_q{a,h}.{meta,bin}, *_surface.npz, *_geom/ exist (lowercase)
 ```
 
-Then an array job (one task per equilibrium), e.g. copy `ginsburg_job.sh` to
-`ginsburg_scan.sh`, add `#SBATCH --array=0-1`, and select the stem by index:
+Then an array job (one task per equilibrium): copy `ginsburg_job.sh` to
+`ginsburg_scan.sh`, add `#SBATCH --array=0-1`, select the lowercase stem by index,
+and **build the `.so` once on the login node first** (array tasks share one `REPO`,
+so a concurrent `cmake --build` would race — `run_ginsburg` skips the build when the
+`.so` already exists):
 
 ```bash
-EQS=(equil_precise_QA equil_precise_QH)
+EQS=(equil_precise_qa equil_precise_qh)        # lowercase
 STEM=${EQS[$SLURM_ARRAY_TASK_ID]}
 python spf_prototype/python/run_ginsburg.py --stem "$STEM" --scale 10 \
     --particles 2000000 --batches 20 \
     --results-dir "$SLURM_SUBMIT_DIR/results_${STEM}_${SLURM_JOB_ID}"
 ```
+
+> **Deploy note:** if you `rsync`/copy the working tree (instead of `git clone`),
+> first `rm -rf spf_prototype/src/build` — a stale `CMakeCache.txt` from another
+> machine breaks the `cmake` build. A fresh `git clone` is clean (`build/` + `*.so`
+> are gitignored).
 
 Note: QH has larger field-period excursion → larger plasma-shaping; if the
 conformal build self-intersects, `stellarator_geometry.py` refuses it — raise
