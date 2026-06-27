@@ -46,19 +46,35 @@ MODES = rc.MODES  # unpolarized / perpendicular / parallel -> (a,b,c)
 # --------------------------------------------------------------------------
 def bootstrap(stem, scale, h5m_path):
     """Build .so, conformal geometry, .h5m, and the scaled field map -- all offline."""
-    if not br.SO.exists():
+    import json
+    # .so: reuse the (login-node) prebuild if present. Building unconditionally would
+    # (a) race when array tasks share one REPO/src/build, and (b) choke on a stale
+    # CMakeCache from an rsync'd dev tree. Skip-if-exists avoids both.
+    if br.SO.exists():
+        print(f"[bootstrap] reusing existing .so {br.SO}", flush=True)
+    else:
         print("[bootstrap] building compiled source .so ...", flush=True)
-    br.build_so()  # idempotent; honors OPENMC_PREFIX/CONDA_PREFIX
+        br.build_so()  # honors OPENMC_PREFIX/CONDA_PREFIX
 
+    # geometry: rebuild unless a cached manifest exists AT THE REQUESTED SCALE
+    # (a cached scale-10 wall around a --scale!=10 source would silently misalign).
     geom_dir = DATADIR / f"{stem}_geom"
-    if not (geom_dir / "manifest.json").exists():
-        print(f"[bootstrap] building conformal geometry (scale={scale}) ...", flush=True)
+    mfp = geom_dir / "manifest.json"
+    stale = True
+    if mfp.exists():
+        cached = abs(float(json.loads(mfp.read_text()).get("scale", -1)) - scale) < 1e-9
+        stale = not cached
+        if stale:
+            print(f"[bootstrap] cached geometry scale != {scale}; rebuilding "
+                  "(and the .h5m) ...", flush=True)
+    if stale:
         m = sg.build_layers(stem, scale=scale, outdir=geom_dir)
         bad = [L["name"] for L in m["layers"]
                if not (L["watertight"] and L["simple_cross_section"])]
         if bad:
             raise SystemExit(f"geometry invalid (self-intersecting): {bad}; "
                              "increase --scale or thin the build (DEFERRED.md).")
+        Path(h5m_path).unlink(missing_ok=True)  # force .h5m rebuild from new geometry
 
     if not Path(h5m_path).exists():
         print(f"[bootstrap] building DAGMC {h5m_path} ...", flush=True)
@@ -115,16 +131,15 @@ def _mat_score(sp_path, tally_name, mat_id, score_substrs):
 def extract_metrics(sp, results_dir):
     """Headline metrics from the MaterialFilter tallies (robust path). The
     phi-resolved wall mesh + the per-patch analytic comparison are left as a
-    documented postprocessing hook (needs the analytic stellarator NWL)."""
-    # material ids are stable across configs (same make_materials); take from one run
-    any_mats = next(iter(sp.values()))[1]
-    flibe_id = any_mats["FLiBe"].id
-    coil_id = any_mats["coil"].id
+    documented postprocessing hook (needs the analytic stellarator NWL).
 
+    Material ids are taken PER CONFIG from that config's own `mats` (the 6
+    build_model calls assign their own ids), not cached from the first run."""
     M = {}
     for (stream, mode), (sp_path, mats) in sp.items():
-        tbr, tbr_sd = _mat_score(sp_path, "cell_response", flibe_id, ("(n,Xt)", "H3", "(n,t)"))
-        cf, cf_sd = _mat_score(sp_path, "coil_fast", coil_id, ("flux",))
+        tbr, tbr_sd = _mat_score(sp_path, "cell_response", mats["FLiBe"].id,
+                                 ("(n,Xt)", "H3", "(n,t)"))
+        cf, cf_sd = _mat_score(sp_path, "coil_fast", mats["coil"].id, ("flux",))
         heat = {n: _mat_score(sp_path, "cell_response", mats[n].id, ("heating",))[0]
                 for n in ("W", "steel", "Be", "FLiBe", "shield", "coil")}
         M[(stream, mode)] = dict(tbr=tbr, tbr_sd=tbr_sd, coil_fast=cf,
@@ -213,15 +228,31 @@ def main():
     fmap = bootstrap(args.stem, args.scale, h5m)
     sp = run_all(args.stem, args.scale, h5m, fmap, results_dir, args.particles, args.batches)
     print("[run_ginsburg] transport done; statepoints saved.", flush=True)
+    rfile = results_dir / "RESULTS_tier8_conformal.md"
+    # statepoints are already on disk (run_all), so a metrics failure never loses
+    # the expensive transport -- but it MUST exit nonzero so an sbatch-only user
+    # sees FAILED in sacct, not a silently-garbage COMPLETED.
     try:
         M = extract_metrics(sp, results_dir)
-        write_results(M, args.stem, args.scale, args.particles, args.batches, results_dir)
     except Exception:
-        # never lose the (expensive) transport if metrics extraction hits a snag
-        print("[run_ginsburg] WARNING: metrics extraction failed; statepoints are "
-              "preserved in results-dir/statepoints. Traceback:", flush=True)
+        print("[run_ginsburg] ERROR: metrics extraction raised; statepoints are "
+              "preserved in results-dir/statepoints.", flush=True)
         traceback.print_exc()
-        sys.exit(0)
+        rfile.write_text("# RUN FAILED: metrics extraction raised; statepoints "
+                         "preserved in statepoints/. See job stderr.\n")
+        sys.exit(1)
+    import math
+    finite = all(math.isfinite(M.get((s, m), {}).get("tbr", float("nan")))
+                 and math.isfinite(M.get((s, m), {}).get("coil_fast", float("nan")))
+                 for s in ("free", "scatter") for m in MODES)
+    if not finite:
+        print("[run_ginsburg] ERROR: non-finite metrics (likely a material-id "
+              "mismatch); statepoints preserved.", flush=True)
+        rfile.write_text("# RUN FAILED: non-finite TBR/coil metrics (likely "
+                         "material-id mismatch); statepoints preserved in "
+                         "statepoints/.\n")
+        sys.exit(1)
+    write_results(M, args.stem, args.scale, args.particles, args.batches, results_dir)
 
 
 if __name__ == "__main__":

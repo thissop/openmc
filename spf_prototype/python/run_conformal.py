@@ -92,6 +92,8 @@ def make_geometry(h5m_path):
 def build_model(abc, h5m_path, fieldmap_stem, R0_cm, a_cm,
                 particles=200_000, batches=10, density_scale=1.0):
     import openmc
+    openmc.reset_auto_ids()  # stable material/cell ids per build (matches the
+    # other models; metrics read ids per-config so this is belt-and-suspenders)
     geom, materials, mats = make_geometry(h5m_path)
     if density_scale != 1.0:  # free-streaming anchor: near-void materials
         for m in materials:
