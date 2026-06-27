@@ -15,6 +15,8 @@
 name: spf-stellarator
 channels:
   - conda-forge
+  - nodefaults        # force conda-forge ONLY (avoids Anaconda 'defaults' ToS gates;
+                      # Ginsburg's base conda is configured with defaults only)
 dependencies:
   - python=3.11
   # --- transport stack. Pin the DAGMC build variant explicitly so the solver

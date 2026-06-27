@@ -22,29 +22,33 @@ baseline run needs no DESC at all.**
 
 ---
 
-## 0.5 Storage: put everything in GROUP space, not home
+## 0.5 Storage: pick a roomy WARM working dir
 
-The two heavy items are the **conda env (~5–8 GB)** and the **cross sections
-(~1–10 GB)** — these, not the outputs, are what blow a small home quota. Per-run
-output is ~0.1 GB; a 10-equilibrium scan ~1 GB. So **work in your `astro` group
-allocation** (`/burg/astro/...` — confirm your writable path), not `/burg/home`.
+Footprint: conda env ~5-8 GB, cross sections ~2-5 GB, per-run output ~0.1 GB,
+10-equilibrium scan ~1 GB -> total ~13 GB. Modest, but the env + XS are the heavy
+bits (not the outputs).
+
+Preflight findings for this account (June 2026): `HOME=/burg-archive/home/tjk2147`
+is on the **cold archive tier** with **~37 GB free**; there is **no scratch mount**
+and **no `/burg/astro/users/$USER`** dir yet. So:
 
 ```bash
-checkquota                      # confirm home vs group quota (or gpfsquota/mmlsquota)
-WORK=/burg/astro/users/$USER    # <-- your writable group dir (adjust to your allocation)
+WORK="$HOME"     # archive: ~37 GB free -> ENOUGH for the ~13 GB footprint
+df -h /burg/home/$USER "$HOME" 2>/dev/null   # see if a WARM /burg dir has room
+# For production/scans on warm storage, ask RCS for /burg/astro/users/$USER.
 ```
 
-- **conda env in group space** (so it doesn't eat home quota): create/activate by
-  PATH — `conda env create -p $WORK/envs/spf-stellarator -f spf_prototype/environment.yml`
+- 37 GB on archive **is enough to run** -- you are not blocked. Archive is just
+  slower I/O (matters a bit for the many-small-files conda env and OpenMC output);
+  prefer a warm `/burg` dir if you have room there.
+- **conda env** created by name lands in `$HOME/.conda/envs` (archive). To put it on
+  warmer/roomier space, create by PATH:
+  `conda env create -p $WORK/envs/spf-stellarator -f spf_prototype/environment.yml`
   then `conda activate $WORK/envs/spf-stellarator`.
-- **cross sections**: reuse a SHARED cluster ENDF/B library if one exists (ask RCS /
-  your group) and just point `OPENMC_CROSS_SECTIONS` at it — don't download your own
-  multi-GB copy. Otherwise put it under `$WORK`.
-- **repo + job output under `$WORK`**, and submit from there so `$SLURM_SUBMIT_DIR`
-  (where results land) is group space. Set `REPO=$WORK/.../openmc` in
-  `ginsburg_job.sh`.
-- statepoints already avoid node-local `/tmp` (purged at job end) — they go to the
-  persistent `--results-dir`.
+- **cross sections** under `$WORK` (download in §1b -- none are shared on Ginsburg).
+- **repo + job output under `$WORK`**; submit from there so `$SLURM_SUBMIT_DIR`
+  (where results land) is on `$WORK`. Set `REPO` accordingly in `ginsburg_job.sh`.
+- statepoints already avoid node-local `/tmp` (purged at job end).
 
 ## 1. Login-node setup (once; needs internet)
 
@@ -67,10 +71,15 @@ conda env create -f spf_prototype/environment.yml
 conda activate spf-stellarator
 python -c "import openmc; assert hasattr(openmc,'DAGMCUniverse'); print('DAGMC OK')"
 
-# (b) cross sections: point at an ENDF/B HDF5 library already on Ginsburg, or
-#     download one once here. Then EXPORT THE SAME PATH in ginsburg_job.sh.
-export OPENMC_CROSS_SECTIONS=/path/to/cross_sections.xml
-python -c "import openmc,os; print('XS:', os.path.exists(os.environ['OPENMC_CROSS_SECTIONS']))"
+# (b) cross sections: NONE are shared on Ginsburg (preflight confirmed), so
+#     download an ENDF/B HDF5 library ONCE on the login node (~2-3 GB; needs net).
+#     Put it on roomy/warm storage and EXPORT THE SAME PATH in ginsburg_job.sh.
+#     Option 1 (prebuilt tarball, simplest) -- from https://openmc.org/official-data-libraries/
+#       cd "$WORK" && wget <ENDF/B-VIII.0 HDF5 tarball URL from that page>
+#       tar xf endfb-viii.0-hdf5.tar.xz
+#       export OPENMC_CROSS_SECTIONS="$WORK/endfb-viii.0-hdf5/cross_sections.xml"
+#     Option 2 (scripted): pip install openmc_data ; then run its download_endf script.
+python -c "import openmc,os; p=os.environ.get('OPENMC_CROSS_SECTIONS',''); print('XS exists:', bool(p) and os.path.exists(p))"
 
 # (c) build the compiled spin-polarized source against the CONDA OpenMC.
 #     build_so() auto-uses $CONDA_PREFIX; this just pre-builds it so the job

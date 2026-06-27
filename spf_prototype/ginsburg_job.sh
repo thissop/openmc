@@ -3,7 +3,8 @@
 #SBATCH --job-name=spf_conformal
 #SBATCH --output=spf_conformal_%j.out       # written to $SLURM_SUBMIT_DIR (persistent)
 #SBATCH --error=spf_conformal_%j.err
-#SBATCH -t 0-08:00                          # OpenMC CPU job (no GPU); raise for production
+#SBATCH -t 0-08:00                          # fits default 'short' partition (12h max).
+# #SBATCH -p burst                          # <-- uncomment for >12h (you have burst, 14-day)
 #SBATCH -N 1
 #SBATCH -c 16                               # OpenMC OpenMP threads
 #SBATCH --mem-per-cpu=4G
@@ -21,9 +22,10 @@ echo "==== SLURM job on $(hostname); $(date) ===="
 module load anaconda/3-2023.09                          # <-- adjust to the available version
 source /burg/opt/anaconda3-2023.09/etc/profile.d/conda.sh
 conda activate spf-stellarator                          # created on the login node (env yml)
-WHO="${SLURM_JOB_USER:-${USER:-$(whoami)}}"             # robust under set -u
-REPO="/burg/home/$WHO/src/GitHub/openmc"                # <-- path to the cloned repo
-export OPENMC_CROSS_SECTIONS="/burg/home/$WHO/endf_b_viii/cross_sections.xml"  # <-- your XS
+# $HOME on this account is /burg-archive/home/$USER (where the repo is cloned); edit
+# REPO/XS if you move them to warm /burg space (see SETUP_GINSBURG.md 0.5).
+REPO="$HOME/src/GitHub/openmc"                          # <-- path to the cloned repo
+export OPENMC_CROSS_SECTIONS="$HOME/endfb-viii.0-hdf5/cross_sections.xml"  # <-- your XS (download in setup 1b)
 
 # --- 2. threads + persistent output (NOT /tmp: it is node-local on SLURM) ---
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-16}"
