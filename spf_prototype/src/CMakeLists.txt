@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(spf_source CXX)
 
 # Build the spin-polarized fusion CompiledSource as a shared library.
-#   cmake -B build -DCMAKE_PREFIX_PATH=$HOME/spf_venv .
+#   cmake -B build -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" .   # x86/Ginsburg (conda OpenMC)
+#   cmake -B build -DCMAKE_PREFIX_PATH="$HOME/spf_venv" .  # aarch64 dev box
 #   cmake --build build
-# (CMAKE_PREFIX_PATH must point at the OpenMC install prefix; see NOTES_orientation.md.)
+# CMAKE_PREFIX_PATH must point at the OpenMC install prefix. build_and_run.build_so()
+# sets it from OPENMC_PREFIX / CONDA_PREFIX / ~/spf_venv automatically.
 add_library(polarized_fusion_source SHARED polarized_fusion_source.cpp)
 
 find_package(OpenMC REQUIRED)

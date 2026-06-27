@@ -11,13 +11,19 @@ field map. Transport stays in spf_venv. Run:
 
 Method (honest): we need only the field DIRECTION B-hat(x) inside the plasma,
 since the SPF source births inside the LCFS. We sample B on a dense flux grid
-(rho,theta,zeta over the full torus), convert to Cartesian unit vectors, and
-interpolate onto a regular (R,phi,Z) grid (one field period; FieldMapField's
-periodic-phi wrap handles the rest) by k-nearest inverse-distance weighting
-(KDTree). Nodes with no plasma sample within the cell scale fall back to the
-nearest plasma B-hat. The map is therefore high-fidelity inside the LCFS and a
-smooth nearest-value extension just outside (which the source never samples). A
-DESC map_coordinates inverse-map is the documented higher-fidelity upgrade
+(rho,theta,zeta) over the FULL torus, convert to Cartesian unit vectors, and
+interpolate onto a regular (R,phi,Z) grid that ALSO spans the full torus
+(period=2pi) by k-nearest inverse-distance weighting (KDTree).
+
+IMPORTANT (correctness): we store the full torus, NOT one field period. Cartesian
+B components are NOT invariant under a field-period rotation (only cylindrical
+B_R,B_phi,B_Z are), so a one-period Cartesian map + a 2pi/nfp wrap would give a
+rotated (wrong) B-hat in every period but the first -- inverting the steering
+physics for ~(nfp-1)/nfp of the source. Storing the full torus makes the Cartesian
+map valid at every phi the source samples. (A more compact alternative is to store
+cylindrical components and rotate by the query phi in both consumers; we keep the
+simpler full-torus form so the C++/Python consumers and their bit-parity test are
+unchanged.) A DESC map_coordinates inverse-map is the documented fidelity upgrade
 (DEFERRED.md).
 """
 from __future__ import annotations
@@ -37,7 +43,7 @@ LENGTH_SCALE_CM = 100.0  # DESC equilibria are normalized (R0~1 m); store grid i
 
 
 def build(name="precise_QA", stem="equil_precise_qa",
-          n_rho=12, n_theta=48, n_zeta=96, nR=40, nphi=24, nZ=40, idw_k=8):
+          n_rho=12, n_theta=48, n_zeta=144, nR=40, nphi=48, nZ=40, idw_k=8):
     import desc
     from desc.examples import get
     from desc.grid import LinearGrid
@@ -46,10 +52,11 @@ def build(name="precise_QA", stem="equil_precise_qa",
     nfp = int(eq.NFP)
     print(f"[desc_to_fieldmap] {name}: NFP={nfp}, aspect={float(eq.compute('R0/a')['R0/a']):.2f}")
 
-    # --- sample B on a dense flux grid over the FULL torus ---
+    # --- sample B on a dense flux grid over the FULL torus (NFP=1 -> zeta in
+    # [0,2pi); n_zeta scaled by nfp to keep per-period toroidal resolution) ---
     g = LinearGrid(rho=np.linspace(0.05, 1.0, n_rho), theta=n_theta, zeta=n_zeta,
-                   NFP=nfp, sym=False)
-    d = eq.compute(["R", "phi", "Z", "B"], grid=g)
+                   NFP=1, sym=False)
+    d = eq.compute(["R", "phi", "Z", "B"], grid=g, basis="rpz")  # B in (R,phi,Z)
     R = np.asarray(d["R"]); phi = np.asarray(d["phi"]); Z = np.asarray(d["Z"])
     Bcyl = np.asarray(d["B"])  # (N,3) in (R,phi,Z) cylindrical basis
     # cylindrical -> Cartesian, then unit
@@ -65,16 +72,18 @@ def build(name="precise_QA", stem="equil_precise_qa",
     sz = Z * LENGTH_SCALE_CM
     Rcm = R * LENGTH_SCALE_CM
 
-    # --- regular output grid (cm), one field period in phi ---
+    # --- regular output grid (cm), FULL torus in phi (period=2pi; see docstring:
+    # Cartesian B is not field-period periodic, so we must store the whole torus) ---
     Rmin, Rmax = float(Rcm.min()) * 0.97, float(Rcm.max()) * 1.03
     Zmin, Zmax = float(sz.min()) * 1.05, float(sz.max()) * 1.05
-    period = 2.0 * np.pi / nfp
+    period = 2.0 * np.pi
     Rg = np.linspace(Rmin, Rmax, nR)
     Zg = np.linspace(Zmin, Zmax, nZ)
-    pg = np.arange(nphi) * (period / nphi)  # phi_min=0
+    pg = np.arange(nphi) * (period / nphi)  # phi_min=0, full torus
 
-    # build sample KDTree once (Cartesian, with periodic phi images so the wrap
-    # at the period boundary interpolates correctly)
+    # build sample KDTree once (Cartesian lab points over the full torus; the
+    # output grid is also full-torus so no periodic images are needed -- the 2pi
+    # seam is bridged by samples on both sides in 3D Cartesian space).
     pts = np.column_stack([sx, sy, sz])
     Bsamp = np.column_stack([Bx, By, Bz])
     tree = cKDTree(pts)
@@ -90,7 +99,12 @@ def build(name="precise_QA", stem="equil_precise_qa",
             w /= w.sum(axis=1, keepdims=True)
             bvec = (w[:, :, None] * Bsamp[idx]).sum(axis=1)  # (nZ,3)
             n = np.linalg.norm(bvec, axis=1, keepdims=True)
-            bvec = bvec / n
+            # exterior/edge nodes can have near-cancelling IDW blends; guard the
+            # normalize and fall back to the single nearest sample's B-hat there.
+            degen = (n[:, 0] < 1e-6)
+            bvec[degen] = Bsamp[idx[degen, 0]]
+            n = np.linalg.norm(bvec, axis=1, keepdims=True)
+            bvec = bvec / (n + 1e-30)
             Bx_o[iR, ip, :] = bvec[:, 0]
             By_o[iR, ip, :] = bvec[:, 1]
             Bz_o[iR, ip, :] = bvec[:, 2]

@@ -60,7 +60,11 @@ offset between the two samplings is the first suspect (cf. `RESULTS_tier8_angled
 ## Where the check runs
 
 Step 1 (free-streaming agreement) is the **smoke test** in `RUN_ON_GINSBURG.md`
-§1(iii): a low-history near-void conformal run whose per-patch, per-mode wall load
-is compared to the analytic NWL on precise_QA. Passing it gates the scattering and
-scan runs. φ-resolved tallies (`run_conformal.py`, 32 toroidal bins) expose the
-toroidal/poloidal structure the comparison needs.
+§1(iii): a low-history near-void conformal run. `run_conformal.py` produces the
+statepoints + φ-resolved tallies (32 toroidal bins); the **per-patch, per-mode
+comparison to the analytic NWL on precise_QA is the postprocessing step to write on
+Ginsburg** (it is not yet automated — it needs the analytic stellarator NWL, i.e.
+the companion field-period-perturbation code / anarrima angled kernels, evaluated
+on the same precise_QA patches). Passing that comparison gates the scattering and
+scan runs. The φ-resolved tallies expose the toroidal/poloidal structure the
+comparison needs.

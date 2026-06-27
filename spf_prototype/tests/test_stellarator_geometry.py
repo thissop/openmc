@@ -59,10 +59,11 @@ def test_simple_polygon_detector():
     assert not g._poly_is_simple(bt_r, bt_z)
 
 
-def test_valid_build_watertight_simple_nested():
+def test_valid_build_watertight_simple_nested(tmp_path):
     """A build with cumulative thickness < minor radius is watertight, simple,
-    and nests strictly outward (the DAGMC-ready condition)."""
-    m = g.build_layers(STEM, scale=10.0)
+    and nests strictly outward (the DAGMC-ready condition). Writes to an isolated
+    tmp dir so it does not clobber the shared data/<stem>_geom manifest."""
+    m = g.build_layers(STEM, scale=10.0, outdir=tmp_path)
     vols = []
     for L in m["layers"]:
         assert L["watertight"], f"{L['name']} not watertight"
@@ -71,9 +72,9 @@ def test_valid_build_watertight_simple_nested():
     assert all(np.diff(vols) > 0), "layers must nest strictly outward"
 
 
-def test_overthick_build_is_flagged():
+def test_overthick_build_is_flagged(tmp_path):
     """The self-intersection guard must CATCH an over-thick build (cumulative
-    thickness > minor radius folds on the concave inboard side)."""
+    thickness > minor radius folds on the concave inboard side). Isolated outdir."""
     thick = [("blob", 400.0)]  # absurdly thick -> must fold inboard
-    m = g.build_layers(STEM, layers=thick, scale=3.0)
+    m = g.build_layers(STEM, layers=thick, scale=3.0, outdir=tmp_path)
     assert not m["layers"][0]["simple_cross_section"]

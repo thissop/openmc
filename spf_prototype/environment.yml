@@ -17,13 +17,11 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
-  # --- transport stack (openmc pulls dagmc + moab as deps on linux-64) ---
-  - openmc=0.15.*
+  # --- transport stack. Pin the DAGMC build variant explicitly so the solver
+  #     never picks the nodagmc build (openmc pulls dagmc + moab as deps). ---
+  - openmc=0.15.*=dagmc*
   - dagmc
-  - moab
-  # --- conformal geometry -> DAGMC meshing ---
-  - gmsh
-  - python-gmsh
+  - moab            # also the make_watertight backend used by stl_to_h5m
   # --- scientific stack (match the sandbox spf_venv) ---
   - numpy
   - scipy
@@ -39,7 +37,9 @@ dependencies:
   - jaxlib
   - pip
   - pip:
-      - cad_to_dagmc
+      # STL -> DAGMC .h5m (cad_to_dagmc does NOT read STL; it ingests STEP only).
+      - stl_to_h5m
       - smplotlib
-      # anarrima (Schwartz analytic NWL) -- not on PyPI; install from GitHub:
-      - "git+https://github.com/PrincetonUniversity/anarrima.git"
+      # anarrima (Schwartz analytic NWL) -- not on PyPI; pin a known commit so a
+      # `conda env create` cannot break on an upstream change:
+      - "git+https://github.com/PrincetonUniversity/anarrima.git@2a578161244e33a920f626b5504d3f31f25cc816"
