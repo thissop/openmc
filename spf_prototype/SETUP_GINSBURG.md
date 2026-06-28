@@ -81,28 +81,44 @@ python -c "import openmc; assert hasattr(openmc,'DAGMCUniverse'); print('DAGMC O
 #     Option 2 (scripted): pip install openmc_data ; then run its download_endf script.
 python -c "import openmc,os; p=os.environ.get('OPENMC_CROSS_SECTIONS',''); print('XS exists:', bool(p) and os.path.exists(p))"
 
-# (c) build the compiled spin-polarized source against the CONDA OpenMC.
-#     build_so() auto-uses $CONDA_PREFIX; this just pre-builds it so the job
-#     doesn't spend time (or hit a surprise) compiling.
+python -c "import openmc,os; p=os.environ.get('OPENMC_CROSS_SECTIONS',''); print('XS exists:', bool(p) and os.path.exists(p))"
+```
+**STOP — the login-node steps are done.** Do NOT build/test/run here: Columbia RCS
+auto-kills and temporarily blocks heavy/long login-node processes. The `.so` build,
+`pytest`, and the tiny run all COMPUTE and must run on a compute node.
+
+## 1.5 Build / test / bring-up on a COMPUTE NODE (not the login node)
+
+Grab an interactive node, activate the env (already created on login), and do the
+compute there:
+
+```bash
+salloc -A astro -N 1 -c 8 -t 2:00:00       # or: srun --pty -A astro -c 8 -t 2:00:00 /bin/bash -l
+module load anaconda/3-2023.09 && source /burg/opt/anaconda3-2023.09/etc/profile.d/conda.sh
+conda activate spf-stellarator
+export OPENMC_CROSS_SECTIONS=...           # same path as in setup 1b
+
+# (c) build the compiled source against the CONDA OpenMC (offline, compute node):
 cd spf_prototype/src && cmake -B build -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" . && cmake --build build && cd ../..
-ls spf_prototype/src/build/libpolarized_fusion_source.so   # must exist
 
-# (d) smoke test the architecture-independent gates (sampler, analytic, geometry):
-python -m pytest spf_prototype/tests -q          # expect: all pass
+# (d) architecture-independent gates (sampler, analytic, geometry):
+python -m pytest spf_prototype/tests -q          # expect: 113 passed
 
-# (e) ONE tiny end-to-end DAGMC+transport check (catches stl_to_h5m / DAGMC / XS
-#     issues in minutes, before submitting an 8-hour job). Runs on the login node:
-OMP_NUM_THREADS=4 python spf_prototype/python/run_ginsburg.py \
+# (e) ONE tiny end-to-end DAGMC+transport bring-up (catches stl_to_h5m / DAGMC / XS
+#     issues in minutes, before an 8-hour batch job):
+OMP_NUM_THREADS=8 python spf_prototype/python/run_ginsburg.py \
     --stem equil_precise_qa --scale 10 --particles 20000 --batches 5 \
-    --results-dir /tmp/spf_smoke
-#   EXPECT: it builds <stem>.h5m, runs 6 configs, writes
-#   /tmp/spf_smoke/RESULTS_tier8_conformal.md . If this fails, fix it HERE
-#   (login node), not in a queued job. Common fixes: stl_to_h5m API drift
-#   (build_dagmc.py single call site), XS path, conda env.
+    --results-dir "$PWD/spf_smoke"
+#   EXPECT: builds <stem>.h5m, runs 6 configs, writes
+#   spf_smoke/RESULTS_tier8_conformal.md (numbers NOT nan). If it fails, fix it in
+#   this interactive node, not in a queued job. Common: stl_to_h5m API drift
+#   (build_dagmc.py single call site), XS path, or conformal self-intersection
+#   (watch for 'lost particles' -> raise --scale; see GINSBURG_CLAUDE_HANDOFF.md).
+exit   # release the interactive node when done
 ```
 
-If step (e) writes a RESULTS file, the pipeline is good end-to-end and a full
-batch run is just the same command with more particles.
+If step (e) writes a non-nan RESULTS file, the pipeline is good end-to-end and a
+full batch run is just `ginsburg_job.sh` with more particles.
 
 ---
 

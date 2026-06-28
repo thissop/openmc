@@ -25,34 +25,46 @@ branch `spf-prototype`. You MAY commit to `spf-prototype` (never to `develop`/ma
   `burst` (14-day) for long/scan jobs. git/cmake/g++ present.
 - `spf_prototype/ginsburg_preflight.sh` re-runs all these checks read-only.
 
-## Setup sequence (login node; the ONLY place with internet)
+## ⛔ LOGIN-NODE RULE (read this first — violating it gets the user blocked)
+Columbia RCS **auto-kills and temporarily blocks** users who run heavy/long
+processes on the login node. So:
+- **Login node = NETWORK INSTALLS ONLY** (they're the only steps needing internet):
+  `conda env create`, the cross-section download, the dry-run solve. Keep it brief;
+  don't run anything else concurrently.
+- **EVERYTHING that computes — the `.so` build, `pytest`, the tiny `run_ginsburg`
+  bring-up, the DAGMC build, all transport — runs on a COMPUTE NODE**, never on the
+  login node. Get an interactive node:
+  `salloc -A astro -N 1 -c 8 -t 2:00:00`  (or `srun --pty -A astro -c 8 -t 2:00:00 /bin/bash -l`),
+  then `conda activate spf-stellarator` there. Use `sbatch` for the real runs.
+  (Do NOT run `python ... run_ginsburg.py` or `pytest` on the login node.)
+
+## Setup — LOGIN node (internet; the only network steps)
 1. `conda env create -f spf_prototype/environment.yml` (pins `nodefaults` →
    conda-forge only; Ginsburg's base conda has only `defaults`, whose ToS can break
-   env creation). `conda activate spf-stellarator`. Confirm:
+   env creation). `conda activate spf-stellarator`. Confirm (light, ok on login):
    `python -c "import openmc; assert hasattr(openmc,'DAGMCUniverse')"`.
-   - **First, dry-run the solve** (catches any DAGMC-variant issue before the big install):
-     `conda create -n _t --dry-run -c conda-forge "openmc=0.15.*=dagmc*" | tail`.
+   - **First, dry-run the solve:** `conda create -n _t --dry-run -c conda-forge "openmc=0.15.*=dagmc*" | tail`.
 2. **Cross sections (REQUIRED — none shared):** download ENDF/B-VIII.0 HDF5 once
    (~2-3 GB) from https://openmc.org/official-data-libraries/ to roomy storage,
    `export OPENMC_CROSS_SECTIONS=.../cross_sections.xml`, and put the SAME path in
    `ginsburg_job.sh`.
-3. Build the compiled source against the conda OpenMC (once):
-   `cd spf_prototype/src && cmake -B build -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" . && cmake --build build`
-   (`run_ginsburg.py` will reuse this `.so`; it skips rebuilding when present.)
 
-## Verification checklist (do these in order; STOP at the first failure and fix)
-1. `python -m pytest spf_prototype/tests -q` → **expect 113 passed** (sampler
-   C++/Python parity, anarrima angled-kernel <1e-6, field-map parity, geometry
-   watertight/simple). This is architecture-independent and must pass cleanly.
-2. **Tiny end-to-end on the LOGIN node** (the real bring-up gate; ~minutes):
-   `OMP_NUM_THREADS=4 python spf_prototype/python/run_ginsburg.py --stem equil_precise_qa --scale 10 --particles 20000 --batches 5 --results-dir /tmp/spf_smoke`
+## Verification — on a COMPUTE NODE (salloc/srun) or via sbatch; STOP at first failure
+First grab an interactive node (see the LOGIN-NODE RULE) and `conda activate`. Then:
+1. Build the `.so` against the conda OpenMC (offline, on the compute node):
+   `cd spf_prototype/src && cmake -B build -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" . && cmake --build build && cd ../..`
+   (`run_ginsburg.py` reuses this `.so` and skips rebuilding when present.)
+2. `python -m pytest spf_prototype/tests -q` → **expect 113 passed** (sampler
+   C++/Python parity, anarrima angled-kernel <1e-6, field-map parity, geometry).
+3. **Tiny end-to-end** (the bring-up gate; ~minutes, on the compute node):
+   `OMP_NUM_THREADS=8 python spf_prototype/python/run_ginsburg.py --stem equil_precise_qa --scale 10 --particles 20000 --batches 5 --results-dir $PWD/spf_smoke`
    It bootstraps the geometry + DAGMC `.h5m` + scaled field map, runs 6 configs, and
-   must write `/tmp/spf_smoke/RESULTS_tier8_conformal.md`. **Open that file and
-   confirm the numbers are NOT `nan`** (a metrics blocker was fixed but is untested).
-3. Then a **small SLURM job** to confirm batch mechanics + persistence: copy
+   must write `spf_smoke/RESULTS_tier8_conformal.md`. **Open it and confirm the
+   numbers are NOT `nan`** (a metrics blocker was fixed but is untested).
+4. A **small SLURM job** to confirm batch mechanics + persistence: copy
    `ginsburg_job.sh`, set its paths (REPO, XS), drop `--particles` to ~100000, and
    `sbatch` it. Confirm results land in `$SLURM_SUBMIT_DIR/results_*` (NOT `/tmp`).
-4. Only then the **baseline** (`ginsburg_job.sh` as-is, 2M×20).
+5. Only then the **baseline** (`ginsburg_job.sh` as-is, 2M×20).
 
 ## Watch-items / known risks (THIS is the high-value part — my checks can't cover these)
 1. **Conformal-wall toroidal self-intersection (most likely to bite).**
