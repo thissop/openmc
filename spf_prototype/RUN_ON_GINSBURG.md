@@ -40,7 +40,14 @@ cd ../..
 
 ## 1. Smoke-test the env BEFORE any long job
 
+> ⛔ **Run these on a COMPUTE NODE, not the login node.** pytest and
+> `run_conformal`/`run_ginsburg` COMPUTE; Columbia RCS auto-kills/blocks heavy
+> login-node processes. Grab an interactive node first:
+> `salloc -A astro -N 1 -c 8 -t 2:00:00` (then `conda activate` there). The login
+> node is only for the network installs in §0 (conda env, cross-section download).
+
 ```bash
+# (on an interactive COMPUTE node:)
 conda activate spf-stellarator
 
 # (i) architecture-independent gates: the SPF sampler + angled-kernel analytic
