@@ -20,17 +20,34 @@ CSG wall, no DAGMC).
 
 ## Result — agreement to MC statistics
 OpenMC free-streaming (1×10⁶ pre-sampled births/mode via the bit-parity mirror
-sampler, vectorized presampler) vs anarrima exact quadrature (384 nodes, 40 wall
-patches/wall):
+sampler, vectorized presampler) vs the analytic quadrature (384 nodes, 40 wall
+patches/wall). Per-wall directionality is the **ratio of total loads** (ΣA/Σiso) on
+both sides (apples-to-apples), and `corrA` is the per-bin Pearson correlation of the
+poloidal A/iso profile:
 
-| wall | A/iso MC | A/iso ana | rel | B/iso MC | B/iso ana | rel |
-|---|---|---|---|---|---|---|
-| inboard | 1.207 | 1.234 | 2.2% | 0.782 | 0.766 | 2.1% |
-| outboard | 0.823 | 0.839 | 1.9% | 1.182 | 1.161 | 1.8% |
-| floor | 1.065 | 1.060 | 0.5% | 0.937 | 0.940 | 0.4% |
-| ceiling | 1.062 | 1.057 | 0.5% | 0.937 | 0.943 | 0.7% |
+| wall | A/iso MC | A/iso ana | rel | B/iso MC | B/iso ana | rel | corrA |
+|---|---|---|---|---|---|---|---|
+| inboard | 1.207 | 1.229 | 1.8% | 0.782 | 0.771 | 1.4% | 0.85 |
+| outboard | 0.823 | 0.829 | 0.7% | 1.182 | 1.171 | 1.0% | 0.46 |
+| floor | 1.065 | 1.069 | 0.4% | 0.937 | 0.931 | 0.7% | 0.96 |
+| ceiling | 1.062 | 1.066 | 0.4% | 0.937 | 0.934 | 0.3% | 0.98 |
 
-**Worst-wall discrepancy 2.2%** (all walls 0.4–2.2%). Consistent with MC statistics.
+**Worst-wall discrepancy 1.8% (all four walls)**, poloidal shapes tracked. (Outboard's
+lower corr just reflects that its analytic profile is nearly flat — little shape to
+track.) Consistent with MC statistics.
+
+## Analytic engine (rewritten; provably ≡ anarrima)
+The analytic is now a fast pure-numpy free-streaming quadrature evaluating the loop
+geometry and field DIRECTLY at the Gauss-Legendre nodes (identical to what the OpenMC
+source samples), with correct visibility: the TRUE shaped-loop N>0 sub-arcs
+intersected with the inner-cylinder occlusion (the central hole blocks far-side
+source). It is gated at startup against `anarrima.free_streaming_quadrature` and
+matches to **3e-14** here (1e-12 on QUASR). This replaced an earlier crude `front_arc`
+(mean-radius, N0>0, cap=2.5) that biased the small inboard arc and double-counted the
+outboard far side — errors that cancel in anarrima's own series-vs-quadrature tests
+(same arc both sides) but not against ray-tracing MC. The OpenMC direction sampler was
+separately verified to reproduce the normalized kernels exactly (A/iso=(3/2)sin²θ to
+0.3%/bin, mean 1.0000).
 The physics is the expected SPF steering: A (∝sin²θ) enhances the inboard / floor and
 suppresses the outboard load; B/C (∝¼+¾cos²θ) is the mirror image.
 

@@ -25,7 +25,7 @@ NFP = 3
 RHO_SURFACES = [0.6, 1.0]
 W_RHO = [0.6 ** 2, 1.0 ** 2]       # rho^2 emissivity weight
 N_THETA_S = 14
-GAP_A = 0.40                       # square wall placed GAP_A * a outside the bbox
+GAP_A = 0.40                       # square wall placed GAP_A * a outside the bbox (eps_eff ~0.43)
 K_TRIG = 34                        # analytic trig order (>= max |n|*nfp = 30)
 
 MODES = {"iso": (1 / 3, 1 / 3, 1 / 3), "A": (1.0, 0.0, 0.0), "B": (0.0, 1.0, 0.0)}

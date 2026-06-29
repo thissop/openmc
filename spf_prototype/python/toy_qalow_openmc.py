@@ -147,8 +147,11 @@ def main():
     for w in walls:
         iso_w = cur["iso"][w][1].sum()
         a_mc = cur["A"][w][1].sum() / iso_w; b_mc = cur["B"][w][1].sum() / iso_w
+        # apples-to-apples: ratio-of-sums on BOTH sides (total A load / total iso
+        # load over the wall), not MC ratio-of-sums vs analytic mean-of-ratios.
         msk = an_wall == w
-        a_an = float(np.nanmean(an["A_iso"][msk])); b_an = float(np.nanmean(an["B_iso"][msk]))
+        a_an = an["A"][msk].sum() / an["iso"][msk].sum()
+        b_an = an["B"][msk].sum() / an["iso"][msk].sum()
         ea = abs(a_mc - a_an) / abs(a_an); eb = abs(b_mc - b_an) / abs(b_an)
         worst = max(worst, ea, eb)
         print(f"{w:>9} {a_mc:10.3f} {a_an:10.3f} {ea:7.1%} | "

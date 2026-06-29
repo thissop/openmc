@@ -34,33 +34,50 @@ model (below) — no simsopt at run time.
   regardless; B̂ only sets how realistic the pattern is, not whether the two methods agree.
 - **Wall:** square-cross-section torus enclosing the boundary + 0.4·a gap (R∈[0.734,
   1.223], |Z|<0.264). Axisymmetric; all non-axisymmetry is in the source.
-- **Analytic:** anarrima `free_streaming_quadrature(normalize=True)`, 384 nodes, trig
-  order K=34 (≥ max |n|·nfp = 30); loop reconstruction max|err| **6.7e-16**.
+- **Analytic:** fast pure-numpy free-streaming quadrature (384 nodes, 32 wall
+  patches/wall) evaluating loop_RZ/field_bhat directly at the nodes, with TRUE
+  shaped-loop + inner-cylinder-occlusion visibility; gated against
+  `anarrima.free_streaming_quadrature` to **1.2e-12** (same integral, just fast and
+  with correct arcs). See [[RESULTS_toy_qalow]] "Analytic engine".
 - **OpenMC:** 1×10⁶ pre-sampled births/mode (vectorized presampler), free-streaming
-  into the void wall.
+  into the void wall. Sampler verified to reproduce the kernels exactly
+  (A/iso=(3/2)sin²θ to 0.3%/bin, mean 1.0000).
 
 ## Result — agreement to MC statistics
-Per-wall directionality A/iso, B/iso (the SPF steering):
+Per-wall directionality = ratio of total loads (ΣA/Σiso) on both sides; `corrA` =
+per-bin Pearson correlation of the poloidal A/iso profile:
 
-| wall | A/iso MC | A/iso ana | rel | B/iso MC | B/iso ana | rel |
-|---|---|---|---|---|---|---|
-| inboard | 1.246 | 1.210 | 3.0% | 0.755 | 0.790 | 4.4% |
-| outboard | 0.834 | 0.856 | 2.6% | 1.162 | 1.144 | 1.6% |
-| floor | 1.048 | 1.055 | 0.7% | 0.958 | 0.945 | 1.3% |
-| ceiling | 1.044 | 1.055 | 1.0% | 0.955 | 0.945 | 1.0% |
+| wall | A/iso MC | A/iso ana | rel | B/iso MC | B/iso ana | rel | corrA |
+|---|---|---|---|---|---|---|---|
+| outboard | 0.833 | 0.848 | 1.8% | 1.165 | 1.152 | 1.2% | 0.72 |
+| floor | 1.048 | 1.057 | 0.8% | 0.955 | 0.943 | 1.3% | 0.99 |
+| ceiling | 1.043 | 1.057 | 1.3% | 0.954 | 0.943 | 1.1% | 0.97 |
+| **inboard** | 1.248 | 1.199 | **4.1%** | 0.755 | 0.801 | **5.7%** | 0.47 |
 
-**Worst-wall discrepancy 4.4%** (inboard B/iso — lowest-current wall, noisiest); most
-walls 1–3%. Consistent with MC statistics. Physics as expected: A (∝sin²θ) enhances
-the inboard/floor and suppresses the outboard load; B/C (∝¼+¾cos²θ) is the mirror image
-— now on a real QA at ε_eff≈0.43, three× more shaped than the toy.
+Outboard, floor, ceiling agree to **≤1.8%** with the poloidal shape tracked. The
+**inboard (inner-cylinder) wall shows a 4–6% residual** — investigated thoroughly and
+**bounded, not a bug in either method**:
 
-**Per-bin (not just per-wall) shape is reproduced.** OpenMC tracks the analytic
-*poloidal profile* along each wall, not only the wall average: correlation MC↔analytic
-per bin is **0.97 (floor), 0.99 (ceiling), 0.76 (inboard)**; the outboard wall is
-genuinely nearly flat in both (analytic spread only ~0.015), so there MC scatters
-about a flat line. Per-bin |rel err| mean 2.5%, median 1.9% (see
-`quasr59509_agreement`). The figure uses per-panel y-limits because the walls differ
-by ~10× in curvature; a shared wide axis makes the (real) trends look flat.
+- it is NOT the sampler (verified exact above) and NOT the analytic (≡ anarrima to
+  1e-12);
+- NOT visibility/occlusion (true shaped-loop arcs don't change it) and NOT the field
+  model (both sides use the identical B̂, which cannot create an MC↔analytic gap);
+- NOT near-field: moving the wall out (gap 0.4→0.7) left the offset unchanged
+  (0.036→0.034);
+- it **scales with plasma shaping**: the gentle toy QA-low (ε_eff 0.08) agrees to
+  ≤1.8% on ALL walls including inboard, while this strongly-shaped QA (ε_eff 0.43)
+  shows it only on the inboard — the closest, most toroidally-curved wall, where the
+  loops' helical excursion is largest relative to the standoff.
+
+Best read as a **limit of the filamentary free-streaming analytic** (point-patch flux
+on the most strongly-curved wall under strong shaping), with the geometry-exact,
+sampler-exact MC as the reference there — exactly the kind of regime the Monte-Carlo
+method is meant to own. Physics is as expected on all walls: A (∝sin²θ) enhances the
+inboard/floor and suppresses outboard; B/C is the mirror image.
+
+The figure (`quasr59509_directionality`) uses per-panel y-limits because the walls
+differ ~10× in curvature; outboard/floor/ceiling overlay cleanly, inboard tracks the
+dome/valley shape with the stated offset.
 
 Figures (`SPF_CONFIG=quasr_config plot_toy_qalow.py` -> `figs/`):
 `quasr59509_directionality` (profiles, analytic vs OpenMC, 4 walls),
