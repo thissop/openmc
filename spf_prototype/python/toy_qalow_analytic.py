@@ -20,6 +20,7 @@ from anarrima.ripple import trig as T
 
 K = 12
 N_EXACT = 384
+N_PW = 40                         # wall patches per wall (fine -> smooth profile line)
 PHI_GRID = np.linspace(0, 2 * np.pi, 128, endpoint=False)
 
 
@@ -66,7 +67,7 @@ def bhat_fn_for(theta_s):
 
 def main():
     loops = build_loops()
-    patches = C.wall_patches()
+    patches = C.wall_patches(n_per_wall=N_PW)
     modes = ("iso", "A", "B")
     nwl = {m: np.zeros(len(patches)) for m in modes}
     for ip, pt in enumerate(patches):
@@ -79,15 +80,15 @@ def main():
             Bfn = bhat_fn_for(lp["th"])
             for m in modes:
                 bf = None if m == "iso" else Bfn
+                # normalize=True puts the polarized kernels on the unit-emission
+                # convention OpenMC samples (A *=3/2, B *=2 exactly; see device.py
+                # _KERNEL_MEAN), so A/iso and B/iso are directly comparable.
                 v = float(DV.free_streaming_quadrature(
                     p=lp["p"], z=z, r=r, psi=psi, dR=lp["dR"], dZ=lp["dZ"],
-                    Bhat_fn=bf, phim=-phiv, phip=phiv, mode=m, n_nodes=N_EXACT))
+                    Bhat_fn=bf, phim=-phiv, phip=phiv, mode=m, n_nodes=N_EXACT,
+                    normalize=(m != "iso")))
                 nwl[m][ip] += lp["w"] * v
-    # anarrima's kernels are UNNORMALIZED (int sin^2 dOmega = 8pi/3; int(1/4+3/4cos^2)
-    # = 2pi); OpenMC samples emission PDFs normalized to unit total. Put the analytic
-    # on the same unit-emission convention so A/iso, B/iso are directly comparable:
-    #   A *= 4pi/(8pi/3) = 3/2 ;  B *= 4pi/(2pi) = 2 ;  iso *= 1  (all exact).
-    iso, A, B = nwl["iso"], 1.5 * nwl["A"], 2.0 * nwl["B"]
+    iso, A, B = nwl["iso"], nwl["A"], nwl["B"]
     good = iso > 1e-9 * np.max(iso)
     A_iso = np.where(good, A / np.where(good, iso, 1), np.nan)
     B_iso = np.where(good, B / np.where(good, iso, 1), np.nan)

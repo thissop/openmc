@@ -1,0 +1,5 @@
+# large downloaded caches — regenerate with quasr_catalogue.py / quasr_eps_eff.py
+database.json.gz
+catalogue.csv.gz
+serials/
+nml/

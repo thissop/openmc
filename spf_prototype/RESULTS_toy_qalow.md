@@ -20,26 +20,35 @@ CSG wall, no DAGMC).
 
 ## Result — agreement to MC statistics
 OpenMC free-streaming (3×10⁵ pre-sampled births/mode via the bit-parity mirror
-sampler) vs anarrima exact quadrature (384 nodes):
+sampler) vs anarrima exact quadrature (384 nodes, 40 wall patches/wall):
 
 | wall | A/iso MC | A/iso ana | rel | B/iso MC | B/iso ana | rel |
 |---|---|---|---|---|---|---|
-| inboard | 1.221 | 1.236 | 1.2% | 0.793 | 0.764 | 3.8% |
-| outboard | 0.818 | 0.839 | 2.5% | 1.174 | 1.161 | 1.1% |
-| floor | 1.067 | 1.060 | 0.7% | 0.944 | 0.940 | 0.5% |
-| ceiling | 1.059 | 1.057 | 0.2% | 0.931 | 0.943 | 1.3% |
+| inboard | 1.212 | 1.234 | 1.8% | 0.781 | 0.766 | 2.0% |
+| outboard | 0.821 | 0.839 | 2.1% | 1.179 | 1.161 | 1.6% |
+| floor | 1.064 | 1.060 | 0.4% | 0.938 | 0.940 | 0.2% |
+| ceiling | 1.064 | 1.057 | 0.6% | 0.939 | 0.943 | 0.4% |
 
-**Worst-wall discrepancy 3.8%** (inboard B/iso — the lowest-current wall, so the
-noisiest); all others 0.2–2.5%. Consistent with MC statistics. The physics is the
-expected SPF steering: A (∝sin²θ) enhances the inboard / floor and suppresses the
-outboard load; B/C (∝¼+¾cos²θ) is the mirror image.
+**Worst-wall discrepancy 2.1%** (all walls 0.2–2.1%). Consistent with MC statistics.
+The physics is the expected SPF steering: A (∝sin²θ) enhances the inboard / floor and
+suppresses the outboard load; B/C (∝¼+¾cos²θ) is the mirror image.
+
+Figures (`plot_toy_qalow.py` -> `figs/`): `toy_qalow_directionality` (A/iso, B/iso
+poloidal profiles, analytic line vs OpenMC markers, all four walls),
+`toy_qalow_agreement` (per-bin MC-vs-analytic scatter on y=x), `toy_qalow_geometry`
+(rotating plasma cross-sections in the square wall).
 
 ## Convention note (state this when the two methods are shown together)
 anarrima's quadrature uses **unnormalized** kernels (∫sin²θ dΩ = 8π/3,
 ∫(¼+¾cos²θ)dΩ = 2π); the OpenMC source samples emission PDFs **normalized to unit
-total**. The exact reconciling factors are A ×3/2, B ×2 (= 4π/∫K dΩ), applied to the
-analytic side in `toy_qalow_analytic.py`. This is the same rate(η)-vs-shape
-separation used throughout the prototype.
+total**. The exact reconciling factors are A ×3/2, B ×2 (= 4π/∫K dΩ). This is now a
+first-class option in anarrima: `free_streaming_quadrature(..., normalize=True)`
+divides each kernel by its solid-angle mean (`_KERNEL_MEAN`), so the analytic side is
+directly comparable to a unit-emission MC source (verified A→×3/2, B→×2 exactly). The
+toy analytic script uses `normalize=True`. Same rate(η)-vs-shape separation used
+throughout the prototype. (This kwarg is a small, default-off addition to the anarrima
+working tree — include it in the anarrima PR/JOSS so others can reproduce the MC
+cross-check; it does not change any existing anarrima result.)
 
 ## Reproduce
 ```
