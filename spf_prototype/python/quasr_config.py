@@ -44,16 +44,20 @@ Z_W = float(np.abs(_Z).max() + GAP_A * _A)
 
 
 def loop_RZ(theta_s, phi, rho):
-    """R(phi), Z(phi) of the loop at poloidal angle theta_s on flux surface rho."""
-    th = np.full_like(np.asarray(phi, dtype=float), float(theta_s))
-    return _DEV.RZ(th, np.asarray(phi, dtype=float), rho)
+    """R(phi), Z(phi) of the loop at poloidal angle theta_s on flux surface rho.
+    theta_s may be a scalar (one loop) or an array broadcast against phi (vectorized
+    presampling, one theta per particle)."""
+    phi = np.asarray(phi, dtype=float)
+    th = np.broadcast_to(np.asarray(theta_s, dtype=float), phi.shape)
+    return _DEV.RZ(th, phi, rho)
 
 
 def field_bhat(theta_s, phi):
     """Unit flux-surface-tangent field along the loop (boundary field, rho=1),
-    Cartesian (...,3) -- identical on both validation sides."""
-    th = np.full_like(np.asarray(phi, dtype=float), float(theta_s))
-    return _DEV.bhat(th, np.asarray(phi, dtype=float), 1.0)
+    Cartesian (...,3) -- identical on both validation sides. theta_s scalar or array."""
+    phi = np.asarray(phi, dtype=float)
+    th = np.broadcast_to(np.asarray(theta_s, dtype=float), phi.shape)
+    return _DEV.bhat(th, phi, 1.0)
 
 
 def loops():

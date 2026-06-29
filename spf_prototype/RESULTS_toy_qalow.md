@@ -19,17 +19,18 @@ CSG wall, no DAGMC).
   the emission about the local field.
 
 ## Result — agreement to MC statistics
-OpenMC free-streaming (3×10⁵ pre-sampled births/mode via the bit-parity mirror
-sampler) vs anarrima exact quadrature (384 nodes, 40 wall patches/wall):
+OpenMC free-streaming (1×10⁶ pre-sampled births/mode via the bit-parity mirror
+sampler, vectorized presampler) vs anarrima exact quadrature (384 nodes, 40 wall
+patches/wall):
 
 | wall | A/iso MC | A/iso ana | rel | B/iso MC | B/iso ana | rel |
 |---|---|---|---|---|---|---|
-| inboard | 1.212 | 1.234 | 1.8% | 0.781 | 0.766 | 2.0% |
-| outboard | 0.821 | 0.839 | 2.1% | 1.179 | 1.161 | 1.6% |
-| floor | 1.064 | 1.060 | 0.4% | 0.938 | 0.940 | 0.2% |
-| ceiling | 1.064 | 1.057 | 0.6% | 0.939 | 0.943 | 0.4% |
+| inboard | 1.207 | 1.234 | 2.2% | 0.782 | 0.766 | 2.1% |
+| outboard | 0.823 | 0.839 | 1.9% | 1.182 | 1.161 | 1.8% |
+| floor | 1.065 | 1.060 | 0.5% | 0.937 | 0.940 | 0.4% |
+| ceiling | 1.062 | 1.057 | 0.5% | 0.937 | 0.943 | 0.7% |
 
-**Worst-wall discrepancy 2.1%** (all walls 0.2–2.1%). Consistent with MC statistics.
+**Worst-wall discrepancy 2.2%** (all walls 0.4–2.2%). Consistent with MC statistics.
 The physics is the expected SPF steering: A (∝sin²θ) enhances the inboard / floor and
 suppresses the outboard load; B/C (∝¼+¾cos²θ) is the mirror image.
 

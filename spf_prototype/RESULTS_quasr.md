@@ -36,22 +36,31 @@ model (below) — no simsopt at run time.
   1.223], |Z|<0.264). Axisymmetric; all non-axisymmetry is in the source.
 - **Analytic:** anarrima `free_streaming_quadrature(normalize=True)`, 384 nodes, trig
   order K=34 (≥ max |n|·nfp = 30); loop reconstruction max|err| **6.7e-16**.
-- **OpenMC:** 3×10⁵ pre-sampled births/mode, free-streaming into the void wall.
+- **OpenMC:** 1×10⁶ pre-sampled births/mode (vectorized presampler), free-streaming
+  into the void wall.
 
 ## Result — agreement to MC statistics
 Per-wall directionality A/iso, B/iso (the SPF steering):
 
 | wall | A/iso MC | A/iso ana | rel | B/iso MC | B/iso ana | rel |
 |---|---|---|---|---|---|---|
-| inboard | 1.247 | 1.210 | 3.0% | 0.758 | 0.790 | 4.0% |
-| outboard | 0.839 | 0.856 | 2.0% | 1.166 | 1.144 | 1.9% |
-| floor | 1.042 | 1.055 | 1.2% | 0.958 | 0.945 | 1.4% |
-| ceiling | 1.040 | 1.055 | 1.4% | 0.947 | 0.945 | 0.2% |
+| inboard | 1.246 | 1.210 | 3.0% | 0.755 | 0.790 | 4.4% |
+| outboard | 0.834 | 0.856 | 2.6% | 1.162 | 1.144 | 1.6% |
+| floor | 1.048 | 1.055 | 0.7% | 0.958 | 0.945 | 1.3% |
+| ceiling | 1.044 | 1.055 | 1.0% | 0.955 | 0.945 | 1.0% |
 
-**Worst-wall discrepancy 4.0%** (inboard B/iso — lowest-current wall, noisiest); most
+**Worst-wall discrepancy 4.4%** (inboard B/iso — lowest-current wall, noisiest); most
 walls 1–3%. Consistent with MC statistics. Physics as expected: A (∝sin²θ) enhances
 the inboard/floor and suppresses the outboard load; B/C (∝¼+¾cos²θ) is the mirror image
 — now on a real QA at ε_eff≈0.43, three× more shaped than the toy.
+
+**Per-bin (not just per-wall) shape is reproduced.** OpenMC tracks the analytic
+*poloidal profile* along each wall, not only the wall average: correlation MC↔analytic
+per bin is **0.97 (floor), 0.99 (ceiling), 0.76 (inboard)**; the outboard wall is
+genuinely nearly flat in both (analytic spread only ~0.015), so there MC scatters
+about a flat line. Per-bin |rel err| mean 2.5%, median 1.9% (see
+`quasr59509_agreement`). The figure uses per-panel y-limits because the walls differ
+by ~10× in curvature; a shared wide axis makes the (real) trends look flat.
 
 Figures (`SPF_CONFIG=quasr_config plot_toy_qalow.py` -> `figs/`):
 `quasr59509_directionality` (profiles, analytic vs OpenMC, 4 walls),

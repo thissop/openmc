@@ -24,37 +24,46 @@ import openmc  # noqa: E402
 C = importlib.import_module(os.environ.get("SPF_CONFIG", "toy_qalow_config"))  # noqa: E402
 import spf_mirror as mir  # noqa: E402
 
-N_PER_MODE = 300_000
+N_PER_MODE = 1_000_000
 NR = NZ = 16                  # match analytic n_per_wall
-PHI_J = np.linspace(0, 2 * np.pi, 256, endpoint=False)
 
 
 def presample(mode_abc, seed_pos, seed_dir):
     """Birth bank for one mode: same positions (seed_pos) for all modes; directions
-    (seed_dir) about the local toy field. wgt = w_loop * J(phi) (arc-length)."""
+    (seed_dir) about the local field. wgt = w_loop * J(phi) (arc-length).
+
+    Geometry+field are evaluated VECTORIZED (per rho group) -- the configs accept an
+    array of theta -- so large banks are affordable; only the bit-parity direction
+    draw stays per particle, preserving the mirror RNG sequence."""
     m = mir.make_mode_weights(*mode_abc)
     loops = C.loops()
     rng_pos = np.random.default_rng(seed_pos)
     rng_dir = mir.Rng(seed_dir)
-    # choose loops uniformly; weight carries w_loop. phi uniform; weight carries J.
     li = rng_pos.integers(0, len(loops), N_PER_MODE)
     phi = rng_pos.uniform(0, 2 * np.pi, N_PER_MODE)
-    parts = []
-    for k in range(N_PER_MODE):
-        rho, th, w = loops[li[k]]
-        ph = np.array([phi[k]])
-        R, Z = C.loop_RZ(th, ph, rho)
-        # arc-length Jacobian J = sqrt(R^2 + R'^2 + Z'^2) via finite diff in phi
-        dph = 1e-4
+    rho_arr = np.array([loops[i][0] for i in li])
+    th_arr = np.array([loops[i][1] for i in li])
+    w_arr = np.array([loops[i][2] for i in li])
+    R = np.empty(N_PER_MODE); Z = np.empty(N_PER_MODE); J = np.empty(N_PER_MODE)
+    Bh = np.empty((N_PER_MODE, 3))
+    dph = 1e-4
+    for rho in np.unique(rho_arr):
+        sel = rho_arr == rho
+        th = th_arr[sel]; ph = phi[sel]
+        Rs, Zs = C.loop_RZ(th, ph, rho)
         Rp, Zp = C.loop_RZ(th, ph + dph, rho)
         Rm, Zm = C.loop_RZ(th, ph - dph, rho)
         dR = (Rp - Rm) / (2 * dph); dZ = (Zp - Zm) / (2 * dph)
-        J = float(np.sqrt(R[0] ** 2 + dR[0] ** 2 + dZ[0] ** 2))
-        x, y, z = R[0] * np.cos(phi[k]), R[0] * np.sin(phi[k]), Z[0]
-        Bhat = tuple(C.field_bhat(th, ph)[0])
-        u = mir.sample_global_direction(m, Bhat, rng_dir)
-        parts.append(openmc.SourceParticle(r=(x, y, z), u=u, E=14.1e6,
-                                           wgt=w * J, particle=openmc.ParticleType.NEUTRON))
+        R[sel] = Rs; Z[sel] = Zs
+        J[sel] = np.sqrt(Rs ** 2 + dR ** 2 + dZ ** 2)
+        Bh[sel] = C.field_bhat(th, ph)
+    x = R * np.cos(phi); y = R * np.sin(phi)
+    parts = []
+    for k in range(N_PER_MODE):
+        u = mir.sample_global_direction(m, (Bh[k, 0], Bh[k, 1], Bh[k, 2]), rng_dir)
+        parts.append(openmc.SourceParticle(r=(x[k], y[k], Z[k]), u=u, E=14.1e6,
+                                           wgt=w_arr[k] * J[k],
+                                           particle=openmc.ParticleType.NEUTRON))
     return parts
 
 
@@ -67,7 +76,7 @@ def make_model(src_path):
     vessel = openmc.Cell(region=+inner & -outer & +bot & -top, fill=None)
     geom = openmc.Geometry([vessel])
     s = openmc.Settings()
-    s.run_mode = "fixed source"; s.particles = N_PER_MODE; s.batches = 10; s.inactive = 0
+    s.run_mode = "fixed source"; s.particles = N_PER_MODE; s.batches = 5; s.inactive = 0
     s.source = openmc.FileSource(src_path)
     mesh = openmc.CylindricalMesh(
         r_grid=np.linspace(C.R_IN, C.R_OUT, NR + 1),
