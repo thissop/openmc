@@ -81,7 +81,12 @@ def fig_directionality(an, mc):
         ax.axhline(1.0, color="0.7", lw=1.0, ls=(0, (1, 2)))
         ax.set_title(WALL_TITLE[wall])
         ax.set_xlabel(XLAB[wall]); ax.set_ylabel("Directionality (NWL / isotropic)")
-        ax.set_ylim(0.6, 1.45)
+        # per-panel y-limits so the real curvature is visible (walls differ a lot)
+        vals = np.concatenate([Aa, Ba,
+                               mc_ratio(mc, wall, "A")[1], mc_ratio(mc, wall, "B")[1]])
+        vals = vals[np.isfinite(vals)]
+        lo, hi = vals.min(), vals.max(); pad = 0.12 * (hi - lo) + 0.01
+        ax.set_ylim(lo - pad, hi + pad)
     axes[0, 0].legend(loc="upper center", ncol=2, frameon=True, handlelength=2.4)
     fig.tight_layout()
     for ext in ("pdf", "png"):
