@@ -77,38 +77,60 @@ def make_model(src_path):
     return openmc.Model(geometry=geom, settings=s, tallies=openmc.Tallies([t]))
 
 
+_ZC = 0.5 * (np.linspace(-C.Z_W, C.Z_W, NZ + 1)[:-1] + np.linspace(-C.Z_W, C.Z_W, NZ + 1)[1:])
+_RC = 0.5 * (np.linspace(C.R_IN, C.R_OUT, NR + 1)[:-1] + np.linspace(C.R_IN, C.R_OUT, NR + 1)[1:])
+
+
 def extract(sp_path):
+    """Per wall: (s, per-bin current profile). Bin centers s = z (verticals) or r
+    (horizontals); the wall total is profile.sum()."""
     with openmc.StatePoint(sp_path) as sp:
         df = sp.get_tally(name="wall").get_pandas_dataframe()
     xi = df[("mesh 1", "x")].to_numpy(); zi = df[("mesh 1", "z")].to_numpy()
     surf = df[("mesh 1", "surf")].to_numpy(); mean = df[("mean", "")].to_numpy()
-    out = {}
-    out["inboard"] = mean[(surf == "x-min out") & (xi == 1)].sum()
-    out["outboard"] = mean[(surf == "x-max out") & (xi == NR)].sum()
-    out["floor"] = mean[(surf == "z-min out") & (zi == 1)].sum()
-    out["ceiling"] = mean[(surf == "z-max out") & (zi == NZ)].sum()
-    return out
+
+    def prof(mask, idx, n, s):
+        v = np.zeros(n)
+        v[idx[mask] - 1] = mean[mask]
+        return s, v
+
+    return {
+        "inboard": prof((surf == "x-min out") & (xi == 1), zi, NZ, _ZC),
+        "outboard": prof((surf == "x-max out") & (xi == NR), zi, NZ, _ZC),
+        "floor": prof((surf == "z-min out") & (zi == 1), xi, NR, _RC),
+        "ceiling": prof((surf == "z-max out") & (zi == NZ), xi, NR, _RC),
+    }
 
 
 def main():
     openmc.config["cross_sections"] = os.environ.get(
         "OPENMC_CROSS_SECTIONS", os.path.expanduser("~/nndc_hdf5/cross_sections.xml"))
-    cur = {}
+    walls = ("inboard", "outboard", "floor", "ceiling")
+    cur = {}        # cur[mode][wall] = (s, per-bin profile)
     for mode, abc in C.MODES.items():
         parts = presample(abc, seed_pos=12345, seed_dir=999 + hash(mode) % 1000)
         src = f"/tmp/toy_qalow_src_{mode}.h5"
         openmc.write_source_file(parts, src)
         sp = make_model(src).run(cwd=f"/tmp/toy_qalow_mc_{mode}", output=False)
         cur[mode] = extract(sp)
-        print(f"ran {mode}: " + ", ".join(f"{w}={cur[mode][w]:.3e}" for w in cur[mode]))
+        print(f"ran {mode}: " + ", ".join(f"{w}={cur[mode][w][1].sum():.3e}" for w in walls))
+
+    # save per-bin profiles (for the paper figure) -> s and per-mode current per wall
+    save = {}
+    for w in walls:
+        save[f"s_{w}"] = cur["iso"][w][0]
+        for m in C.MODES:
+            save[f"{m}_{w}"] = cur[m][w][1]
+    np.savez("/tmp/toy_qalow_openmc.npz", **save)
 
     an = np.load("/tmp/toy_qalow_analytic.npz")
     an_wall = an["wall"]
     print(f"\n{'wall':>9} {'A/iso MC':>10} {'A/iso ana':>10} {'relerr':>7} | "
           f"{'B/iso MC':>10} {'B/iso ana':>10} {'relerr':>7}")
     worst = 0.0
-    for w in ("inboard", "outboard", "floor", "ceiling"):
-        a_mc = cur["A"][w] / cur["iso"][w]; b_mc = cur["B"][w] / cur["iso"][w]
+    for w in walls:
+        iso_w = cur["iso"][w][1].sum()
+        a_mc = cur["A"][w][1].sum() / iso_w; b_mc = cur["B"][w][1].sum() / iso_w
         msk = an_wall == w
         a_an = float(np.nanmean(an["A_iso"][msk])); b_an = float(np.nanmean(an["B_iso"][msk]))
         ea = abs(a_mc - a_an) / abs(a_an); eb = abs(b_mc - b_an) / abs(b_an)
@@ -117,6 +139,7 @@ def main():
               f"{b_mc:10.3f} {b_an:10.3f} {eb:7.1%}")
     print(f"\nworst-wall directionality discrepancy: {worst:.1%} "
           f"(OpenMC free-streaming vs analytic, toy QA-low, eps_eff~0.08)")
+    print("saved /tmp/toy_qalow_openmc.npz (per-bin profiles for plotting)")
 
 
 if __name__ == "__main__":
