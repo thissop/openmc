@@ -19,8 +19,9 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "spf_prototype" / "python"))
+import importlib  # noqa: E402
 import openmc  # noqa: E402
-import toy_qalow_config as C  # noqa: E402
+C = importlib.import_module(os.environ.get("SPF_CONFIG", "toy_qalow_config"))  # noqa: E402
 import spf_mirror as mir  # noqa: E402
 
 N_PER_MODE = 300_000
@@ -109,9 +110,10 @@ def main():
     cur = {}        # cur[mode][wall] = (s, per-bin profile)
     for mode, abc in C.MODES.items():
         parts = presample(abc, seed_pos=12345, seed_dir=999 + hash(mode) % 1000)
-        src = f"/tmp/toy_qalow_src_{mode}.h5"
+        src = f"/tmp/{C.STEM}_src_{mode}.h5"
         openmc.write_source_file(parts, src)
-        sp = make_model(src).run(cwd=f"/tmp/toy_qalow_mc_{mode}", output=False)
+        cwd = f"/tmp/{C.STEM}_mc_{mode}"; os.makedirs(cwd, exist_ok=True)
+        sp = make_model(src).run(cwd=cwd, output=False)
         cur[mode] = extract(sp)
         print(f"ran {mode}: " + ", ".join(f"{w}={cur[mode][w][1].sum():.3e}" for w in walls))
 
@@ -121,9 +123,14 @@ def main():
         save[f"s_{w}"] = cur["iso"][w][0]
         for m in C.MODES:
             save[f"{m}_{w}"] = cur[m][w][1]
-    np.savez("/tmp/toy_qalow_openmc.npz", **save)
+    np.savez(f"/tmp/{C.STEM}_openmc.npz", **save)
+    print(f"saved /tmp/{C.STEM}_openmc.npz (per-bin profiles for plotting)")
 
-    an = np.load("/tmp/toy_qalow_analytic.npz")
+    apath = f"/tmp/{C.STEM}_analytic.npz"
+    if not os.path.exists(apath):
+        print(f"\n[skip comparison] run the analytic side first: {apath} not found")
+        return
+    an = np.load(apath)
     an_wall = an["wall"]
     print(f"\n{'wall':>9} {'A/iso MC':>10} {'A/iso ana':>10} {'relerr':>7} | "
           f"{'B/iso MC':>10} {'B/iso ana':>10} {'relerr':>7}")
@@ -138,8 +145,7 @@ def main():
         print(f"{w:>9} {a_mc:10.3f} {a_an:10.3f} {ea:7.1%} | "
               f"{b_mc:10.3f} {b_an:10.3f} {eb:7.1%}")
     print(f"\nworst-wall directionality discrepancy: {worst:.1%} "
-          f"(OpenMC free-streaming vs analytic, toy QA-low, eps_eff~0.08)")
-    print("saved /tmp/toy_qalow_openmc.npz (per-bin profiles for plotting)")
+          f"(OpenMC free-streaming vs analytic, config={C.STEM})")
 
 
 if __name__ == "__main__":

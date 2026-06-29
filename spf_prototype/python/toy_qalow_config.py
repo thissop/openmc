@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import numpy as np
 
+STEM = "toy_qalow"               # /tmp/<STEM>_{analytic,openmc}.npz scratch prefix
+TITLE = "Toy QA-low"
 NFP = 2
 SHAPE = 0.6                       # QA-low non-axisymmetric scale (tier3 qa_spectrum(0.6))
 IOTA = 0.42

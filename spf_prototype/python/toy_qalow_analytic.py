@@ -14,7 +14,9 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 
 sys.path.insert(0, "/Users/tkiker/Documents/GitHub/openmc/spf_prototype/python")
-import toy_qalow_config as C
+import importlib
+import os
+C = importlib.import_module(os.environ.get("SPF_CONFIG", "toy_qalow_config"))
 from anarrima.ripple import device as DV
 from anarrima.ripple import trig as T
 
@@ -46,6 +48,7 @@ def front_arc(p, z, r, psi, cap=2.5):
 
 
 def build_loops():
+    K = getattr(C, "K_TRIG", 12)     # trig order; raise for rich (QUASR) spectra
     L = []
     recon = 0.0
     for rho, th, w in C.loops():
@@ -94,14 +97,14 @@ def main():
     B_iso = np.where(good, B / np.where(good, iso, 1), np.nan)
     walls = np.array([p["wall"] for p in patches])
     s = np.array([p["s"] for p in patches])
-    np.savez("/tmp/toy_qalow_analytic.npz", iso=iso, A=A, B=B,
+    np.savez(f"/tmp/{C.STEM}_analytic.npz", iso=iso, A=A, B=B,
              A_iso=A_iso, B_iso=B_iso, wall=walls, s=s)
     print(f"analytic A/iso range [{np.nanmin(A_iso):.3f},{np.nanmax(A_iso):.3f}], "
           f"B/iso range [{np.nanmin(B_iso):.3f},{np.nanmax(B_iso):.3f}]")
     for w in ("inboard", "outboard", "floor"):
         msk = walls == w
         print(f"  {w:8s}: A/iso {np.nanmean(A_iso[msk]):.3f}, B/iso {np.nanmean(B_iso[msk]):.3f}")
-    print("saved /tmp/toy_qalow_analytic.npz")
+    print(f"saved /tmp/{C.STEM}_analytic.npz")
 
 
 if __name__ == "__main__":

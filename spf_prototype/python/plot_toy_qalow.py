@@ -14,6 +14,8 @@ modes), open white-faced markers for the Monte-Carlo points. Fixed seed upstream
 
 Run: $HOME/spf_venv/bin/python spf_prototype/python/plot_toy_qalow.py
 """
+import importlib
+import os
 import sys
 from pathlib import Path
 
@@ -26,7 +28,8 @@ import smplotlib  # noqa: E402,F401  house serif style
 REPO = Path(__file__).resolve().parents[2]
 FIGS = REPO / "spf_prototype" / "figs"
 sys.path.insert(0, str(REPO / "spf_prototype" / "python"))
-import toy_qalow_config as C  # noqa: E402
+# config-driven: SPF_CONFIG=quasr_config plots the QUASR cross-check instead
+C = importlib.import_module(os.environ.get("SPF_CONFIG", "toy_qalow_config"))
 
 plt.rcParams.update({
     "axes.titlesize": 16, "axes.labelsize": 14,
@@ -39,12 +42,13 @@ WALL_TITLE = {"inboard": "Inboard wall", "outboard": "Outboard wall",
               "floor": "Floor", "ceiling": "Ceiling"}
 XLAB = {"inboard": "Height $z$ (norm.)", "outboard": "Height $z$ (norm.)",
         "floor": "Major radius $R$ (norm.)", "ceiling": "Major radius $R$ (norm.)"}
+TITLE = getattr(C, "TITLE", C.STEM)
 DPI = 150
 
 
 def load():
-    an = np.load("/tmp/toy_qalow_analytic.npz")
-    mc = np.load("/tmp/toy_qalow_openmc.npz")
+    an = np.load(f"/tmp/{C.STEM}_analytic.npz")
+    mc = np.load(f"/tmp/{C.STEM}_openmc.npz")
     return an, mc
 
 
@@ -81,9 +85,9 @@ def fig_directionality(an, mc):
     axes[0, 0].legend(loc="upper center", ncol=2, frameon=True, handlelength=2.4)
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(FIGS / f"toy_qalow_directionality.{ext}", dpi=DPI, bbox_inches="tight")
+        fig.savefig(FIGS / f"{C.STEM}_directionality.{ext}", dpi=DPI, bbox_inches="tight")
     plt.close(fig)
-    print("wrote toy_qalow_directionality.pdf/.png")
+    print(f"wrote {C.STEM}_directionality.pdf/.png")
 
 
 def fig_agreement(an, mc):
@@ -112,13 +116,13 @@ def fig_agreement(an, mc):
     ax.set_xlim(lo, hi); ax.set_ylim(lo, hi); ax.set_aspect("equal")
     ax.set_xlabel("Analytic directionality (anarrima)")
     ax.set_ylabel("OpenMC directionality (free-streaming)")
-    ax.set_title("Per-bin agreement, toy QA-low")
+    ax.set_title(f"Per-bin agreement, {TITLE}")
     ax.legend(loc="lower right", frameon=True)
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(FIGS / f"toy_qalow_agreement.{ext}", dpi=DPI, bbox_inches="tight")
+        fig.savefig(FIGS / f"{C.STEM}_agreement.{ext}", dpi=DPI, bbox_inches="tight")
     plt.close(fig)
-    print("wrote toy_qalow_agreement.pdf/.png")
+    print(f"wrote {C.STEM}_agreement.pdf/.png")
 
 
 def fig_geometry():
@@ -138,13 +142,13 @@ def fig_geometry():
             [-C.Z_W, -C.Z_W, C.Z_W, C.Z_W, -C.Z_W], color="0.45", lw=2.5)
     ax.text(C.R_OUT - 0.02, C.Z_W - 0.03, "wall", ha="right", va="top", color="0.45")
     ax.set_xlabel("Major radius $R$ (norm.)"); ax.set_ylabel("Height $z$ (norm.)")
-    ax.set_title("Toy QA-low source loops (LCFS + $\\rho=0.6$) in the square wall")
+    ax.set_title(f"{TITLE} source loops (LCFS + $\\rho=0.6$) in the square wall")
     ax.set_aspect("equal"); ax.legend(loc="upper right", frameon=True)
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(FIGS / f"toy_qalow_geometry.{ext}", dpi=DPI, bbox_inches="tight")
+        fig.savefig(FIGS / f"{C.STEM}_geometry.{ext}", dpi=DPI, bbox_inches="tight")
     plt.close(fig)
-    print("wrote toy_qalow_geometry.pdf/.png")
+    print(f"wrote {C.STEM}_geometry.pdf/.png")
 
 
 if __name__ == "__main__":
