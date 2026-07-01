@@ -69,6 +69,27 @@ Outboard, floor, ceiling agree to **≤1.8%** with the poloidal shape tracked. T
   shows it only on the inboard — the closest, most toroidally-curved wall, where the
   loops' helical excursion is largest relative to the standoff.
 
+### Direct demonstration (`bare_cylinder_demo.py`, `figs/bare_cylinder_demo`)
+Beyond the elimination above, a targeted test shows the cause **by construction**. A
+single shaped filament (tunable shaping amplitude `s`) emits the SPF kernel about a
+toroidal field onto bare inner/outer cylinders, evaluated two ways: the **analytic
+point-patch flux integral** (kernel at the patch-centre line of sight) vs an **exact
+ray/surface intersection** of the same sampled births (what OpenMC transport does).
+Sampler, field, and occlusion are all trivially correct here, so `s` is the only knob.
+
+| s | inner A/iso ana | ray | \|Δ\| | outer \|Δ\| |
+|---|---|---|---|---|
+| 0.0 | 1.259 | 1.261 | **0.002** | 0.003 |
+| 0.4 | 1.281 | 1.253 | 0.029 | 0.023 |
+| 1.0 | 1.315 | 1.216 | **0.098** | 0.029 |
+
+The point-patch integral is **exact for an axisymmetric source** (|Δ|=0.002 =
+statistical floor), and its error grows **≈ s²** with shaping, **~3× larger on the
+convex inner (inboard) cylinder** than the concave outer (outboard) — reproducing the
+inboard-specific, shaping-scaling residual in isolation. This is the point-patch
+approximation of the filament flux integral on a curved wall, not the sampler, field,
+or transport.
+
 Best read as a **limit of the filamentary free-streaming analytic** (point-patch flux
 on the most strongly-curved wall under strong shaping), with the geometry-exact,
 sampler-exact MC as the reference there — exactly the kind of regime the Monte-Carlo
