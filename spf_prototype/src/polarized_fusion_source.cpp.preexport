@@ -163,7 +163,7 @@ public:
 
     // 4. assemble site
     openmc::SourceSite site;
-    site.particle = openmc::ParticleType::neutron;
+    site.particle = openmc::ParticleType::neutron();
     site.r.x = px;
     site.r.y = py;
     site.r.z = pz;

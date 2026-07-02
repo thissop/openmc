@@ -111,34 +111,21 @@ def run_all(stem, scale, h5m_path, fmap, results_dir, particles, batches):
 # Metrics (robust MaterialFilter extraction; statepoints already saved)
 # --------------------------------------------------------------------------
 def _mat_score(sp_path, tally_name, mat_id, score_substrs):
-    """Mean+std of a tally for one material/cell id and a score whose label
-    contains any of score_substrs. Reads tally.mean/std_dev arrays directly
-    (get_pandas_dataframe() is broken on this pandas version). Sums over nuclide
-    bins; filter bins are C-ordered (first filter slowest). (nan,nan) if absent."""
-    import numpy as np
+    """Mean+std of a MaterialFilter tally for one material id and a score whose
+    label contains any of score_substrs (OpenMC renames H3-production -> (n,Xt))."""
     import openmc
     with openmc.StatePoint(sp_path) as s:
-        t = s.get_tally(name=tally_name)
-        scores = list(t.scores)
-        s_idx = next((i for i, sc in enumerate(scores)
-                      if any(ss in str(sc) for ss in score_substrs)), None)
-        if s_idx is None:
-            return float("nan"), float("nan")
-        flat, mult, found = 0, 1, False
-        for f in reversed(t.filters):
-            bins = list(f.bins); idx = 0
-            for j, b in enumerate(bins):
-                try:
-                    if int(np.atleast_1d(b).ravel()[0]) == int(mat_id):
-                        idx, found = j, True; break
-                except (TypeError, ValueError):
-                    pass
-            flat += idx * mult; mult *= len(bins)
-        if t.filters and not found:
-            return float("nan"), float("nan")
-        m = t.mean.reshape(mult, -1, len(scores))
-        sd = t.std_dev.reshape(mult, -1, len(scores))
-        return float(m[flat, :, s_idx].sum()), float(np.sqrt((sd[flat, :, s_idx]**2).sum()))
+        df = s.get_tally(name=tally_name).get_pandas_dataframe()
+    col_mat = "material" if "material" in df.columns else ("material", "")
+    mid = df[col_mat].to_numpy()
+    sc = df["score"].to_numpy() if "score" in df.columns else df[("score", "")].to_numpy()
+    mean = df["mean"].to_numpy() if "mean" in df.columns else df[("mean", "")].to_numpy()
+    sd = (df["std. dev."].to_numpy() if "std. dev." in df.columns
+          else df[("std. dev.", "")].to_numpy())
+    for i in range(len(mid)):
+        if mid[i] == mat_id and any(ss in str(sc[i]) for ss in score_substrs):
+            return float(mean[i]), float(sd[i])
+    return float("nan"), float("nan")
 
 
 def extract_metrics(sp, results_dir):

@@ -1,0 +1,87 @@
+{
+  "stem": "equil_precise_qa",
+  "nfp": 2,
+  "scale": 15.0,
+  "boundary_order": [
+    "LCFS",
+    "plasma_edge",
+    "W_outer",
+    "steel_outer",
+    "Be_outer",
+    "FLiBe_outer",
+    "shield_outer",
+    "coil_outer"
+  ],
+  "layers": [
+    {
+      "name": "sol",
+      "material": "sol",
+      "inner_offset_cm": 0.0,
+      "outer_offset_cm": 5.0,
+      "thickness_cm": 5.0,
+      "enclosed_volume_cm3": 2122615033.7026434,
+      "color": "#dddddd",
+      "is_vacuum": true
+    },
+    {
+      "name": "W",
+      "material": "W",
+      "inner_offset_cm": 5.0,
+      "outer_offset_cm": 5.2,
+      "thickness_cm": 0.20000000000000018,
+      "enclosed_volume_cm3": 2126707611.381015,
+      "color": "#6e6e6e",
+      "is_vacuum": false
+    },
+    {
+      "name": "steel",
+      "material": "steel",
+      "inner_offset_cm": 5.2,
+      "outer_offset_cm": 9.0,
+      "thickness_cm": 3.8,
+      "enclosed_volume_cm3": 2204917480.606267,
+      "color": "#9aa7b0",
+      "is_vacuum": false
+    },
+    {
+      "name": "Be",
+      "material": "Be",
+      "inner_offset_cm": 9.0,
+      "outer_offset_cm": 11.0,
+      "thickness_cm": 2.0,
+      "enclosed_volume_cm3": 2246424674.7720933,
+      "color": "#7fbf7f",
+      "is_vacuum": false
+    },
+    {
+      "name": "FLiBe",
+      "material": "FLiBe",
+      "inner_offset_cm": 11.0,
+      "outer_offset_cm": 61.0,
+      "thickness_cm": 50.0,
+      "enclosed_volume_cm3": 3361236309.0403,
+      "color": "#4f9dde",
+      "is_vacuum": false
+    },
+    {
+      "name": "shield",
+      "material": "shield",
+      "inner_offset_cm": 61.0,
+      "outer_offset_cm": 101.0,
+      "thickness_cm": 40.0,
+      "enclosed_volume_cm3": 4359894366.53459,
+      "color": "#c9a24b",
+      "is_vacuum": false
+    },
+    {
+      "name": "coil",
+      "material": "coil",
+      "inner_offset_cm": 101.0,
+      "outer_offset_cm": 116.0,
+      "thickness_cm": 15.0,
+      "enclosed_volume_cm3": 4758870994.382373,
+      "color": "#b5651d",
+      "is_vacuum": false
+    }
+  ]
+}
