@@ -1,0 +1,17 @@
+{
+  "_comment": "Tiny 2-config smoke test. Trivial particle counts; free stream only. Runs field->audit->C->geometry->DAGMC locally; transport only on Ginsburg (openmc+DAGMC).",
+  "defaults": {
+    "particles": 2000,
+    "batches": 3,
+    "streams": "free",
+    "blanket": "baseline",
+    "nR": 32, "nphi": 48, "nZ": 32,
+    "scale_retries": 3,
+    "lost_particle_max": 20,
+    "vr": false
+  },
+  "configs": [
+    {"id": 59509, "symmetry_class": "QA", "coil_samples": 200},
+    {"id": 932746, "symmetry_class": "QA", "coil_samples": 200}
+  ]
+}

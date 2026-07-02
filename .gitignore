@@ -109,3 +109,6 @@ CMakeSettings.json
 
 # Python pickle files
 *.pkl
+/.claude/cache/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.dylib
+/.claude/cache/.venv/lib/python3.13/site-packages/lancedb/_lancedb.abi3.so
+/spf_export/results/tallies_long.csv

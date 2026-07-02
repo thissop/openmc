@@ -1,0 +1,178 @@
+\documentclass{beamer}
+\usetheme{default}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\graphicspath{{../figs/}}
+
+\title{Does spin-polarized-fuel neutron steering survive a real stellarator wall?}
+\subtitle{OpenMC transport of SPF DT neutrons through a conformal breeding blanket on precise\_QA (nfp = 2). Prepared for discussion with E. Peterson (MIT PSFC).}
+\author{T. Kiker, Columbia University}
+\date{2026-07-02}
+
+\begin{document}
+
+% ---------------------------------------------------------------- 1
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ---------------------------------------------------------------- 2
+\begin{frame}{The question}
+  \begin{itemize}
+    \item Spin-polarized fuel biases the DT neutron emission direction relative to the local field $B$.
+    \item Idea: steer the fast-neutron load relative to the magnets.
+    \item Two things could kill it --- a strongly-shaped 3D wall, and scattering in a thick blanket.
+    \item Machinery validation on a public equilibrium.
+  \end{itemize}
+  \vfill
+  \[
+    I(\theta) \propto \sin^2\theta \ \ (\perp)
+    \qquad\text{or}\qquad
+    1 + 3\cos^2\theta \ \ (\parallel),
+    \quad \theta \text{ from } B
+  \]
+\end{frame}
+
+% ---------------------------------------------------------------- 3
+\begin{frame}{The device}
+  \begin{columns}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{fig1_lcfs_wireframe.png}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{fig3_nested_shells.png}
+    \end{column}
+  \end{columns}
+  \vfill
+  \begin{itemize}
+    \item precise\_QA, nfp = 2; a conformal multi-layer blanket wraps the plasma.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 4
+\begin{frame}{Blanket cross-section}
+  \centering
+  \includegraphics[width=\linewidth]{fig2_cross_section.png}
+
+  \begin{itemize}
+    \item Crescent plasma pushed outboard at $\varphi = 0$; rounder and centered at $\varphi = 90^\circ$.
+    \item Offset shells become near-circular and de-center from the plasma.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 5
+\begin{frame}{Radial stack}
+  \centering
+  \includegraphics[width=\linewidth]{fig4_radial_schematic.png}
+
+  \begin{itemize}
+    \item The 116 cm layer stack, plasma surface outward.
+    \item FLiBe is the 50 cm breeder and coolant.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 6
+\begin{frame}{The pipeline}
+  \begin{itemize}
+    \item Polarized CompiledSource --- sampler verified against the DT differential cross-section.
+    \item Hand-built watertight DAGMC geometry to bypass a tooling blocker.
+    \item OpenMC transport in two streams: free and scatter.
+    \item Tallies: TBR, coil fast flux, per-layer heating, first-wall current mesh.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 7
+\begin{frame}{Tritium breeding ratio}
+  \centering
+  \includegraphics[height=0.68\textheight]{fig5a_tbr.png}
+
+  \begin{itemize}
+    \item 0.68--0.69 tritium per source neutron in the scatter stream.
+    \item Polarization barely moves it, within about $1\sigma$.
+    \item Free-streaming TBR $\approx 0$ by construction --- no moderation.
+  \end{itemize}
+  \vfill
+  {\footnotesize 10k-history smoke run --- indicative.}
+\end{frame}
+
+% ---------------------------------------------------------------- 8
+\begin{frame}{Coil fast flux}
+  \centering
+  \includegraphics[height=0.68\textheight]{fig5b_coil_flux.png}
+
+  \begin{itemize}
+    \item Parallel raises the coil load; perpendicular lowers it.
+    \item The ordering survives scattering.
+    \item Swing about 34\% free, about 22\% with scattering.
+  \end{itemize}
+  \vfill
+  {\footnotesize 10k-history smoke run --- indicative.}
+\end{frame}
+
+% ---------------------------------------------------------------- 9
+\begin{frame}{Directional efficiency $\eta$}
+  \centering
+  \includegraphics[height=0.58\textheight]{fig5d_eta.png}
+
+  {\small\[
+    \eta \equiv \Delta_{\text{scatter}} / \Delta_{\text{free}}
+    = 8.5\% / 13.5\% \approx 0.63 \pm 0.22
+  \]}
+  \begin{itemize}
+    \item Parallel coil flux: $+13.5\%$ free to $+8.5\%$ with scattering.
+    \item $\eta$: the fraction of the free-streaming steering that survives.
+  \end{itemize}
+  \vfill
+  {\footnotesize 10k-history smoke run --- indicative.}
+\end{frame}
+
+% ---------------------------------------------------------------- 10
+\begin{frame}{Per-layer heating}
+  \centering
+  \includegraphics[width=\linewidth]{fig5c_heating.png}
+
+  \begin{itemize}
+    \item FLiBe absorbs most of the deposited energy.
+    \item At the coil: parallel $>$ unpolarized $>$ perpendicular.
+    \item Same sign as the coil flux --- independent corroboration.
+  \end{itemize}
+  \vfill
+  {\footnotesize 10k-history smoke run --- indicative.}
+\end{frame}
+
+% ---------------------------------------------------------------- 11
+\begin{frame}{Caveats and what's next}
+  \begin{itemize}
+    \item 10k-history smoke run; large MC error deep behind the blanket.
+    \item Machinery validation, not a reactor claim.
+    \item Naive constant-offset wall; small inboard self-fold at $\varphi = 0$ needs a proper offset.
+    \item Next: variance reduction (weight windows / FW-CADIS) to converge $\eta$.
+    \item Then an analytic wall-load cross-check, higher statistics, and physics equilibria.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 12
+\begin{frame}{Backup: raw numbers}
+  \centering
+  \footnotesize
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lcccc}
+    \toprule
+    mode & TBR & flux (free) & flux (scatter) & coil heat \\
+         & (scatter) & [/cm$^2$/src] & [/cm$^2$/src] & [eV/src] \\
+    \midrule
+    unpolarized   & $0.680 \pm 0.008$ & $31.68 \pm 0.48$ & $11.45 \pm 0.19$ & $414{,}510 \pm 4{,}844$ \\
+    perpendicular & $0.687 \pm 0.007$ & $26.84 \pm 0.19$ & $10.16 \pm 0.33$ & $371{,}994 \pm 4{,}856$ \\
+    parallel      & $0.693 \pm 0.015$ & $35.96 \pm 0.54$ & $12.43 \pm 0.20$ & $457{,}856 \pm 7{,}632$ \\
+    \bottomrule
+  \end{tabular}}
+
+  \vfill
+  \normalsize
+  Directional efficiency (parallel, scatter over free): $\eta = 0.63 \pm 0.22$.
+\end{frame}
+
+\end{document}

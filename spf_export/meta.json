@@ -1,0 +1,27 @@
+{
+  "stem": "equil_precise_qa",
+  "exported_utc": "2026-07-02T16:35:25.385745+00:00",
+  "geometry": {
+    "nfp": 2,
+    "scale": 15.0,
+    "nt": 64,
+    "nph": 96
+  },
+  "tally_names": [
+    "wall_current_phi",
+    "cell_response",
+    "coil_fast"
+  ],
+  "note": "Plain-data export for local plotting. Read with numpy/pandas/json; no OpenMC/DAGMC needed.",
+  "files": [
+    "geometry/boundaries_RZ.npz",
+    "geometry/cross_sections.csv",
+    "geometry/layers.json",
+    "geometry/lcfs_wireframe.csv",
+    "geometry/shells_xyz.npz",
+    "results/RESULTS_tier8_conformal.md",
+    "results/summary.json",
+    "results/tallies_long.csv",
+    "results/tally_meta.json"
+  ]
+}

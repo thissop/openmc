@@ -1,0 +1,637 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage{graphicx}
+\graphicspath{{../figures/}}
+\usepackage{booktabs}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+% --- macros ---
+\newcommand{\rs}{\bm{r}_s}
+\newcommand{\rw}{\bm{r}_w}
+\newcommand{\Del}{\bm{\Delta}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\Bhat}{\hat{\bm{B}}}
+\newcommand{\bperp}{\tilde{\bm{b}}}
+\newcommand{\Nfp}{N_{\mathrm{fp}}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\half}{\tfrac{1}{2}}
+\newcommand{\Kpol}{K_{\mathrm{pol}}}
+\newcommand{\NWL}{\mathrm{NWL}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\Ck}[2]{\mathcal{C}^{(#2)}_{#1}}
+\newcommand{\Sk}[2]{\mathcal{S}^{(#2)}_{#1}}
+\newcommand{\Ja}[1]{J_{#1}}
+\newcommand{\Order}[1]{O(\eps^{#1})}
+\newcommand{\Fell}{F}
+\newcommand{\Eell}{E}
+
+\title{\bfseries Analytic Neutron Wall Loading for Spin-Polarized Plasmas in Quasisymmetric Stellarators by Field-Period Perturbation}
+
+%\title{\bfseries Analytic and Differentiable Neutron Wall Loading for Spin-Polarized and Unpolarized Plasmas in Quasisymmetric Stellarators by Field-Period Perturbation of the Axisymmetric Kernel}
+
+
+
+\author{
+Thaddaeus Kiker\textsuperscript{1,2}
+\and
+Ethan Peterson\textsuperscript{3}
+\\[4pt]
+\small \textsuperscript{1}Department of Astronomy, Columbia University, New York, NY, USA\\
+\small \textsuperscript{2}Fusion Research Center, Columbia University, New York, NY, USA\\
+\small \textsuperscript{3}Plasma Science and Fusion Center, Massachusetts Institute of Technology, Cambridge, MA, USA
+}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+The neutron wall load (NWL) from spin-polarized fusion can be written in closed, automatically differentiable form for axisymmetric geometries, where the toroidal source integral reduces to incomplete elliptic integrals. That reduction relies on the source loop being a planar circle, which makes the squared source-to-wall distance affine in the toroidal phase. A stellarator flux-surface loop is non-planar, the toroidal period integral becomes hyperelliptic, and no finite closed form in Legendre $F$ and $E$ exists in general, the analytic obstruction that forces fully numerical NWL quadrature in three dimensions. We remove it perturbatively. Expanding the loop in its non-axisymmetric Fourier content yields a strict power series whose leading term is the axisymmetric kernel verbatim and whose every correction is closed form in the same elliptic integrals and fully differentiable. The reduction engine is a two-term recursion in toroidal harmonic order seeded by the axisymmetric base integrals, plus a master recursion in elliptic order; no integral of the third kind appears, and the visible-arc limits may be asymmetric. The polarized A and B/C kernels follow with one further inverse power of the distance and retain the $\sin^2\theta+\cos^2\theta$ cross-check at every order. Differentiation in the geometry maps the integral family into itself, so optimization gradients are closed in the elliptic basis rather than merely smooth. The controlling small parameter is the geometric non-axisymmetry of the boundary, not the quasisymmetry quality of $|B|$; we give the convergence estimate and a single-quadrature fallback for strongly shaped cases. We implement the series in a JAX-differentiable module, derive and validate the second-order polarized correction, which requires a field-normalization term beyond the naive expansion, and verify it to machine precision against direct quadrature, the predicted convergence law, and a free-streaming cross-check on a quasi-axisymmetric configuration for the isotropic and both polarized modes.
+\end{abstract}
+
+\section{Introduction}
+
+Spin-polarized fusion can enhance the reaction rate and redirect the angular distribution of fusion neutrons and alpha particles, and the optimal polarization choice must be made in a system context that includes its effect on the first-wall neutron load~\cite{kulsrud1982,parisi2024,schwartz2025}. Scoping studies estimate this load through the neutron wall load (NWL), the first-flight neutron current through a wall patch weighted by neutron energy, which omits scattering but is fast to evaluate and therefore well suited to design iteration and optimization~\cite{lion2022,schwartz2025}.
+
+Reference~\cite{schwartz2025} derived NWL formulas for axisymmetric reactor geometries (a rectangular torus, an arbitrary convex-cross-section torus, and the exterior of a levitated dipole flyer) from filamentary ring sources with arbitrary polarization mix and arbitrary local magnetic-field direction. The central technical achievement is that the toroidal integral over each ring is evaluated analytically in terms of incomplete elliptic integrals of the first and second kinds, $F$ and $E$. The resulting expressions are fast to evaluate with standard special-function libraries and are automatically differentiable, so they admit gradient-based optimization of the plasma shape, the wall shape, and the polarization mix against objectives such as a uniform NWL. These properties are implemented in the \texttt{anarr\'ima} package using Carlson symmetric-form elliptic integrals~\cite{carlson1979,carlson1995}, which provides forward- and reverse-mode differentiation and just-in-time compilation.
+
+The analytic reduction in Ref.~\cite{schwartz2025} depends on a feature special to axisymmetry. For a planar circular ring of radius $p$ at height $z$, the squared distance from a source point at toroidal phase $\phi$ to a fixed wall point at radius $r$,
+\begin{equation}
+D_0(\phi)=p^2+r^2+z^2-2pr\cos\phi,
+\label{eq:D0}
+\end{equation}
+is affine in $\cos\phi$. Substituting $w=e^{i\phi}$ makes $w\,D_0(w)$ quadratic in $w$, the associated algebraic curve has genus one, and the half-integer powers $D_0^{-3/2}$ and $D_0^{-5/2}$ that arise from the flux factor and the polarization kernels reduce to elliptic integrals. A stellarator changes this. The source loop is not planar: along a fixed flux-surface contour swept in the geometric toroidal angle, both the cylindrical radius and the height vary periodically at the field-period frequency. The squared distance is then a trigonometric polynomial in $\phi$ whose degree exceeds one, and as soon as the loop carries field-period harmonics the period integral passes from elliptic to hyperelliptic.\footnote{Write $w=e^{i\phi}$ and let the loop carry harmonics up to $n_{\max}\Nfp$, so that $D(\phi)$ is a trigonometric polynomial of degree $M=n_{\max}\Nfp+1$. Then $w^{M}D(w)$ is an ordinary polynomial of degree $2M$, and the half-integer powers in the integrand place $\sqrt{w^{M}D(w)}$ on a hyperelliptic curve of genus $M-1$. The planar circle is $M=1$, genus one, the elliptic case; any genuine ripple has $M\ge2$, hence genus $\ge2$, beyond Legendre $F$ and $E$.} There is no finite closed form in $F$ and $E$ in general. This is precisely why Lion's deterministic stellarator NWL method integrates the toroidal direction numerically~\cite{lion2022}; it is an obstruction of algebraic geometry, not of effort.
+
+This paper removes the obstruction perturbatively for the practically important case of a stellarator whose boundary is close to axisymmetric in real space, which includes quasi-axisymmetric (QA) configurations and, with more care, quasi-helically-symmetric (QH) configurations~\cite{nuhrenberg1988,boozer1983,landreman2022,helander2014}. We expand each source loop about its toroidal mean and collect the NWL order by order in the non-axisymmetric excursion. The zeroth order is the axisymmetric kernel exactly. Every correction is a finite sum of integrals of the same family $\int \cos k\phi\,(h-\cos\phi)^{-s}\dd\phi$ and $\int \sin k\phi\,(h-\cos\phi)^{-s}\dd\phi$, the first reducible to $F$ and $E$ by a two-term recursion seeded by the axisymmetric base integrals, the second elementary. The full machinery therefore inherits the differentiability and the Carlson-form implementation already present in \texttt{anarr\'ima}: the corrections are additive ripple terms over the existing kernels. We give the polarized-mode extension, the perturbation of the visible-arc limits, and the convergence behaviour, and we distinguish carefully between the geometric small parameter that controls the series and the quasisymmetry quality of $|B|$, which controls confinement but not directly this expansion. Although the spin-polarized kernels are the motivating application, the isotropic member of the series is exactly the conventional unpolarized neutron wall load, so the reduction serves standard quasisymmetric-stellarator wall design as much as spin-polarized fusion.
+
+The paper is organized as follows. Section~\ref{sec:geometry} fixes notation, sets out the spin-polarized emission kernel and the polarization angle, and writes the NWL as a toroidal integral over a non-planar source loop. Section~\ref{sec:expansion} expands the geometric quantities in the field-period excursion. Section~\ref{sec:series} assembles the NWL series and identifies the leading order with the axisymmetric kernel. Section~\ref{sec:reduction} is the technical core: the reduction of every term to elliptic integrals through the harmonic and elliptic-order recursions. Section~\ref{sec:polarized} treats the A and B/C polarization kernels. Section~\ref{sec:bounds} perturbs the integration limits. Section~\ref{sec:convergence} gives the convergence estimate and the QA versus QH discussion. Section~\ref{sec:assembly} assembles the full plasma NWL and states the consequences for optimization. Section~\ref{sec:validation} implements the full series as a JAX-differentiable module and validates it against direct quadrature, the predicted convergence law, and a free-streaming cross-check. Section~\ref{sec:summary} summarizes. Appendices collect the elliptic-integral definitions, the master recursion, and a fully worked first-order example.
+
+\section{Geometry and the wall-load integral}
+\label{sec:geometry}
+
+We follow the conventions of Ref.~\cite{schwartz2025} and emphasize the geometric content, dropping the per-neutron energy and the $1/(4\pi)$ solid-angle factor, which are constants under the present approximations. The NWL at a wall point $\rw$ from a volumetric neutron source of density $S(\rs)$ is
+\begin{equation}
+Q_{\NWL}(\rw)\ \propto\ \int_{V_s} \dd^3 r_s\; S(\rs)\;
+\frac{\nhat\cdot(\rs-\rw)}{\lvert \rs-\rw\rvert^{3}}\;
+\Kpol\!\left(\Bhat(\rs)\cdot\widehat{(\rs-\rw)}\right),
+\label{eq:NWLvol}
+\end{equation}
+where $\nhat$ is the inward first-wall normal at $\rw$, $\Bhat(\rs)$ is the unit magnetic-field direction at the source, and $\Kpol$ is the angular emission kernel. With $\Del\equiv\rs-\rw$ the geometric factor $\nhat\cdot\Del/\lvert\Del\rvert^{3}$ is the first-flight flux factor; it is positive for source elements visible from the patch.\footnote{The orientation is fixed by visibility. With the inward normal and a source visible to the patch, the projected radius exceeds the wall radius, $p\cos\phi>r$, so $\cos\nu=\nhat\cdot\Del/\lvert\Del\rvert=(p\cos\phi-r)/\lvert\Del\rvert>0$ on the visible arc (at $\psi=0$; the general case adds $z\sin\psi$). Reversing both $\nhat$ and the sign of $\Del$ leaves the product unchanged, so the convention is immaterial provided the two are taken consistently.} The kernel argument is $\cos\theta=\Bhat\cdot\Del/\lvert\Del\rvert$, the cosine of the angle between the local field and the line of sight. From the differential cross section of polarized DT fusion~\cite{kulsrud1982,schwartz2025},
+\begin{equation}
+\Kpol(\cos\theta)=\tfrac{3}{4}\,a\,\sin^2\theta+\Big(\tfrac{2}{3}b+\tfrac{1}{3}c\Big)\Big(\tfrac{1}{4}+\tfrac{3}{4}\cos^2\theta\Big),
+\label{eq:Kpol}
+\end{equation}
+with mode fractions $a,b,c$ summing to unity. Because $\Kpol$ depends on $\cos\theta$ only through $\cos^2\theta$, it is even in $\cos\theta$ and the sign convention for $\Del$ is immaterial in the kernel. The two angular shapes are $\sin^2\theta$ (the A mode) and $\tfrac14+\tfrac34\cos^2\theta$ (the B and C modes); the isotropic limit is $\Kpol\to\mathrm{const}$. We also retain the bare $\cos^2\theta$ shape, which is unphysical alone but supplies the exact cross-check $\sin^2\theta+\cos^2\theta=1$. Since the constant prefactors in Eq.~\eqref{eq:Kpol} factor out of the geometric integral, we compute the four kernels $\{1,\ \sin^2\theta,\ \cos^2\theta,\ \tfrac14+\tfrac34\cos^2\theta\}$ and recover any physical mix by linear combination.
+
+The physical content behind this kernel, and the reason the magnetic field enters a wall-load calculation at all, is the spin polarization of the fuel. In a polarized DT plasma the deuteron and triton nuclear spins are prepared along a quantization axis, which in a magnetically confined plasma is the local field $\Bhat(\rs)$: the field supplies the natural axis, and the nuclear spins precess rapidly about it, so the polarization is referenced to $\Bhat$. The reaction proceeds dominantly through the $J^\pi=\tfrac32^+$ resonance of $^5$He, and once the reacting nuclei are polarized the differential cross section ceases to be isotropic and depends on the angle $\theta$ between the outgoing-neutron direction and that axis. A neutron reaching a wall patch travels along the line of sight $\hat\Delta=\Del/\lvert\Del\rvert$ from source to patch, so the relevant angle is $\cos\theta=\Bhat(\rs)\cdot\hat\Delta$, the $\theta$ of Eq.~\eqref{eq:Kpol}. Polarization acts on the wall load in two ways. It changes the reactivity, with parallel-aligned spins enhancing the DT cross section by about one half and the antiparallel combination suppressing it~\cite{kulsrud1982}; and it redistributes the emission in angle, the parallel-aligned state radiating preferentially perpendicular to $\Bhat$ as the $\sin^2\theta$ (A) shape and the remaining configurations carrying the $\tfrac14+\tfrac34\cos^2\theta$ (B and C) shape, with the fractions $a,b,c$ the populations of these states. The angular redistribution is what makes the polarized wall load a functional of the field geometry: two patches with identical unpolarized loads receive different polarized loads according to how $\Bhat$ is oriented along their lines of sight, and resolving that dependence in closed form is the object of the polarized kernels in Sec.~\ref{sec:polarized}.
+
+We take the polarization to be ideal and field-aligned, the standard scoping assumption. A polarization fraction below unity enters as an interpolation of the kernel toward the isotropic limit and leaves the geometry untouched; the depolarization mechanisms that set the achievable fraction and its profile are a separate question and are not modeled here. With the axis identified as $\Bhat$, the kernel reduces to a function of the single geometric quantity $\Bhat\cdot\hat\Delta$, which is what lets it pass through the same elliptic reduction as the flux factor. Because the result is then exact in the free-streaming limit, it fixes the polarized first-flight wall load that a transport calculation must reproduce in its uncollided component, a point we return to in Sec.~\ref{sec:convergence}.
+
+With the emission kernel fixed, the remaining ingredient is the source geometry. As in Ref.~\cite{schwartz2025} we decompose the source into closed loops carrying unit emission per unit length and reconstruct $S$ by a weighted sum. In an axisymmetric device a loop is a planar circle. In a stellarator a loop is a constant-$(\rho,\vartheta)$ contour swept in the geometric toroidal angle $\phi$, where $\rho$ labels the flux surface and $\vartheta$ the poloidal angle. Such a loop is non-planar:
+\begin{equation}
+\rs(\phi)=\big(R(\phi)\cos\phi,\ R(\phi)\sin\phi,\ Z(\phi)\big),
+\label{eq:loop}
+\end{equation}
+with $R(\phi)$ and $Z(\phi)$ periodic and, for a device with $\Nfp$ field periods, carrying harmonics in $\Nfp\phi$ obtained directly from the boundary representation (for instance a VMEC or DESC~\cite{desc2023} Fourier description of the flux surface). The axisymmetric circle is the special case $R,Z=\text{const}$.
+
+It remains to fix the observation point. We place the wall patch at toroidal angle zero without loss of generality, $\rw=(r,0,z_w)$, with inward normal
+\begin{equation}
+\nhat=(\cos\psi,\,0,\,\sin\psi),
+\label{eq:normal}
+\end{equation}
+where $\psi$ is the poloidal tilt of the normal in the cross-sectional plane, with horizontal ($\cos\psi$) and vertical ($\sin\psi$) components. The toroidal dependence of the wall load is carried entirely by the phase of the loop's field-period harmonics relative to the patch: holding the patch at $\phi=0$ costs nothing, because a patch at toroidal location $\phi_w$ is recovered by the rigid shift $\phi\to\phi+\phi_w$ in the harmonic arguments of $R(\phi)$ and $Z(\phi)$. Sweeping $\phi_w$ slides these phases and maps out the full three-dimensional NWL from the single-patch formula. A general 3D wall patch can also tilt the normal toroidally; we treat that extension at the end of Sec.~\ref{sec:reduction} and adopt the purely poloidal normal in the main development, which is exact at the stellarator-symmetry planes. The reduced intensity from one loop, the analog of the axisymmetric $g$, is
+\begin{equation}
+g=\int_{\phi_-}^{\phi_+}\!\mathcal{J}(\phi)\;\mathcal{N}(\phi)\;
+\frac{K\!\big(\cos\theta(\phi)\big)}{D(\phi)^{3/2}}\;\dd\phi,
+\qquad D\equiv\lvert\Del\rvert^{2},
+\label{eq:g}
+\end{equation}
+where $\mathcal{J}=\lvert\partial_\phi\rs\rvert$ is the loop Jacobian, $\mathcal{N}=\nhat\cdot\Del$ is the flux factor numerator, and $\phi_\pm$ are the limits of the toroidal arc visible from the patch. For the polarized kernels we use
+\begin{equation}
+\sin^2\theta=1-\frac{(\Bhat\cdot\Del)^2}{D},\qquad
+\tfrac14+\tfrac34\cos^2\theta=\tfrac14+\tfrac34\frac{(\Bhat\cdot\Del)^2}{D},
+\label{eq:kernelsplit}
+\end{equation}
+so that each polarized kernel contributes one term with denominator power $3/2$ and one with power $5/2$.
+
+\section{Field-period expansion of the geometric quantities}
+\label{sec:expansion}
+
+Write the loop as its toroidal mean plus a non-axisymmetric remainder. Let $p$ be the mean radius, let $z\equiv\langle Z\rangle-z_w$ be the mean height relative to the patch, and introduce a formal ordering parameter $\eps$ that tracks the excursion amplitude:
+\begin{equation}
+R(\phi)=p+\eps\,dR(\phi),\qquad Z(\phi)-z_w=z+\eps\,dZ(\phi),
+\label{eq:split}
+\end{equation}
+with the zero-mean shapes expanded in field-period harmonics,
+\begin{equation}
+dR(\phi)=\sum_{n\ge1}\big(a_n\cos n\Nfp\phi+\tilde a_n\sin n\Nfp\phi\big),\qquad
+dZ(\phi)=\sum_{n\ge1}\big(b_n\cos n\Nfp\phi+\tilde b_n\sin n\Nfp\phi\big).
+\label{eq:harmonics}
+\end{equation}
+At a stellarator-symmetry plane the boundary satisfies $R(-\phi)=R(\phi)$ and $Z(-\phi)=-Z(\phi)$, so $dR$ is a cosine series and $dZ$ a sine series; we keep the general form and specialize where useful.
+
+Each ingredient of the reduced intensity~\eqref{eq:g} now expands in $\eps$, beginning with the squared distance. Direct substitution of Eq.~\eqref{eq:split} into $D=R^2+r^2-2rR\cos\phi+(Z-z_w)^2$ gives, exactly,
+\begin{equation}
+D=D_0+\eps\,D_1+\eps^2\,D_2,
+\label{eq:Dexpand}
+\end{equation}
+with $D_0$ from Eq.~\eqref{eq:D0} and
+\begin{equation}
+D_1=2\big[dR\,(p-r\cos\phi)+z\,dZ\big],\qquad
+D_2=dR^2+dZ^2.
+\label{eq:D1D2}
+\end{equation}
+Equation~\eqref{eq:Dexpand} is quadratic in $\eps$ and terminates; there are no higher terms. The base term $D_0$ is the axisymmetric squared distance, and $D_1,D_2$ are finite trigonometric polynomials.
+
+The Jacobian expands in the same way. From $\lvert\partial_\phi\rs\rvert^2=R^2+R'^2+Z'^2$ one obtains
+\begin{equation}
+\mathcal{J}=\sqrt{R^2+R'^2+Z'^2}
+=p+\eps\,dR+\frac{\eps^2}{2p}\big(dR'^2+dZ'^2\big)+\Order{3},
+\label{eq:Jexpand}
+\end{equation}
+where the $dR^2$ contribution cancels at second order. Primes denote $\partial_\phi$.
+
+The flux-factor numerator is simpler still, being linear in the geometry. With $\nhat$ from Eq.~\eqref{eq:normal} and $\Del=(R\cos\phi-r,\,R\sin\phi,\,Z-z_w)$,
+\begin{equation}
+\mathcal{N}=\nhat\cdot\Del=\mathcal{N}_0+\eps\,\mathcal{N}_1,
+\label{eq:Nexpand}
+\end{equation}
+\begin{equation}
+\mathcal{N}_0=\cos\psi\,(p\cos\phi-r)+z\sin\psi,\qquad
+\mathcal{N}_1=\cos\psi\,dR\cos\phi+\sin\psi\,dZ,
+\end{equation}
+exact to all orders because $\mathcal{N}$ is linear in $R,Z$.
+
+The field direction needs the most care, because it carries a non-axisymmetry of its own. The unit field at the source is the axisymmetric (angled) field plus a field-period ripple,
+\begin{equation}
+\Bhat=\Bhat_0+\eps\,\bperp+\Order{2},\qquad \Bhat_0\cdot\bperp=0,
+\label{eq:Bexpand}
+\end{equation}
+the constraint enforcing $\lvert\Bhat\rvert=1$ at first order. The base direction $\Bhat_0$ is parameterized as in Ref.~\cite{schwartz2025} by a polar angle $\beta$ from the toroidal direction and an azimuthal angle $\alpha$,
+\begin{equation}
+\Bhat_0=(\cos\alpha\sin\beta\cos\phi-\cos\beta\sin\phi,\ \cos\beta\cos\phi+\cos\alpha\sin\beta\sin\phi,\ -\sin\alpha\sin\beta).
+\label{eq:B0}
+\end{equation}
+The angles $(\alpha,\beta)$ in Eq.~\eqref{eq:B0} are the mean field-line direction at the source: $\beta$ is the field pitch measured from the toroidal direction, set by the rotational transform, and $\alpha$ orients the field within the cross-sectional plane. In a stellarator this direction is not constant around the loop, and its field-period excursion is the field-direction ripple. Adding excursions $\eps\,\alpha_1(\phi)$ and $\eps\,\beta_1(\phi)$ to the mean angles and expanding $\Bhat_0$ to first order gives the ripple explicitly,
+\begin{equation}
+\bperp=\alpha_1(\phi)\,\partial_\alpha\Bhat_0+\beta_1(\phi)\,\partial_\beta\Bhat_0,
+\label{eq:btilde}
+\end{equation}
+with the field-angle derivatives
+\begin{align}
+\partial_\alpha\Bhat_0&=-\sin\beta\,\big(\sin\alpha\cos\phi,\ \sin\alpha\sin\phi,\ \cos\alpha\big),\label{eq:dBda}\\
+\partial_\beta\Bhat_0&=\big(\cos\alpha\cos\beta\cos\phi+\sin\beta\sin\phi,\ \ -\sin\beta\cos\phi+\cos\alpha\cos\beta\sin\phi,\ \ -\sin\alpha\cos\beta\big),\label{eq:dBdb}
+\end{align}
+both orthogonal to $\Bhat_0$ as the unit-norm constraint in Eq.~\eqref{eq:Bexpand} requires. The mean angles set the leading kernel; the excursions $\alpha_1,\beta_1$ drive the polarized corrections through $\bperp$, and both the means and the excursions are read from the equilibrium field sampled along the loop.
+
+Writing $\Del=\Del_0+\eps\,\Del_1$ with $\Del_0=(p\cos\phi-r,\,p\sin\phi,\,z)$ and $\Del_1=(dR\cos\phi,\,dR\sin\phi,\,dZ)$, the line-of-sight projection of the field is
+\begin{equation}
+\Bhat\cdot\Del=\underbrace{\Bhat_0\cdot\Del_0}_{(\Bhat\cdot\Del)_0}
++\eps\,\underbrace{\big(\Bhat_0\cdot\Del_1+\bperp\cdot\Del_0\big)}_{(\Bhat\cdot\Del)_1}
++\eps^2\,\bperp\cdot\Del_1,
+\label{eq:BdotDexpand}
+\end{equation}
+where the base projection is the axisymmetric angled-field numerator,
+\begin{equation}
+(\Bhat\cdot\Del)_0=(p-r\cos\phi)\cos\alpha\sin\beta+r\cos\beta\sin\phi-z\sin\alpha\sin\beta.
+\label{eq:BdotD0}
+\end{equation}
+
+All four expansions, Eqs.~\eqref{eq:Dexpand}, \eqref{eq:Jexpand}, \eqref{eq:Nexpand}, and \eqref{eq:BdotDexpand}, are polynomials in $\eps$ with coefficients built from the boundary harmonics, the field-direction angles, and the fixed patch data $(r,\psi,z)$.
+
+\section{The neutron wall-load series}
+\label{sec:series}
+
+Insert the expansions into Eq.~\eqref{eq:g}. Using $D^{-s}=D_0^{-s}\big(1+\eps D_1/D_0+\eps^2 D_2/D_0\big)^{-s}$ and collecting powers of $\eps$ produces a strict series
+\begin{equation}
+g=g^{(0)}+\eps\,g^{(1)}+\eps^2\,g^{(2)}+\cdots .
+\label{eq:gseries}
+\end{equation}
+
+The leading term of this series is the axisymmetric result. At $\Order{0}$ every ripple quantity drops and
+\begin{equation}
+g^{(0)}=\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}\! p\,\mathcal{N}_0\;\frac{K_0}{D_0^{3/2}}\dd\phi,
+\label{eq:g0}
+\end{equation}
+with $K_0$ the kernel evaluated on the base field projection. For isotropic emission $K_0=1$ and Eq.~\eqref{eq:g0} is exactly the axisymmetric reduced intensity, splitting into horizontal and vertical components through $\mathcal{N}_0$,
+\begin{equation}
+g^{(0)}_{\mathrm{iso}}=\big(h_{HIL}+h_{HIF}+h_{HIE}\big)\cos\psi+\big(h_{VIL}+h_{VIE}\big)\sin\psi,
+\end{equation}
+in his notation. The base limits $\phi_\pm^{(0)}$ come from his visibility and tangency construction applied to the mean (axisymmetric) wall and source. Thus the perturbation series is anchored on the exact axisymmetric result and adds corrections; it does not re-derive the leading behavior.
+
+The first correction enters at $\Order{1}$, where the integrand carries three ripple contributions, from the Jacobian, the numerator, and the denominator:
+\begin{equation}
+g^{(1)}_{\mathrm{iso}}=\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}
+\left[\frac{dR\,\mathcal{N}_0+p\,\mathcal{N}_1}{D_0^{3/2}}
+-\frac{3}{2}\,\frac{p\,\mathcal{N}_0\,D_1}{D_0^{5/2}}\right]\dd\phi
+\;+\;\big(\text{limit corrections, Sec.~\ref{sec:bounds}}\big).
+\label{eq:g1general}
+\end{equation}
+For a purely horizontal patch normal, $\psi=0$, so $\mathcal{N}_0=p\cos\phi-r$ and $\mathcal{N}_1=dR\cos\phi$, the bracket collapses to
+\begin{equation}
+\boxed{\;
+g^{(1)}_{\mathrm{iso}}\big|_{\psi=0}=\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}
+\left[\frac{dR\,(2p\cos\phi-r)}{D_0^{3/2}}
+-\frac{3p\,(p\cos\phi-r)\big(dR\,(p-r\cos\phi)+z\,dZ\big)}{D_0^{5/2}}\right]\dd\phi.\;}
+\label{eq:g1iso}
+\end{equation}
+We verified Eq.~\eqref{eq:g1iso} against a finite-difference derivative of the exact loop integral~\eqref{eq:g} to eleven significant figures for representative parameters and asymmetric limits. The vertical-component case $\psi=\pi/2$ and the full $\psi$ dependence follow from Eq.~\eqref{eq:g1general} by the same algebra.
+
+The second correction is where the genuinely amplitude-squared geometry first enters, through $D_2=dR^2+dZ^2$ and the second-order Jacobian $\mathcal{J}_2=(dR'^2+dZ'^2)/2p$, neither of which appears at first order. Collecting the $\Order{2}$ interior terms of Eq.~\eqref{eq:g} (limit motion is the separate Leibniz contribution of Sec.~\ref{sec:bounds}),
+\begin{equation}
+\boxed{\;
+g^{(2)}_{\mathrm{iso}}=\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}
+\left[\frac{\mathcal{J}_2\,\mathcal{N}_0+dR\,\mathcal{N}_1}{D_0^{3/2}}
+-\frac{3}{2}\,\frac{\big(p\,\mathcal{N}_1+dR\,\mathcal{N}_0\big)D_1+p\,\mathcal{N}_0\,D_2}{D_0^{5/2}}
++\frac{15}{8}\,\frac{p\,\mathcal{N}_0\,D_1^{2}}{D_0^{7/2}}\right]\dd\phi.\;}
+\label{eq:g2iso}
+\end{equation}
+The highest denominator power is $D_0^{7/2}$, so the second order closes at $s=\tfrac72$. The only new structure relative to first order is the $D_1^2$ term: $D_1^2$ is a trigonometric polynomial of bounded degree, and dividing by $D_0^{7/2}$ and reducing through the harmonic recursion~\eqref{eq:Crec} produces $\Ck{k}{7/2}$ seeded by $\Ja{-7/2}$ from the master recursion~\eqref{eq:Jrec}, with the odd part elementary; no special function enters beyond those already present at first order. We verified Eq.~\eqref{eq:g2iso} against a second difference of the exact integral~\eqref{eq:g}. Holding the visible arc fixed, the truncation errors of the partial sums $g^{(0)}$, $g^{(0)}+\eps g^{(1)}$, and $g^{(0)}+\eps g^{(1)}+\eps^2 g^{(2)}$ fall as $\eps$, $\eps^2$, and $\eps^3$ respectively, each retained order removing one power of the excursion amplitude in accordance with Sec.~\ref{sec:convergence}.
+
+These first two corrections already display the structure that persists to every order. The essential observation is that expanding $D^{-s}$ never produces anything but inverse half-integer powers of the \emph{base} distance $D_0$:
+\begin{equation}
+\big(1+\eps D_1/D_0+\eps^2 D_2/D_0\big)^{-s}
+=\sum_{j\ge0}\eps^{j}\,\frac{P_j(\phi)}{D_0^{\,j}},
+\end{equation}
+with each $P_j$ a finite trigonometric polynomial in $\phi$ built from $D_1,D_2$. Multiplying by the polynomial numerators from $\mathcal{J}$, $\mathcal{N}$, and (for polarized kernels) powers of $\Bhat\cdot\Del$, every term at every order is of the form
+\begin{equation}
+\frac{\text{trigonometric polynomial in }\phi}{D_0^{\,(2j+1)/2}},\qquad j\in\{1,2,3,4\}.
+\label{eq:canonical}
+\end{equation}
+The denominator power is bounded: $j$ reaches at most $4$ (denominator $D_0^{9/2}$) for the polarized kernels at second order, and is $1$ at leading isotropic order. The remainder of the paper shows that every member of the family~\eqref{eq:canonical} integrates to elementary endpoint terms plus the same incomplete elliptic integrals $F$ and $E$ that appear in Ref.~\cite{schwartz2025}, with the same modulus and amplitudes.
+
+\section{Reduction to elliptic integrals}
+\label{sec:reduction}
+
+Throughout, factor the base distance through its normalized form. Since $D_0=2pr\,(h-\cos\phi)$ with
+\begin{equation}
+h\equiv\frac{p^2+r^2+z^2}{2pr}>1,
+\label{eq:h}
+\end{equation}
+the family~\eqref{eq:canonical} reduces, after expanding numerator harmonic products into single harmonics, to the two base integrals over the visible arc,
+\begin{equation}
+\Ck{k}{s}=\int_{\phi_-}^{\phi_+}\frac{\cos k\phi}{(h-\cos\phi)^{s}}\dd\phi,
+\qquad
+\Sk{k}{s}=\int_{\phi_-}^{\phi_+}\frac{\sin k\phi}{(h-\cos\phi)^{s}}\dd\phi,
+\label{eq:CkSk}
+\end{equation}
+with $s\in\{\tfrac12,\tfrac32,\tfrac52,\tfrac72,\tfrac92\}$ and integer $k\ge0$, each carrying an explicit prefactor $(2pr)^{-s}$. That $h>1$ for any source not lying on the wall guarantees $h-\cos\phi>0$ on the path: the would-be pole at $\cos\phi=h$ sits off the real interval, and no principal value or integral of the third kind is needed.
+
+The two families reduce by different routes: the cosine integrals carry all the elliptic content, the sine integrals none. Take the cosine integrals first. At fixed elliptic order they obey a two-term recursion in harmonic order. Using $2\cos\phi\cos k\phi=\cos(k+1)\phi+\cos(k-1)\phi$ together with $\cos\phi=h-(h-\cos\phi)$ gives, with no approximation,
+\begin{equation}
+\boxed{\;\Ck{k+1}{s}=2h\,\Ck{k}{s}-\Ck{k-1}{s}-2\,\Ck{k}{s-1}.\;}
+\label{eq:Crec}
+\end{equation}
+This raises the harmonic index $k$ at fixed $s$, drawing on the next-lower elliptic order $\Ck{k}{s-1}$. Starting from the two base cases $\Ck{0}{s}$ and $\Ck{1}{s}$ at each $s$, Eq.~\eqref{eq:Crec} generates $\Ck{k}{s}$ for all $k$. We confirmed Eq.~\eqref{eq:Crec} numerically to machine precision for $s\in\{\tfrac32,\tfrac52\}$ and $k\in\{1,2,3\}$.
+
+That recursion needs two base cases at each elliptic order. The base cases $\Ck{0}{s}$ and $\Ck{1}{s}$ are exactly the integrals tabulated in Appendix B of Ref.~\cite{schwartz2025} (after the trivial rebasing $\cos^2\phi=\tfrac12(1+\cos2\phi)$ that converts his powers of $\cos\phi$ into harmonics). The pure inverse-power integral
+\begin{equation}
+\Ja{a}\equiv\int_{\phi_-}^{\phi_+}(h-\cos\phi)^{a}\dd\phi
+\label{eq:Ja}
+\end{equation}
+satisfies a master three-term recursion, obtained by integrating $\partial_\phi\!\big[\sin\phi\,(h-\cos\phi)^{a}\big]$ and using $\sin^2\phi=1-(h-(h-\cos\phi))^2$:
+\begin{equation}
+\boxed{\;\Ja{a+1}=\frac{1}{1+a}\Big[h(1+2a)\,\Ja{a}+a(1-h^2)\,\Ja{a-1}
+-\big[\sin\phi\,(h-\cos\phi)^{a}\big]_{\phi_-}^{\phi_+}\Big].\;}
+\label{eq:Jrec}
+\end{equation}
+The two seeds are the half-integer-power integrals reducible to Legendre form. With amplitude half-angles $\phi_\pm/2$ and parameter
+\begin{equation}
+m=-\frac{2}{h-1}=-\frac{4pr}{(p-r)^2+z^2},
+\label{eq:modulus}
+\end{equation}
+the identity $h-\cos\phi=(h-1)\big(1-m\sin^2(\phi/2)\big)$ gives
+\begin{align}
+\Ja{-1/2}&=\frac{2}{\sqrt{h-1}}\Big[\Fell(\phi_+/2,m)-\Fell(\phi_-/2,m)\Big],\label{eq:seedF}\\
+\Ja{+1/2}&=2\sqrt{h-1}\,\Big[\Eell(\phi_+/2,m)-\Eell(\phi_-/2,m)\Big].\label{eq:seedE}
+\end{align}
+Equation~\eqref{eq:Jrec} then generates all half-integer $\Ja{a}$, hence the base cases $\Ck{0}{s}=\Ja{-s}$ and, by the same reduction applied to $\cos\phi\,(h-\cos\phi)^{-s}=h\,\Ja{-s}-\Ja{-s+1}$ rebased, $\Ck{1}{s}$. The modulus and amplitudes are exactly those of the axisymmetric reduction: $m=-2/(h-1)$ and amplitude $\phi_\pm/2$. We verified Eqs.~\eqref{eq:Jrec}, \eqref{eq:seedF}, and \eqref{eq:seedE} numerically to machine precision.
+
+A point of emphasis: the limits $\phi_\pm$ are independent. At a stellarator-symmetry plane the visible arc is symmetric, $\phi_-=-\phi_+\equiv-\phi_m$, and two simplifications follow together. The incomplete elliptic integrals collapse to a single amplitude $\phi_m/2$, and every sine integral vanishes by parity, $\Sk{k}{s}=0$, so only the cosine integrals survive; the reduction is then the even-integrand, $F$-and-$E$-only form exactly. Away from a symmetry plane the arc is asymmetric: the sine integrals are nonzero but elementary, and $F$, $E$ are evaluated and differenced at the two distinct amplitudes $\phi_+/2$ and $\phi_-/2$. The Carlson symmetric forms $R_F$ and $R_D$~\cite{carlson1979,carlson1995} used in \texttt{anarr\'ima} handle both amplitudes without modification.
+
+The integral family is closed not only under these algebraic recursions but under differentiation in the geometry. Differentiating Eqs.~\eqref{eq:Ja} and \eqref{eq:CkSk} under the integral sign with respect to $h$ gives, exactly,
+\begin{equation}
+\boxed{\;\partial_h\,\Ja{a}=a\,\Ja{a-1},\qquad
+\partial_h\,\Ck{k}{s}=-s\,\Ck{k}{s+1}.\;}
+\label{eq:hderiv}
+\end{equation}
+Both were verified numerically to machine precision. Two consequences follow.
+
+First, Eq.~\eqref{eq:hderiv} is a second, independent generator of the elliptic tower. Starting from the $F$ and $E$ seeds~\eqref{eq:seedF}--\eqref{eq:seedE}, repeated $h$-differentiation reaches every $\Ja{-(2j+1)/2}$, since each $\partial_h$ lowers the exponent by one. This route is derived independently of the algebraic three-term recursion~\eqref{eq:Jrec}, one by integration by parts in $\phi$, the other by differentiation in $h$, so their agreement is a free internal consistency check on any implementation of the base integrals.
+
+Second, and more consequentially, Eq.~\eqref{eq:hderiv} upgrades the differentiability of the wall load from a smoothness statement to a closure statement. The dependence of every kernel on the geometry enters through the single variable $h=(p^2+r^2+z^2)/2pr$, and the right-hand side of Eq.~\eqref{eq:hderiv} lies in the same basis $\{\Ck{k}{s}\}$ one elliptic order higher, which the perturbation tower already spans. The gradient of the wall load with respect to the geometry is therefore not merely well defined but is itself a member of the same closed family: automatic differentiation and the analytic reduction traverse the same ladder. Concretely, $\partial g/\partial r$, $\partial g/\partial p$, and $\partial g/\partial z$ reduce to the $\Ck{k}{s+1}$ already tabulated for the next order of the series, so optimization gradients cost no special-function evaluations beyond those the series itself requires.
+
+The sine integrals, by contrast, carry no elliptic content. Writing $\sin k\phi=\sin\phi\,U_{k-1}(\cos\phi)$ with $U_{k-1}$ the Chebyshev polynomial of the second kind and substituting $u=\cos\phi$,
+\begin{equation}
+\Sk{k}{s}=-\int_{\cos\phi_-}^{\cos\phi_+}\frac{U_{k-1}(u)}{(h-u)^{s}}\dd u,
+\label{eq:Sk}
+\end{equation}
+a rational integrand in $u$. Expanding $U_{k-1}(u)$ in powers of $(h-u)$ via $u=h-(h-u)$ reduces this to a finite sum of elementary integrals $\int (h-u)^{j-s}\dd u$, evaluated at the endpoints. No special functions appear. We verified Eq.~\eqref{eq:Sk} numerically.
+
+Both reductions share a structural feature worth stating explicitly: only powers of the single factor $(h-\cos\phi)$ ever appear in any denominator. The half-integer-power reduction~\eqref{eq:Jrec} stays within $\{F,E\}$, and no independent quadratic factor is generated that would require an integral of the third kind $\Pi$. This matches Ref.~\cite{schwartz2025}, whose results contain only $F$ and $E$. The harmonic recursion~\eqref{eq:Crec} likewise preserves this structure, because it manipulates the numerator harmonic index and the elliptic order but never introduces a new denominator factor.
+
+Every ingredient of the reduction is also smooth in the quantities a designer varies. The seeds~\eqref{eq:seedF}--\eqref{eq:seedE} are smooth in $h$, in $m$, and in the amplitudes; the recursions~\eqref{eq:Crec} and \eqref{eq:Jrec} are rational in $h$ and in the boundary harmonics; the elementary sine terms are rational in the endpoints. Therefore $g^{(0)}$, $g^{(1)}$, $g^{(2)}$, and any higher correction are automatically differentiable with respect to the patch radius $r$ and tilt $\psi$, the mean geometry $(p,z)$, the boundary harmonics $(a_n,\tilde a_n,b_n,\tilde b_n)$, the polarization angles $(\alpha,\beta)$, and, linearly, the mode mix $(a,b,c)$ of Eq.~\eqref{eq:Kpol}. For the geometry parameters this is sharpened by the closure result derived above: the gradient stays within the same elliptic family rather than merely existing. This is the property required for gradient-based optimization, and it is inherited directly by the existing Carlson-form implementation: the corrections are additive ripple terms over kernels already present.
+
+A final extension, promised in Sec.~\ref{sec:geometry}, costs nothing here: a wall patch off a symmetry plane can tilt its normal toroidally, $\nhat=(\cos\psi\cos\chi,\,\cos\psi\sin\chi,\,\sin\psi)$ with toroidal tilt $\chi$. This adds a term $\cos\psi\sin\chi\,R\sin\phi$ to $\mathcal{N}$, that is, contributions proportional to $\sin\phi$ at leading order and to $\sin n\Nfp\phi\sin\phi$ at the ripple orders. By Eq.~\eqref{eq:Sk} these are elementary. Hence a fully three-dimensional first-wall patch is handled at no extra special-function cost: the toroidal tilt contributes only sine integrals. At the field-period symmetry planes $\chi=0$ and the development reduces to the purely poloidal normal used above.
+
+\section{Polarized modes}
+\label{sec:polarized}
+
+The polarized kernels follow the identical pattern with one additional power of the inverse distance. From Eq.~\eqref{eq:kernelsplit}, the A-mode reduced intensity is
+\begin{equation}
+g_A=\int_{\phi_-}^{\phi_+}\mathcal{J}\,\mathcal{N}\left[\frac{1}{D^{3/2}}-\frac{(\Bhat\cdot\Del)^2}{D^{5/2}}\right]\dd\phi,
+\label{eq:gA}
+\end{equation}
+and the B/C-mode intensity is $g_B=\tfrac14 g_{\mathrm{iso}}+\tfrac34 g_c$ with
+\begin{equation}
+g_c=\int_{\phi_-}^{\phi_+}\mathcal{J}\,\mathcal{N}\,\frac{(\Bhat\cdot\Del)^2}{D^{5/2}}\dd\phi .
+\label{eq:gc}
+\end{equation}
+Expanding $(\Bhat\cdot\Del)^2$ through Eq.~\eqref{eq:BdotDexpand} and $D^{-5/2}$ as before, the field projection contributes its own trigonometric polynomial in $\phi$ (the angled-field numerator~\eqref{eq:BdotD0} squared at leading order, plus ripple corrections through $\bperp$). The extra factor $1/D$ raises the elliptic order by one relative to the isotropic series at the same perturbation order, so the polarized base integrals run to $s=\tfrac52$ at leading order, $s=\tfrac72$ at first order, and $s=\tfrac92$ at second order, reached by further applications of the master recursion~\eqref{eq:Jrec}. Nothing else changes: every term remains of the canonical form~\eqref{eq:canonical}, reduces through the same $\Ck{k}{s}$ and $\Sk{k}{s}$, and yields only $F$, $E$, and elementary endpoint terms.
+
+It is enough to carry the $\cos^2\theta$ intensity $g_c$ explicitly, since the A and B/C corrections are the linear combinations $g_A=g_{\mathrm{iso}}-g_c$ and $g_B=\tfrac14 g_{\mathrm{iso}}+\tfrac34 g_c$. Write the field projection as $\Bhat\cdot\Del=P_0+\eps P_1+\Order2$, with $P_0$ the angled-field numerator of Eq.~\eqref{eq:BdotD0} and
+\begin{equation}
+P_1=\Bhat_0\cdot\Del_1+\bperp\cdot\Del_0,\qquad
+\Bhat_0\cdot\Del_1=\sin\beta\,(dR\cos\alpha-dZ\sin\alpha).
+\label{eq:P1}
+\end{equation}
+The compact form of $\Bhat_0\cdot\Del_1$ follows because the in-plane components of $\Bhat_0$ and $\Del_1$ combine to $dR\cos\alpha\sin\beta$ while the vertical component contributes $-dZ\sin\alpha\sin\beta$. The leading intensity is the axisymmetric $\cos^2\theta$ result, $g_c^{(0)}=\int p\,\mathcal{N}_0\,P_0^2\,D_0^{-5/2}\dd\phi$, and the first correction is
+\begin{equation}
+\boxed{\;
+g_c^{(1)}=\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}
+\frac{\big(dR\,\mathcal{N}_0+p\,\mathcal{N}_1\big)P_0^2+2p\,\mathcal{N}_0\,P_0 P_1}{D_0^{5/2}}\,\dd\phi
+\;-\;\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}\frac{5\,p\,\mathcal{N}_0\,P_0^{2}\,D_1}{2\,D_0^{7/2}}\,\dd\phi.\;}
+\label{eq:gc1}
+\end{equation}
+The denominators are $D_0^{5/2}$ and $D_0^{7/2}$, so the first-order polarized correction closes at $s=\tfrac72$, one order above the isotropic first correction. Equation~\eqref{eq:gc1} is the first place the field-direction ripple $\bperp$ enters, since the isotropic series never sees $\Bhat$; for a quasi-axisymmetric field $\bperp$ is small and this term is correspondingly suppressed. We verified $g_c^{(1)}$, together with the derived $g_A^{(1)}=g_{\mathrm{iso}}^{(1)}-g_c^{(1)}$ and $g_B^{(1)}=\tfrac14 g_{\mathrm{iso}}^{(1)}+\tfrac34 g_c^{(1)}$, against finite-difference derivatives of the exact polarized integrals with field-angle ripple included in $\bperp$ to ten significant figures, and confirmed the first-order cross-check $g_A^{(1)}+g_c^{(1)}=g_{\mathrm{iso}}^{(1)}$ to machine precision.
+
+The second-order polarized correction is assembled the same way, carried to one further elliptic order. With $\Bhat\cdot\Del=P_0+\eps P_1+\eps^2 P_2$ the squared projection is $(\Bhat\cdot\Del)^2=P_0^2+2\eps P_0P_1+\eps^2(P_1^2+2P_0P_2)$, and collecting the $\Order2$ interior terms of Eq.~\eqref{eq:gc} gives
+\begin{align}
+\boxed{\,g_c^{(2)}\,}=&\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}\frac{p\,\mathcal{N}_0\,(P_1^2+2P_0P_2)+2(p\,\mathcal{N}_1+dR\,\mathcal{N}_0)P_0P_1+(dR\,\mathcal{N}_1+\mathcal{J}_2\mathcal{N}_0)P_0^2}{D_0^{5/2}}\dd\phi \nonumber\\
+&-\frac52\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}\frac{\big[2p\,\mathcal{N}_0P_0P_1+(p\,\mathcal{N}_1+dR\,\mathcal{N}_0)P_0^2\big]D_1+p\,\mathcal{N}_0P_0^2D_2}{D_0^{7/2}}\dd\phi \nonumber\\
+&+\frac{35}{8}\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}\frac{p\,\mathcal{N}_0P_0^2D_1^2}{D_0^{9/2}}\dd\phi,
+\label{eq:gc2}
+\end{align}
+which closes at $s=\tfrac92$ as anticipated; $\mathcal{J}_2=(dR'^2+dZ'^2)/2p$ and $D_2=dR^2+dZ^2$ are the same second-order Jacobian and distance pieces that enter the isotropic second correction $g_{\mathrm{iso}}^{(2)}$.
+
+One term in that expression, $P_2$, requires care, and is the one place the treatment goes beyond the naive expansion~\eqref{eq:BdotDexpand}. Truncating the field at first order, $\Bhat\approx\Bhat_0+\eps\bperp$, gives $P_2=\bperp\cdot\Del_1$. But the unit-norm constraint $\lvert\Bhat\rvert=1$ is enforced only to first order by $\Bhat_0\cdot\bperp=0$; at second order it demands a field term $\eps^2\bperp_2$ with $\Bhat_0\cdot\bperp_2=-\tfrac12\lvert\bperp\rvert^2$, which contributes $\bperp_2\cdot\Del_0$ to $P_2$. Because $\Bhat_0\cdot\Del_0=P_0(\alpha,\beta)$ is the angled-field numerator regarded as a function of the mean angles, this contribution is the second-order Taylor remainder of $P_0$ in the field-angle excursions $\alpha_1,\beta_1$,
+\begin{equation}
+\bperp_2\cdot\Del_0=\tfrac12\alpha_1^2\,\partial_{\alpha\alpha}P_0+\alpha_1\beta_1\,\partial_{\alpha\beta}P_0+\tfrac12\beta_1^2\,\partial_{\beta\beta}P_0,
+\label{eq:btilde2}
+\end{equation}
+with $\partial_{\alpha\alpha}P_0=-P_0+r\cos\beta\sin\phi$, $\partial_{\beta\beta}P_0=-P_0$, and $\partial_{\alpha\beta}P_0=-\cos\beta\,[(p-r\cos\phi)\sin\alpha+z\cos\alpha]$, all trigonometric polynomials. The full second-order projection is therefore $P_2=\bperp\cdot\Del_1+\bperp_2\cdot\Del_0$. Omitting $\bperp_2\cdot\Del_0$ leaves the polarized A and B/C modes converging only at \emph{second} order against the exact unit-field kernel, with a residual of order $\eps^2\lvert\bperp\rvert^2$; including it restores the full \emph{third}-order convergence shared with the isotropic series. For a quasi-axisymmetric field $\lvert\bperp\rvert$ is small and the distinction is numerically minor, but Eq.~\eqref{eq:btilde2} is the correct closed form. We verified Eq.~\eqref{eq:gc2} with the full $P_2$ against a second finite difference of the exact polarized integral built from the exact unit field $\Bhat_0(\alpha(\phi),\beta(\phi))$ to nine significant figures, and the rigid-field case ($\bperp=0$, for which the exact field is automatically unit) independently checks the geometric second-order pieces.
+
+A structural cross-check holds at every order. Because $\sin^2\theta+\cos^2\theta=1$ identically, the A-mode and $\cos^2\theta$ kernels must sum to the isotropic kernel at every perturbation order,
+\begin{equation}
+g_A^{(j)}+g_c^{(j)}=g_{\mathrm{iso}}^{(j)},\qquad j=0,1,2,\dots .
+\label{eq:crosscheck}
+\end{equation}
+This is the order-by-order generalization of the cross-check used in Ref.~\cite{schwartz2025} and provides an exact, free correctness test on the longer polarized expressions. We confirmed Eq.~\eqref{eq:crosscheck} analytically at the integrand level for $j=0$ and numerically at $j=1$, and the identity propagates to each order because it holds before any reduction.
+
+\section{Perturbation of the visible-arc limits}
+\label{sec:bounds}
+
+The toroidal arc visible from the patch depends on the wall shape, which is itself non-axisymmetric, so the limits carry their own expansion,
+\begin{equation}
+\phi_\pm=\phi_\pm^{(0)}+\eps\,\phi_\pm^{(1)}+\Order{2}.
+\label{eq:limitexpand}
+\end{equation}
+By the Leibniz rule the limit motion contributes boundary terms to each order of $g$,
+\begin{equation}
+\delta g=\mathcal{I}\big(\phi_+^{(0)}\big)\,\phi_+^{(1)}-\mathcal{I}\big(\phi_-^{(0)}\big)\,\phi_-^{(1)},
+\label{eq:leibniz}
+\end{equation}
+where $\mathcal{I}$ is the leading-order integrand of Eq.~\eqref{eq:g} evaluated at the base limits. These corrections are closed form once $\phi_\pm^{(1)}$ is known. The base limits $\phi_\pm^{(0)}$ come from the visibility and tangency analysis of Ref.~\cite{schwartz2025} for the mean wall: for a convex cross section every source ring is visible, and $\phi_\pm^{(0)}$ is set by the sightline tangent to an outward-facing wall segment. Linearizing that tangency condition in the wall-shape harmonics yields $\phi_\pm^{(1)}$.
+
+We adopt the convexity assumption of Ref.~\cite{schwartz2025}: the cross section is convex and the patch lies on an outward-facing segment, so the visible region is a single arc. Non-convex cross sections, such as a divertor leg, can occlude the near or far part of a source loop and split the visible region into multiple arcs; this is flagged as future work in Ref.~\cite{schwartz2025} for the axisymmetric case and inherits directly here. At a stellarator-symmetry plane the visible arc is symmetric and $\phi_\pm^{(1)}$ vanishes by parity, so the limit corrections are second order there; away from a symmetry plane they enter at first order through Eq.~\eqref{eq:leibniz}.
+
+\section{Convergence and applicability to QA and QH stellarators}
+\label{sec:convergence}
+
+The controlling small parameter of the expansion is geometric. The series converges where the denominator expansion does, that is where $\lvert\eps D_1/D_0\rvert<1$ and $\lvert\eps^2 D_2/D_0\rvert<1$. With $\lvert D_1\rvert\sim 2\,\lvert(dR,dZ)\rvert\,\lvert\Del_0\rvert$ and $D_0=\lvert\Del_0\rvert^2$, the binding ratio is
+\begin{equation}
+\eps_{\mathrm{eff}}\sim\frac{\max_\phi\sqrt{dR^2+dZ^2}}{\min_\phi\lvert\Del_0\rvert},
+\label{eq:epseff}
+\end{equation}
+the non-axisymmetric boundary excursion divided by the smallest source-to-wall standoff. The closest approach controls the bound, as expected: a loop that nearly touches the wall is the least forgiving. The truncation error at order $p$ scales as $\eps_{\mathrm{eff}}^{\,p+1}$. For a first wall conformal to the plasma at a modest standoff, $\min\lvert\Del_0\rvert$ is the plasma-wall gap and $\eps_{\mathrm{eff}}$ is the ratio of helical excursion to that gap.
+
+A point of interpretation matters here: $\eps_{\mathrm{eff}}$ is a property of the boundary \emph{geometry}, not of the quasisymmetry of $\lvert B\rvert$. Quasi-axisymmetry and quasi-helical symmetry are statements about the magnitude of the field in Boozer coordinates and govern confinement~\cite{boozer1983,nuhrenberg1988,landreman2022,helander2014}; a QA configuration is not necessarily geometrically close to axisymmetric. The series is controlled by the actual $n\neq0$ content of $R_{mn},Z_{mn}$, and $\eps_{\mathrm{eff}}$ should be computed from the boundary spectrum of the device at hand rather than inferred from its symmetry class. With that caveat, the practical ordering is clear.
+
+Take quasi-axisymmetric configurations first: they typically have modest geometric excursions and a field that stays close to the axisymmetric (tokamak-like) field. The first benefit is a small $\eps_{\mathrm{eff}}$, so that second order already reaches accuracy comparable to the residual nonuniformity reported in Ref.~\cite{schwartz2025} (below about $1.5\%$ in its uniform-NWL examples) for $\eps_{\mathrm{eff}}\lesssim0.15$. The second benefit is specific to the polarized kernels: a near-axisymmetric field makes the field-direction ripple $\bperp$ in Eq.~\eqref{eq:Bexpand} small, so the polarized series converges as quickly as the isotropic one. For QA, carrying $g^{(0)}+g^{(1)}+g^{(2)}$ is generally sufficient.
+
+Quasi-helically-symmetric configurations are more demanding, carrying larger $n\neq0$ geometric shaping, a substantial helical excursion at the field period, and an intentional helical variation of $\lvert B\rvert$ that makes $\bperp$ non-negligible. Two routes remain. First, retain higher orders: the series still converges for $\eps_{\mathrm{eff}}<1$, and $g^{(3)}$ extends accuracy at the cost of longer but still closed-form expressions generated by the same recursions. Second, and robustly for strongly shaped cases, keep the integrand analytic and perform only the single residual toroidal quadrature numerically. This is Lion's regime in cost~\cite{lion2022}, but with a decisive difference: because the integrand of Eq.~\eqref{eq:g} is an explicit, differentiable function of all design parameters, the parameter gradients $\partial/\partial(\cdot)$ are retained for automatic differentiation even when the $\phi$ integral is evaluated by quadrature. One therefore keeps exact optimization gradients in the strongly 3D limit, which a black-box Monte Carlo or numerical NWL sweep does not provide.
+
+Two limits frame the role of the result. The expansion is asymptotic in $\eps_{\mathrm{eff}}$ and, like Ref.~\cite{schwartz2025}, omits neutron scattering: it is a first-flight wall load. Final volumetric heating and blanket analysis require a transport code such as OpenMC or MCNP~\cite{romano2015}, which add the scattered and multiplied contributions absent here. The relationship runs both ways. Because the analytic kernel is exact in the free-streaming limit, it is the quantity a Monte Carlo neutronics calculation with a polarized source must reproduce, per wall patch and per polarization mode, in its uncollided (first-flight) tally. It therefore serves as an independent benchmark for the source sampling, the polarized angular distribution, and the line-of-sight geometry of such a code, isolating those elements from transport and scattering before the fully collided wall load is trusted. The analytic result is fast and differentiable for scoping and shape-and-polarization optimization; the Monte Carlo supplies the scattered contribution and the final fidelity. The two are complementary calculations of the same polarized wall load.
+
+\section{Assembling the full plasma load and consequences for optimization}
+\label{sec:assembly}
+
+The NWL at a patch from the full plasma is the reaction-rate-weighted sum of single-loop intensities,
+\begin{equation}
+Q_{\NWL}(\rw)\ \propto\ \sum_{\text{loops}} W(\rho,\vartheta)\;g\big(\rho,\vartheta;\,\rw\big),
+\label{eq:assembly}
+\end{equation}
+with $W$ set by the local fusion reactivity and the quadrature weights on the $(\rho,\vartheta)$ grid. This mirrors the axisymmetric construction in Ref.~\cite{schwartz2025}, where a tokamak-like source is built from filaments with weights and field directions taken from a DESC equilibrium~\cite{desc2023}; the same equilibrium furnishes the per-loop boundary harmonics, the angled-field angles $(\alpha,\beta)$, and the field-direction ripple $\bperp$ for a stellarator. The toroidal integral, the only part that was three-dimensional and previously numerical~\cite{lion2022}, is now done analytically per loop, leaving a cheap two-dimensional quadrature over closed-form, differentiable kernels.
+
+Because the full load~\eqref{eq:assembly} is differentiable in the boundary harmonics and in the polarization mix, the uniform-NWL optimization demonstrated for axisymmetric shells in Ref.~\cite{schwartz2025} extends directly to stellarators. One can co-optimize the three-dimensional first-wall shape and the spin-polarization mode for a flat NWL with exact gradients, to the working order in non-axisymmetry, including the lower load that the B/C modes place on inboard and high-curvature regions. This is a genuine extension of those examples to QA and QH geometry rather than a recomputation of the axisymmetric case.
+
+\section{Implementation and numerical validation}
+\label{sec:validation}
+
+We implemented the full series inside the \texttt{anarr\'ima} package and validated it computationally. The base-integral engine---the seeds $\Ja{\pm1/2}$ routed through the existing Carlson $R_F$/$R_D$ layer, the master recursion~\eqref{eq:Jrec}, the harmonic recursion~\eqref{eq:Crec}, the elementary sine integrals~\eqref{eq:Sk}, and the $h$-derivative closures~\eqref{eq:hderiv}---is a pure module with no geometry; the kernel assembly~\eqref{eq:g0}--\eqref{eq:gc2} contracts the Fourier-expanded numerators against it, and a device driver sums weighted loops into per-patch NWL maps. Everything is JAX, just-in-time compilable, and differentiable in both modes; forward- and reverse-mode gradients with respect to $(p,z,r,\psi,\alpha,\beta)$ and the boundary harmonics agree with one another to $3\times10^{-12}$, and the analytic $h$-derivative closures~\eqref{eq:hderiv} agree with automatic differentiation to machine precision, confirming the second, independent generator of the elliptic tower of Sec.~\ref{sec:reduction}.
+
+The first checks are unit tests on the base integrals. Against \texttt{scipy} direct quadrature and incomplete elliptic integrals we confirmed, to machine precision on a deliberately asymmetric visible arc and an off-midplane loop: the seeds $\Ja{\pm1/2}$ ($2\times10^{-15}$); the master recursion across half-integer order ($6\times10^{-14}$); the cosine and sine base integrals $\Ck{k}{s}$, $\Sk{k}{s}$ ($\sim10^{-12}$); the harmonic recursion~\eqref{eq:Crec} as an identity ($9\times10^{-12}$); the parity $\Sk{k}{s}=0$ on a symmetric arc (exact); the $h$-derivative closures versus autodiff ($\sim10^{-14}$); the leading intensities $g^{(0)}_{\mathrm{iso}}$ and $g_c^{(0)}$ versus quadrature of the fully non-expanded loop integral ($\sim4\times10^{-16}$); and the corrections $g^{(1)}_{\mathrm{iso}}$, $g^{(2)}_{\mathrm{iso}}$, $g_c^{(1)}$, $g_c^{(2)}$ versus first and second finite differences of that integral (limited only by the difference step). The worked single-harmonic example of Appendix~\ref{app:worked}, including the $\Ck{k}{s}/\Sk{k}{s}$ band coefficients, is reproduced exactly. Crucially, with $dR=dZ=0$ on a symmetric arc the assembled $G_{\mathrm{iso}},G_c,G_A,G_B$ reduce to the axisymmetric kernels to $2\times10^{-16}$, the regression that the ripple module is strictly additive.
+
+The remaining cross-checks need a concrete test case. They use a quasi-axisymmetric boundary with $\Nfp=2$, unit major radius, minor radius $\approx0.17$, and the leading non-axisymmetric harmonics ($R_{01},Z_{01}\!\approx\!0.04$, $R_{11},Z_{11}\!\approx\!0.03$) that give it a gently rotating-elliptical cross section; Fig.~\ref{fig:xsection} shows the cross section at three toroidal angles spanning a half field period. The first wall is taken conformal to the boundary at a uniform poloidal gap of $0.16$, and the source is a set of constant-$(\rho,\vartheta)$ filaments on scaled flux surfaces weighted by a model emissivity $W(\rho)\propto\rho^2$, with a model field carrying a mean pitch and a field-period direction ripple. For this configuration the controlling parameter~\eqref{eq:epseff} is $\eps_{\mathrm{eff}}\approx0.15$ at the outboard midplane; because $\eps_{\mathrm{eff}}$ is local, it peaks where the standoff is smallest (the inboard wall) and is a property of the boundary geometry, not of the $\lvert B\rvert$ quasisymmetry.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.52\linewidth]{figures/plasma_xsection_QA.pdf}
+\caption{Poloidal cross section of the quasi-axisymmetric test boundary ($\Nfp=2$) at three toroidal angles over a half field period. The cross section rotates and reshapes with $\phi$---the field-period non-axisymmetry that makes each source loop non-planar and the toroidal integral hyperelliptic. The expansion of this paper restores closed form by treating this excursion perturbatively. Figure~\ref{fig:wall3d} shows the corresponding full three-dimensional boundary as a first wall, colored by the neutron wall load.}
+\label{fig:xsection}
+\end{figure}
+
+The first quantitative test is the convergence rate. Holding the visible arc fixed to isolate the interior series, Fig.~\ref{fig:convergence} plots the truncation error of the partial sums against the excursion amplitude $\eps$ for a representative multi-harmonic loop, for all three modes. The fitted log--log slopes are $1.00,2.03,3.01$ for the isotropic series and $1.00,2.07,3.01$ and $1.00,1.96,3.01$ for the A and B/C modes, confirming the $\eps^{\,p+1}$ law. Both the isotropic ($g^{(0)}+g^{(1)}+g^{(2)}$) and the polarized ($g_c^{(0)}+g_c^{(1)}+g_c^{(2)}$) series reach third order; the polarized modes reach it only with the field-normalization term~\eqref{eq:btilde2} included, as derived above.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_convergence.pdf}
+\caption{Tier-2 convergence: truncation error of the partial sums versus the excursion amplitude $\eps$, on log--log axes, for the isotropic, A ($\sin^2\theta$), and B/C ($\tfrac14+\tfrac34\cos^2\theta$) modes (dotted lines are reference slopes). Each retained order removes one power of $\eps$; all three modes attain third order. The polarized panels carry $g_c^{(0)},\,g_c^{(0)}{+}g_c^{(1)},\,g_c^{(0)}{+}g_c^{(1)}{+}g_c^{(2)}$ with the isotropic part held at full order.}
+\label{fig:convergence}
+\end{figure}
+
+The decisive test compares the analytic series against a direct numerical evaluation of the free-streaming wall load. Two numerical references are available and coincide. The \emph{ground truth} is a fine ($384$-node) toroidal Gauss--Legendre quadrature of the fully non-expanded integrand of Eq.~\eqref{eq:g}---no $\eps$ expansion, exact $\mathcal{J},\mathcal{N},D,\Bhat$. The \emph{hybrid} is the same exact integrand evaluated by a coarser quadrature but kept as an explicit, differentiable function of the design parameters, i.e.\ the fallback of Sec.~\ref{sec:convergence} that retains automatic-differentiation gradients while doing the single $\phi$ integral numerically. On this configuration the hybrid reproduces the ground truth to $\sim2\times10^{-9}$, so we plot it as the solid reference in Fig.~\ref{fig:nwlmap} and compare the truncated analytic series against it. Summed over the source onto a poloidal ring of wall patches, the order-$(2,2)$ analytic series matches the ground truth to about one percent on the isotropic mode and a few percent on the polarized modes at $\eps_{\mathrm{eff}}=0.15$, with the A and B/C errors now tracking the isotropic error rather than exceeding it---the payoff of the second-order polarized term. As an independent check of the filamentary decomposition itself, the thin-tube limit of the full three-dimensional volume integral of the free-streaming kernel reproduces the one-dimensional loop integral, the ratio approaching unity with an $O(a^2)$ curvature correction in the tube radius $a$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_nwl_map_QA-high.pdf}
+\caption{Tier-3 free-streaming cross-check on the quasi-axisymmetric configuration ($\eps_{\mathrm{eff}}=0.15$): NWL around the wall versus poloidal patch angle $\vartheta_w$, per mode. The solid curve is the hybrid (a single numerical toroidal quadrature of the exact, non-expanded, differentiable integrand), which is numerically indistinguishable from a fine direct quadrature of the free-streaming ground truth ($\sim10^{-9}$ relative); the dashed curve with markers is the truncated analytic series ($g^{(0)}{+}g^{(1)}{+}g^{(2)}$ for isotropic, $g_c^{(0)}{+}g_c^{(1)}{+}g_c^{(2)}$ for cos$^2$). The series reproduces the free-streaming load to $\sim1\%$ across all three polarization modes.}
+\label{fig:nwlmap}
+\end{figure}
+
+The tests so far held the visible arc fixed. Away from a symmetry plane it moves with the ripple, and the Leibniz boundary term~\eqref{eq:leibniz} enters at first order. We checked it on a model in which the toroidal arc is limited by the sightline grazing a central column (so the leading integrand is nonzero at the limit and the correction is nontrivial), with the two ends moving by different amounts. Against ground-truth quadrature over the exact moving arc, the interior series alone carries an $O(\eps)$ limit-motion error (slope $1$), while adding the Leibniz term~\eqref{eq:leibniz} removes it (slope $\ge2$, here $\approx3$), reducing the error by nearly four orders of magnitude over the resolved range (Fig.~\ref{fig:leibniz}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.52\linewidth]{figures/leibniz_correction.pdf}
+\caption{Limit-motion (Leibniz) correction for an off-symmetry-plane patch with a moving visible arc. The interior series with the arc held fixed carries an $O(\eps)$ error from the unaccounted arc motion (squares, slope $1$); adding the first-order boundary term~\eqref{eq:leibniz} removes it (circles), restoring the higher-order convergence of the interior expansion (dotted reference slopes $1$ and $2$).}
+\label{fig:leibniz}
+\end{figure}
+
+The closed forms exist to be optimized against, and a final test confirms that the gradients deliver. Because the per-patch NWL is an explicit, automatically differentiable function of both the polarization fractions $(a,b,c)$ and the wall geometry, a gradient-based optimizer can flatten the load. Fig.~\ref{fig:optimize} shows the simplest instance: holding the wall fixed and minimizing the load non-uniformity over the polarization simplex with exact gradients reshapes the NWL because the A and B/C modes emit differently relative to the local field. On a poloidal ring this lowers the squared coefficient of variation by a factor of about six, selecting an A-mode-rich mix; swept over the entire toroidal $\times$ poloidal wall the gain from polarization alone is smaller (a factor of about two; Fig.~\ref{fig:wall3d}), because a single global polarization cannot flatten a load that varies in both angles---which is precisely why the wall shape is the larger lever. That the wall-shape gradient is also exact, and lands in the same elliptic family by the closure of Sec.~\ref{sec:reduction}, we verified directly: $\partial(\mathrm{NWL})/\partial a_{\mathrm{wall}}$ matches a finite difference to $2\times10^{-10}$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.52\linewidth]{figures/optimize_uniform_nwl.pdf}
+\caption{Polarization optimization for a uniform NWL on a poloidal ring of the quasi-axisymmetric wall, at fixed wall shape. Minimizing the load non-uniformity over the spin-polarization simplex with exact gradients flattens the profile (here the squared coefficient of variation falls about sixfold). The A and B/C modes load the wall differently relative to the local field, so the polarization mix is a free knob for shaping the neutron load.}
+\label{fig:optimize}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/nwl_wall_3d.pdf}
+\caption{Three-dimensional first wall, conformal to the quasi-axisymmetric boundary, colored by the normalized free-streaming NWL for an unpolarized fuel mix (left) and the polarization-optimized mix (right). The analytic series is evaluated over the entire toroidal $\times$ poloidal patch grid. A single global polarization choice reduces the wall-wide non-uniformity only modestly, motivating co-optimization of the wall shape together with the polarization.}
+\label{fig:wall3d}
+\end{figure}
+
+Three results stand out from these validations. First, the expansion is not merely smooth but \emph{closed}: every validated quantity, including the optimization gradient, reduces to the same incomplete elliptic integrals, so a gradient costs no special-function evaluations beyond those the series already requires. Second, the second-order polarized correction is subtle: the unit-norm constraint on $\Bhat$ contributes a field term~\eqref{eq:btilde2} that the naive expansion omits and that is required for the A and B/C modes to converge at the same third order as the isotropic series. Third, the hybrid single-quadrature fallback is not a defeat but a graceful continuation: it reproduces the free-streaming ground truth to nine digits while retaining the exact parameter gradients, so the same code spans the convergent regime and the strongly-shaped regime without losing differentiability.
+
+\section{Summary}
+\label{sec:summary}
+
+The exact analytic NWL reduction of Ref.~\cite{schwartz2025} does not survive a genuine stellarator, because a non-planar source loop makes the toroidal period integral hyperelliptic. The obstruction is removed perturbatively. Expanding each loop in its field-period excursion produces a strict series whose leading order is the axisymmetric kernel exactly and whose every correction is closed form in the same incomplete elliptic integrals $F$ and $E$ and is fully differentiable. The reduction rests on a two-term recursion in toroidal harmonic order, Eq.~\eqref{eq:Crec}, seeded by the axisymmetric base integrals through a master recursion in elliptic order, Eq.~\eqref{eq:Jrec}, with elementary sine contributions and no integral of the third kind. The visible arc may be asymmetric, and a fully three-dimensional wall normal adds only elementary terms. The polarized A and B/C kernels require one further inverse power of the distance and retain the $\sin^2\theta+\cos^2\theta$ cross-check order by order. We give the first- and second-order corrections explicitly for both the isotropic kernel (closing at $s=\tfrac72$) and the polarized kernels (closing at $s=\tfrac92$); the second-order polarized term requires a field term, beyond the naive expansion, that enforces $\lvert\Bhat\rvert=1$ to second order, without which the polarized modes lose one order of convergence. The partial sums converge as successive powers of the excursion amplitude. Differentiation in the geometry variable maps the integral family into itself, which both furnishes an independent generator of the elliptic tower that cross-checks the algebraic recursion and makes the optimization gradient a member of the same closed family rather than merely a smooth function of it. The series is controlled by the geometric non-axisymmetry of the boundary, distinct from the quasisymmetry quality of $\lvert B\rvert$; it converges quickly for quasi-axisymmetric devices and, for strongly shaped boundaries, degrades gracefully to a single analytic-integrand quadrature that still retains exact optimization gradients. We implemented the full series as a JAX-differentiable module and validated it: every reduction, recursion, and correction matches direct quadrature or finite differences to machine precision; the partial sums follow the predicted $\eps_{\mathrm{eff}}^{\,p+1}$ law; and the assembled load reproduces a direct free-streaming cross-check on a quasi-axisymmetric configuration, for the isotropic and both polarized modes, to about one percent at $\eps_{\mathrm{eff}}\approx0.15$.
+
+Several directions remain open. The most immediate is the design payoff the differentiability exists for: co-optimizing the three-dimensional first-wall shape \emph{together with} the spin-polarization mix for a uniform NWL. Our optimization tests treat the two levers separately---polarization at fixed wall, and the wall-shape gradient verified in isolation---but the joint problem is the goal, and the wall shape is the larger lever (Sec.~\ref{sec:validation}). The wall-shape gradient is already exact and, by the closure of Sec.~\ref{sec:reduction}, lands in the same elliptic family the series spans; it can therefore be supplied analytically through a hand-written derivative rule for the base integrals rather than by differentiating through the recursions, which both makes the gradient cost no special-function evaluations beyond the forward pass and removes the one performance obstacle we encountered. With the wall harmonics and the polarization fractions as joint design variables, subject to convexity and minimum-gap constraints, the uniform-NWL optimization of Ref.~\cite{schwartz2025} then carries over directly to stellarators with exact gradients.
+
+The same machinery should extend to quasi-helically-symmetric (QH) and quasi-isodynamic (QI) configurations, which carry larger field-period shaping and, for QH, a non-negligible field-direction ripple $\bperp$. There the controlling parameter $\eps_{\mathrm{eff}}$ is larger and, being local, peaks on the inboard wall where the source-to-wall standoff is smallest. An initial look at a strongly shaped quasi-helical boundary shows the expected failure mode of the truncated series in that regime: where the local $\eps_{\mathrm{eff}}$ approaches and exceeds unity, the order-two series develops a characteristic spurious structure---overestimating the load in the inboard valley (near $\vartheta_w=\pi$) and underestimating it at the outboard peaks, turning a single-valley NWL profile into a spurious double-peaked one---whereas the differentiable hybrid quadrature reproduces the free-streaming ground truth throughout. Extending the analysis to QH and QI therefore means carrying higher analytic orders where $\eps_{\mathrm{eff}}<1$ and falling back to the hybrid where it does not; mapping that boundary, and validating against pulled QH and QI equilibria, is natural future work.
+
+Beyond that, the directions identified in Ref.~\cite{schwartz2025} carry over. Non-convex cross sections, mirror end cells, and multiply connected cross sections occlude part of a source loop and split the visible region, requiring two or more evaluations of the present kernels with appropriately determined limits; the kernels are unchanged and only the visibility algorithm must be extended. The same perturbative reduction should also apply to higher angular moments of the impinging neutron distribution, should those be needed for directional blanket design.
+
+\appendix
+
+\section{Elliptic integrals}
+\label{app:elliptic}
+
+The incomplete elliptic integrals of the first and second kinds are
+\begin{equation}
+\Fell(\varphi,m)=\int_0^{\varphi}\big(1-m\sin^2 x\big)^{-1/2}\dd x,\qquad
+\Eell(\varphi,m)=\int_0^{\varphi}\big(1-m\sin^2 x\big)^{1/2}\dd x,
+\end{equation}
+with parameter convention $m=k^2$. The complete integrals are $K(m)=\Fell(\pi/2,m)$ and $E(m)=\Eell(\pi/2,m)$. The Carlson symmetric forms $R_F$ and $R_D$~\cite{carlson1979,carlson1995} relate to the Legendre forms by
+\begin{align}
+\Fell(\varphi,m)&=\sin\varphi\,R_F(\cos^2\varphi,\,1-m\sin^2\varphi,\,1),\\
+\Eell(\varphi,m)&=\Fell(\varphi,m)-\tfrac{m}{3}\sin^3\varphi\,R_D(\cos^2\varphi,\,1-m\sin^2\varphi,\,1),
+\end{align}
+and are the forms implemented for automatic differentiation in \texttt{anarr\'ima}. For the asymmetric visible arcs of a stellarator the integrals are evaluated at the two amplitudes $\phi_+/2$ and $\phi_-/2$ and differenced.
+
+\section{Master recursion for the inverse-power integrals}
+\label{app:master}
+
+With $P\equiv h-\cos\phi$ and $P'=\sin\phi$,
+\begin{equation}
+\frac{\dd}{\dd\phi}\big[\sin\phi\,P^{a}\big]
+=\cos\phi\,P^{a}+a\sin^2\phi\,P^{a-1}.
+\end{equation}
+Using $\cos\phi=h-P$ and $\sin^2\phi=1-(h-P)^2=1-h^2+2hP-P^2$,
+\begin{equation}
+\frac{\dd}{\dd\phi}\big[\sin\phi\,P^{a}\big]
+=-(1+a)P^{a+1}+h(1+2a)P^{a}+a(1-h^2)P^{a-1}.
+\end{equation}
+Integrating over $[\phi_-,\phi_+]$ and solving for $\Ja{a+1}=\int P^{a+1}\dd\phi$ gives Eq.~\eqref{eq:Jrec}. Seeded by Eqs.~\eqref{eq:seedF}--\eqref{eq:seedE}, the recursion produces $\Ja{a}$ for all half-integer $a$, hence the base cases $\Ck{0}{s}=\Ja{-s}$ for $s\in\{\tfrac12,\tfrac32,\tfrac52,\tfrac72,\tfrac92\}$. The case $a=-\tfrac12$, where $1+2a=0$, reproduces the structure of the lowest tabulated integral of Ref.~\cite{schwartz2025}, in which the $3/2$-power integral carries an $E$ term and a boundary term but no $F$ term.
+
+\section{Worked first-order example}
+\label{app:worked}
+
+Take a single stellarator-symmetric harmonic, $dR(\phi)=a_1\cos\Nfp\phi$ and $dZ(\phi)=b_1\sin\Nfp\phi$, and a horizontal patch normal, $\psi=0$. Substituting into Eq.~\eqref{eq:g1iso} and expanding every product of harmonics into single harmonics through
+\begin{align}
+\cos\Nfp\phi\,\cos\phi&=\tfrac12\big[\cos(\Nfp{+}1)\phi+\cos(\Nfp{-}1)\phi\big],\\
+\cos\Nfp\phi\,\sin\phi&=\tfrac12\big[\sin(\Nfp{+}1)\phi-\sin(\Nfp{-}1)\phi\big],
+\end{align}
+and similar identities, the first-order isotropic correction becomes a finite combination of the base integrals~\eqref{eq:CkSk}:
+\begin{align}
+g^{(1)}_{\mathrm{iso}}\big|_{\psi=0}
+&=\frac{a_1}{(2pr)^{3/2}}\Big[p\big(\Ck{\Nfp+1}{3/2}+\Ck{\Nfp-1}{3/2}\big)-r\,\Ck{\Nfp}{3/2}\Big] \nonumber\\
+&\quad-\frac{3p}{(2pr)^{5/2}}\Bigg[\,\sum_{k\in\{\Nfp-2,\dots,\Nfp+2\}}\!\!\gamma_k\,\Ck{k}{5/2}
+\;+\!\!\sum_{k\in\{\Nfp-1,\Nfp,\Nfp+1\}}\!\!\sigma_k\,\Sk{k}{5/2}\Bigg],
+\label{eq:worked}
+\end{align}
+where the coefficients $\gamma_k$ are linear in $a_1$ (from the $dR$ terms) and the $\sigma_k$ are linear in $b_1$ (from the $z\,dZ$ term),
+\begin{equation}
+\gamma_{\Nfp\pm2}=-\tfrac{1}{4}a_1 pr,\qquad
+\gamma_{\Nfp\pm1}=\tfrac{1}{2}a_1\big(p^2+r^2\big),\qquad
+\gamma_{\Nfp}=-\tfrac{3}{2}a_1 pr,
+\end{equation}
+\begin{equation}
+\sigma_{\Nfp\pm1}=\tfrac{1}{2}z\,b_1\,p,\qquad
+\sigma_{\Nfp}=-z\,b_1\,r .
+\end{equation}
+The band is symmetric in $k$ about $\Nfp$, as it must be for a single real harmonic. We verified Eq.~\eqref{eq:worked} with these coefficients against direct quadrature of Eq.~\eqref{eq:g1iso} to machine precision. The structural content is that the $k$-content is confined to the band $\Nfp-2\le k\le \Nfp+2$, the cosine integrals carry the elliptic part and the sine integrals are elementary, and each $\Ck{k}{s}$ reduces to $F$ and $E$ at amplitudes $\phi_\pm/2$ and parameter $m=-2/(h-1)$ by the recursions of Appendix~\ref{app:master} and Sec.~\ref{sec:reduction}. The vertical-shift ripple $z\,dZ$ contributes only the elementary sine integrals at this order, so its entire contribution is closed form without elliptic functions. The same procedure applied to a sum of harmonics produces a sum of such bands, one per $n$, and the polarized kernels broaden each band by the harmonic content of $(\Bhat\cdot\Del)^2$ and raise the elliptic order to $s=\tfrac72$.
+
+\begin{thebibliography}{99}
+
+\bibitem{schwartz2025}
+J.~A.~Schwartz,
+\emph{Analytic neutron wall loading from spin-polarized fusion in axisymmetric geometries},
+arXiv:2507.11758 [physics.plasm-ph] (2025).
+
+\bibitem{lion2022}
+J.~Lion, F.~Warmer, and H.~Wang,
+\emph{A deterministic method for the fast evaluation and optimisation of the 3D neutron wall load for generic stellarator configurations},
+Nucl.\ Fusion \textbf{62}, 076040 (2022).
+
+\bibitem{parisi2024}
+J.~F.~Parisi, A.~Diallo, and J.~A.~Schwartz,
+\emph{Simultaneous enhancement of tritium burn efficiency and fusion power with low-tritium spin-polarized fuel},
+Nucl.\ Fusion \textbf{64}, 126019 (2024).
+
+\bibitem{kulsrud1982}
+R.~M.~Kulsrud, H.~P.~Furth, E.~J.~Valeo, and M.~Goldhaber,
+\emph{Fusion reactor plasmas with polarized nuclei},
+Phys.\ Rev.\ Lett.\ \textbf{49}, 1248 (1982).
+
+\bibitem{carlson1979}
+B.~C.~Carlson,
+\emph{Computing elliptic integrals by duplication},
+Numer.\ Math.\ \textbf{33}, 1 (1979).
+
+\bibitem{carlson1995}
+B.~C.~Carlson,
+\emph{Numerical computation of real or complex elliptic integrals},
+Numer.\ Algorithms \textbf{10}, 13 (1995).
+
+\bibitem{desc2023}
+D.~Panici, R.~Conlin, D.~W.~Dudt, K.~Unalmis, and E.~Kolemen,
+\emph{The DESC stellarator code suite. Part 1. Quick and accurate equilibria computations},
+J.\ Plasma Phys.\ \textbf{89}, 955890303 (2023).
+
+\bibitem{romano2015}
+P.~K.~Romano, N.~E.~Horelik, B.~R.~Herman, A.~G.~Nelson, B.~Forget, and K.~Smith,
+\emph{OpenMC: A state-of-the-art Monte Carlo code for research and development},
+Ann.\ Nucl.\ Energy \textbf{82}, 90 (2015).
+
+\bibitem{boozer1983}
+A.~H.~Boozer,
+\emph{Transport and isomorphic equilibria},
+Phys.\ Fluids \textbf{26}, 1288 (1983).
+
+\bibitem{nuhrenberg1988}
+J.~N\"uhrenberg and R.~Zille,
+\emph{Quasi-helically symmetric toroidal stellarators},
+Phys.\ Lett.\ A \textbf{129}, 113 (1988).
+
+\bibitem{landreman2022}
+M.~Landreman and E.~Paul,
+\emph{Magnetic fields with precise quasisymmetry for plasma confinement},
+Phys.\ Rev.\ Lett.\ \textbf{128}, 035001 (2022).
+
+\bibitem{helander2014}
+P.~Helander,
+\emph{Theory of plasma confinement in non-axisymmetric magnetic fields},
+Rep.\ Prog.\ Phys.\ \textbf{77}, 087001 (2014).
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" name="W_firstwall">
+      <density value="19.3" units="g/cm3"/>
+      <nuclide name="W182" wo="26.5"/>
+      <nuclide name="W183" wo="14.31"/>
+      <nuclide name="W184" wo="30.64"/>
+      <nuclide name="W186" wo="28.43"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" name="plasma_void" material="void" region="-1" universe="1"/>
+    <cell id="2" name="first_wall" material="1" region="1 -2 3 -4" universe="1"/>
+    <cell id="3" name="outside_void" material="void" region="2 | -3 | 4" universe="1"/>
+    <surface id="1" name="inner_boundary" type="z-cylinder" boundary="vacuum" coeffs="0.0 0.0 0.4"/>
+    <surface id="2" name="outer_boundary" type="z-cylinder" boundary="vacuum" coeffs="0.0 0.0 1.6"/>
+    <surface id="3" name="floor" type="z-plane" boundary="vacuum" coeffs="-0.6"/>
+    <surface id="4" name="ceiling" type="z-plane" boundary="vacuum" coeffs="0.6"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>10000</particles>
+    <batches>20</batches>
+    <inactive>0</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>0.7 0 0</parameters>
+      </space>
+      <angle type="isotropic"/>
+      <energy type="discrete">
+        <parameters>14080000.0 1.0</parameters>
+      </energy>
+    </source>
+  </settings>
+  <tallies>
+    <mesh id="1" type="cylindrical">
+      <r_grid>0.4 0.44000000000000006 0.48000000000000004 0.52 0.56 0.6000000000000001 0.6400000000000001 0.68 0.7200000000000001 0.7600000000000001 0.8 0.8400000000000001 0.8800000000000001 0.9200000000000002 0.9600000000000001 1.0 1.04 1.08 1.12 1.1600000000000001 1.2000000000000002 1.2400000000000002 1.2800000000000002 1.3200000000000003 1.3600000000000003 1.4000000000000004 1.4400000000000004 1.4800000000000004 1.52 1.56 1.6</r_grid>
+      <phi_grid>0.0 6.283185307179586</phi_grid>
+      <z_grid>-0.6 -0.5599999999999999 -0.52 -0.48 -0.43999999999999995 -0.39999999999999997 -0.36 -0.31999999999999995 -0.27999999999999997 -0.24 -0.19999999999999996 -0.15999999999999998 -0.12 -0.07999999999999996 -0.039999999999999925 0.0 0.040000000000000036 0.08000000000000007 0.12 0.16000000000000003 0.20000000000000007 0.24 0.28 0.32000000000000006 0.36 0.4 0.44000000000000006 0.4800000000000001 0.5200000000000001 0.5599999999999999 0.6</z_grid>
+      <origin>0.0 0.0 0.0</origin>
+    </mesh>
+    <filter id="1" type="meshsurface">
+      <bins>1</bins>
+    </filter>
+    <tally id="1" name="wall_current">
+      <filters>1</filters>
+      <scores>current</scores>
+    </tally>
+  </tallies>
+</model>
