@@ -12,10 +12,13 @@ part and a blanket part.
 
 ## eta definition
 Single source of truth in EXPERIMENTAL_DESIGN.md and analyze_sweep.py's header.
-eta_source = delta_free/delta_free(anchor), from the NEAR-SOURCE first-wall directional
-contrast (free stream; low variance, G4); eta_coil = delta_scatter/delta_scatter(anchor),
-from the deep coil fast flux (scatter). A = eta_coil/eta_source. Anchor = highest-C config
-(eta_*(anchor)=1). The PARITY-CORRECT predictor is the nematic order S_phi=(3*lambda_phi-1)/2,
+eta_source = delta_free/delta_free(anchor), from the FREE-STREAMING coil fast flux (clean +
+directional in the near-void limit: perp/parallel give opposite signs, ~0.2% error at
+production); eta_coil = delta_scatter/delta_scatter(anchor), from the same coil WITH scattering.
+A = eta_coil/eta_source. Anchor = highest-C config (eta_*(anchor)=1). (The near-source wall_dir
+contrast is saved as a DIAGNOSTIC; the TRUE inboard/outboard first-wall CURRENT NWL -- cross-
+checked vs anarrima's irrad_{inboard,outboard}_{A,B} -- is the planned Schwartz-comparison
+observable, phase B.) The PARITY-CORRECT predictor is the nematic order S_phi=(3*lambda_phi-1)/2,
 NOT the first-moment C (C is a proxy, valid on cap-shaped fields where lambda_phi~C^2);
 analyze_sweep fits eta against BOTH and reports the winner. See THEORY.md (parity argument).
 
