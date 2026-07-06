@@ -220,23 +220,29 @@ def _attach_weight_windows(model, mats):
 
 def deltas_from_vals(vals):
     """Directional steering deltas, polarized vs unpolarized (see docs/EXPERIMENTAL_DESIGN.md):
-      delta_free_<mode>    := near-source WALL directional-contrast DIFFERENCE (free stream)
-                              -> the PRIMARY, low-noise eta_source (parity-correct S_phi test).
-      delta_scatter_<mode> := deep COIL_FAST FRACTIONAL change (scatter stream) -> eta_coil.
-    Every raw (observable, stream, mode) value is also stored under 'observables_raw' so no
-    output is lost -- results are pulled back to the Mac and re-analyzed there."""
+      delta_free_<mode>    := FREE-STREAM coil_fast FRACTIONAL change -> the PRIMARY eta_source.
+                              In the near-void (free) limit the coil is unshielded, so it is
+                              well-resolved (~0.2% at production) AND directional (perp/parallel
+                              give opposite signs) -- the low-noise, correctly-signed observable.
+      delta_scatter_<mode> := deep coil_fast FRACTIONAL change (scatter stream) -> eta_coil.
+    The near-source wall_dir flux-contrast is kept in 'observables_raw' as a DIAGNOSTIC only:
+    a volumetric flux band does not cleanly reproduce Schwartz's inboard/outboard straddle. The
+    TRUE-NWL inboard/outboard first-wall CURRENT (planned, cross-checked vs anarrima) is the
+    analytic-comparison observable. Every raw (observable, stream, mode) value is stored under
+    'observables_raw' so nothing is lost when results are pulled back to the Mac."""
     out = {}
 
-    # PRIMARY eta_source: the near-source wall CONTRAST is already self-normalizing
-    # (an in/out asymmetry in [-1,1]), so its steering signal is the DIFFERENCE from the
-    # unpolarized load, not a fractional change.
-    uw = vals.get(("free", "unpolarized"), {}).get("wall_dir")
-    if uw and np.isfinite(uw[0]):
+    # PRIMARY eta_source: FREE-STREAM coil_fast fractional change (clean + directional in the
+    # near-void limit; the wall_dir contrast stays in observables_raw as a diagnostic).
+    uf = vals.get(("free", "unpolarized"), {}).get("coil_fast")
+    if uf and np.isfinite(uf[0]) and uf[0] != 0:
         for mode in POL_MODES:
-            p = vals.get(("free", mode), {}).get("wall_dir")
+            p = vals.get(("free", mode), {}).get("coil_fast")
             if p and np.isfinite(p[0]):
-                out[f"delta_free_{mode}"] = float(p[0] - uw[0])
-                out[f"delta_free_{mode}_sd"] = float(np.hypot(p[1], uw[1]))
+                out[f"delta_free_{mode}"] = float((p[0] - uf[0]) / uf[0])
+                out[f"delta_free_{mode}_sd"] = float(
+                    abs(p[0] / uf[0]) * np.hypot(p[1] / p[0] if p[0] else 0.0,
+                                                 uf[1] / uf[0]))
 
     # eta_coil: deep coil_fast FRACTIONAL change (scatter stream)
     uc = vals.get(("scatter", "unpolarized"), {}).get("coil_fast")

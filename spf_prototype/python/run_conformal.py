@@ -139,10 +139,15 @@ def build_model(abc, h5m_path, fieldmap_stem, R0_cm, a_cm,
     # contrast in run_ginsburg._wall_directional. Close-in + large solid angle => far
     # lower variance than coil_fast, so this is the low-noise eta_source (coil_fast stays
     # as the deep eta_coil). See docs/EXPERIMENTAL_DESIGN.md.
+    # radial band SYMMETRIC about R0 so the inboard (r<R0) and outboard (r>R0) cells are
+    # geometrically fair and bracket the wall; the OLD [0.3R0, R0+1.5a] span made the
+    # inboard half ~3x wider, sweeping up plasma-hole flux -> a spurious +0.59 inboard
+    # contrast baseline (unphysical vs Schwartz's slight OUTBOARD isotropic bias). G4 fix.
+    r_half = 1.5 * a_cm
     dmesh = openmc.CylindricalMesh(
-        r_grid=np.linspace(0.3 * R0_cm, R0_cm + 1.5 * a_cm, 16),
+        r_grid=np.linspace(max(0.05 * R0_cm, R0_cm - r_half), R0_cm + r_half, 24),
         phi_grid=np.linspace(0.0, 2 * np.pi, 17),
-        z_grid=np.linspace(-1.5 * a_cm, 1.5 * a_cm, 16))
+        z_grid=np.linspace(-1.5 * a_cm, 1.5 * a_cm, 24))
     tdir = openmc.Tally(name="firstwall_dir")
     tdir.filters = [openmc.MeshFilter(dmesh), openmc.EnergyFilter([0.1e6, 20.0e6])]
     tdir.scores = ["flux"]
