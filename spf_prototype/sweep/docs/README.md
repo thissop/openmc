@@ -12,9 +12,12 @@ part and a blanket part.
 
 ## eta definition
 Single source of truth in EXPERIMENTAL_DESIGN.md and analyze_sweep.py's header.
-delta_stream = (coil_parallel - coil_unpolarized)/coil_unpolarized;
-eta_source = delta_free/delta_free(anchor); eta_coil = delta_scatter/delta_scatter(anchor);
-A = eta_coil/eta_source. The anchor is the highest-C config (eta_*(anchor)=1).
+eta_source = delta_free/delta_free(anchor), from the NEAR-SOURCE first-wall directional
+contrast (free stream; low variance, G4); eta_coil = delta_scatter/delta_scatter(anchor),
+from the deep coil fast flux (scatter). A = eta_coil/eta_source. Anchor = highest-C config
+(eta_*(anchor)=1). The PARITY-CORRECT predictor is the nematic order S_phi=(3*lambda_phi-1)/2,
+NOT the first-moment C (C is a proxy, valid on cap-shaped fields where lambda_phi~C^2);
+analyze_sweep fits eta against BOTH and reports the winner. See THEORY.md (parity argument).
 
 ## Modules (all built; unit-tested locally in seconds)
 - coherence_metrics.py : C, direction tensor, angular std.  DONE.
@@ -22,8 +25,10 @@ A = eta_coil/eta_source. The anchor is the highest-C config (eta_*(anchor)=1).
 - quasr_loader.py      : QUASR coils (simsopt-serial JSON, no simsopt) + boundary + meta.  DONE.
 - field_audit.py       : HARD-GATE unit / div-free / B.n-on-LCFS. DONE.
 - sweep.py             : per-config driver (field->audit->C->geometry->DAGMC->transport->record). DONE.
-- select_configs.py    : compute C for candidates, tile the C axis, emit a manifest. DONE.
-- analyze_sweep.py     : aggregate, fit eta_source(C), universality, A(tau), figures. DONE.
+- select_configs.py    : compute C + S_phi for candidates, tile the axis, class x C
+                         coverage + aliasing/reversal report, --field-source. DONE.
+- analyze_sweep.py     : aggregate, fit eta_source(C) AND eta_source(S_phi), C-vs-S_phi
+                         comparison, universality, A(tau), figures. DONE.
 - sweep.sbatch         : SLURM array on burst. DONE.
 Reused (debugged, from the Ginsburg copy): dagmc_writer.build_from_stls (pymoab-free
 DAGMC), run_conformal.build_model, run_ginsburg._mat_score (array tally reader),
@@ -32,7 +37,7 @@ export_for_plots.py.
 ## Local smoke test (no cluster; runs everything except transport)
 ```
 cd spf_prototype/sweep
-python3 -m pytest tests -q                                  # 24 tests, seconds
+python3 -m pytest tests -q                                  # 36 tests, seconds
 python3 field_audit.py 59509                                # coil-field hard-gate audit
 python3 sweep.py --manifest configs/smoke.json --out /tmp/smoke --force   # field->...->DAGMC->record
 python3 analyze_sweep.py --records <records-with-transport> --out /tmp/an  # (after Ginsburg)
@@ -44,7 +49,7 @@ with C, the audit, tensor metrics, tau, scale, and a valid DAGMC .h5m.
 
 # GINSBURG RUNBOOK (exact commands)
 
-Ginsburg facts (from ../GINSBURG_CLAUDE_HANDOFF.md, ../SETUP_GINSBURG.md): account
+Ginsburg facts (from ../../GINSBURG_CLAUDE_HANDOFF.md, ../../SETUP_GINSBURG.md): account
 `astro`; env `spf-stellarator`; no shared cross sections (download once); LOGIN NODE
 = network only, ALL compute on a compute node / sbatch; the repo root has an
 `openmc/` SOURCE tree that must NOT shadow the conda openmc.
