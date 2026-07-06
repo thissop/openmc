@@ -116,11 +116,18 @@ def audit_coilfield(field, device, ntheta=64, nphi=128, verbose=False):
     bflux["grid_converged"] = bool(
         bflux["value"] > 0 and abs(bflux_coarse["value"] - bflux["value"])
         / max(bflux["value"], 1e-30) < 0.25)
-    checks = [
-        check_unit(field, ipts),
-        check_divergence(field, ipts, h=h, L=minor),
-        bflux,
-    ]
+    checks = [check_unit(field, ipts)]
+    # A solved equilibrium field (EquilibriumField, G3) is divergence-free BY
+    # CONSTRUCTION and its portable map stores only the unit direction, so a
+    # finite-difference div-B on it is meaningless -- skip the gate (mark it passed +
+    # noted). The boundary B.n gate below still applies and is the meaningful check.
+    if getattr(field, "div_free_by_construction", False):
+        checks.append(dict(name="div_free", value=0.0, tol=TOL_DIV, passed=True,
+                           note="skipped: divergence-free by construction "
+                                "(equilibrium map stores unit b_hat only)"))
+    else:
+        checks.append(check_divergence(field, ipts, h=h, L=minor))
+    checks.append(bflux)
     passed = all(c["passed"] for c in checks)
     report = dict(ID=device.ID, passed=passed, checks=checks)
     if verbose:

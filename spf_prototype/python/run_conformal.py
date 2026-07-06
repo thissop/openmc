@@ -128,12 +128,25 @@ def build_model(abc, h5m_path, fieldmap_stem, R0_cm, a_cm,
                                             mats["FLiBe"], mats["shield"], mats["coil"]])]
     tcell.scores = ["heating", "damage-energy", "H3-production"]
     tallies.append(tcell)
-    # coil fast flux (>0.1 MeV) -- magnet-lifetime proxy
+    # coil fast flux (>0.1 MeV) -- magnet-lifetime proxy (deep; the eta_coil observable)
     tcf = openmc.Tally(name="coil_fast")
     tcf.filters = [openmc.MaterialFilter([mats["coil"]]),
                    openmc.EnergyFilter([0.1e6, 20.0e6])]
     tcf.scores = ["flux"]
     tallies.append(tcf)
+    # NEAR-SOURCE directional observable (G4): poloidally-resolved first-wall-region
+    # fast flux on a cylindrical mesh, reduced to the inboard/outboard-midplane steering
+    # contrast in run_ginsburg._wall_directional. Close-in + large solid angle => far
+    # lower variance than coil_fast, so this is the low-noise eta_source (coil_fast stays
+    # as the deep eta_coil). See docs/EXPERIMENTAL_DESIGN.md.
+    dmesh = openmc.CylindricalMesh(
+        r_grid=np.linspace(0.3 * R0_cm, R0_cm + 1.5 * a_cm, 16),
+        phi_grid=np.linspace(0.0, 2 * np.pi, 17),
+        z_grid=np.linspace(-1.5 * a_cm, 1.5 * a_cm, 16))
+    tdir = openmc.Tally(name="firstwall_dir")
+    tdir.filters = [openmc.MeshFilter(dmesh), openmc.EnergyFilter([0.1e6, 20.0e6])]
+    tdir.scores = ["flux"]
+    tallies.append(tdir)
 
     return openmc.Model(geometry=geom, settings=s, materials=materials,
                         tallies=openmc.Tallies(tallies)), mats

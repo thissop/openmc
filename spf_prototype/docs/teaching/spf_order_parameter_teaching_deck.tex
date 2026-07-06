@@ -1,0 +1,1253 @@
+\documentclass[aspectratio=169]{beamer}
+
+% Default Beamer theme: no custom theme selected.
+% Packages beyond the original deck (all in a standard TeX Live/MacTeX install):
+%   - array      : finer column control in tables (\arraybackslash, p-columns)
+%   No other new external packages are required.
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,bm,booktabs}
+\usepackage{mathtools}
+\usepackage{array}
+
+% ---- notation from the original deck (kept verbatim) ------------------------
+\newcommand{\bn}{\hat{\bm n}}
+\newcommand{\bb}{\hat{\bm b}}
+\newcommand{\be}{\hat{\bm e}}
+\newcommand{\bx}{\bm x}
+\newcommand{\brw}{\bm r_w}
+\newcommand{\I}{\mathsf I}
+\newcommand{\T}{\mathsf T}
+\newcommand{\avg}[1]{\left\langle #1 \right\rangle}
+\newcommand{\Ptwo}{P_2}
+\newcommand{\Pone}{P_1}
+\newcommand{\M}{\mathsf M}
+\newcommand{\Qten}{\mathsf Q}
+
+% ---- a few added shortcuts for the expanded material ------------------------
+\newcommand{\ephi}{\hat{\bm e}_\phi}
+\newcommand{\Sphi}{S_\phi}
+\newcommand{\lamphi}{\lambda_\phi}
+\newcommand{\sigo}{\sigma_0}
+\newcommand{\wperp}{w_\perp}
+\newcommand{\wpar}{w_\parallel}
+
+% Show a running outline at the start of each section (navigation aid).
+\AtBeginSection[]{%
+  \begin{frame}[t]{Where we are}
+    \tableofcontents[currentsection]
+  \end{frame}%
+}
+
+\title{Spin-Polarized Fusion Steering: Order Parameters, Tensor Physics, and Directionality Loss}
+\subtitle{A ground-up teaching document: fundamentals to the research frontier}
+\author{}
+\date{}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}[t]{What we are trying to understand}
+\begin{block}{Central question}
+When spin-polarized fusion (SPF) creates an anisotropic neutron birth pattern, how much of the ideal directional steering survives in a stellarator and through a blanket?
+\end{block}
+\vspace{0.5em}
+Three linked issues:
+\begin{enumerate}
+  \item What angular order does the SPF emission kernel actually have?
+  \item Which magnetic-field statistic should predict steering: vector coherence $C$ or a rank-2 tensor/nematic order parameter $S$?
+  \item How should we separate field-geometry dephasing from blanket scattering washout?
+\end{enumerate}
+\end{frame}
+
+\begin{frame}[t]{How to read this deck}
+\begin{block}{Structure}
+We build from the ground up, then reach the research frontier.
+\end{block}
+\begin{enumerate}
+  \item \textbf{Fundamentals}: DT fusion, neutron wall loading, breeding, why 14.1\,MeV direction matters.
+  \item \textbf{Spin-polarized fusion}: the anisotropic birth kernel (Kulsrud, Schwartz).
+  \item \textbf{Directional statistics}: mean resultant length, orientation tensor, nematic order.
+  \item \textbf{Magnetic geometry}: quasisymmetry classes; tokamak vs stellarator field direction.
+  \item \textbf{The parity argument} (the centerpiece): why the tensor, not the vector, is the matched predictor.
+  \item \textbf{The two directionality losses}: field-geometry dephasing and blanket washout; $\eta$ and its factorization.
+  \item \textbf{Literature and novelty}: Kulsrud, Schwartz, Bae, Lion, and the open ground.
+  \item \textbf{Practice}: what to compute, decide, and report.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}[t]{Table of contents}
+\tableofcontents
+\end{frame}
+
+\begin{frame}[t]{Notation map}
+\begin{tabular}{ll}
+\toprule
+Symbol & Meaning \\
+\midrule
+$\bb(\bx)$ & unit magnetic-field direction at source point $\bx$ \\
+$\bn$ & neutron flight direction from source point to wall/detector \\
+$\theta_B$ & angle between $\bn$ and local $\bb$ \\
+$\mu$ & $\cos\theta_B = \bn\cdot\bb$ \\
+$s(\bx)$ & source weighting over the burning volume \\
+$C$ & vector coherence / mean resultant length, $|\avg{\bb}|$ \\
+$\M$ & second moment tensor, $\avg{\bb\bb^\T}$ \\
+$S,\ \Sphi$ & scalar nematic order parameter (principal axis; toroidal axis) \\
+$a_2$ & quadrupole coefficient of the birth kernel, $\in[-1,+1]$ \\
+$\eta$ & directional-efficiency survival factor \\
+$A$ & blanket attenuation of already-created directionality \\
+\bottomrule
+\end{tabular}
+\end{frame}
+
+% =====================================================================
+\section{Fundamentals: DT fusion and why neutron direction matters}
+% =====================================================================
+
+\begin{frame}[t]{The DT fusion reaction}
+\[
+\mathrm{D} + \mathrm{T}\ \longrightarrow\ {}^4\mathrm{He}\ (3.5~\mathrm{MeV}) \;+\; n\ (14.1~\mathrm{MeV}),
+\qquad Q = 17.6~\mathrm{MeV}.
+\]
+\begin{itemize}
+  \item Two-body exit channel: kinematics split $Q$ as $\tfrac{1}{5}$ to the $\alpha$ and $\tfrac{4}{5}$ to the neutron (mass ratio $\sim 4{:}1$).
+  \item The reactivity $\avg{\sigma v}$ peaks near ion temperature $T_i \sim 60$--$70$\,keV; DT is the easiest fusion fuel.
+  \item The $3.5$\,MeV $\alpha$ is \emph{charged} $\Rightarrow$ confined by $\bm B$, heats the plasma.
+  \item The $14.1$\,MeV neutron is \emph{neutral} $\Rightarrow$ leaves the plasma in a straight line and deposits its energy in the surrounding structures.
+\end{itemize}
+\begin{block}{Consequence}
+Everything the reactor must survive and everything it breeds is set by where the $14.1$\,MeV neutrons go. That birth direction is the lever SPF gives us.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{The 14.1\,MeV neutron has three consumers}
+\begin{columns}[T]
+\begin{column}{0.33\textwidth}
+\begin{block}{First wall}
+Neutron power per area (NWL) sets erosion, heating, and displacement damage (dpa). Component lifetime scales with local load.
+\end{block}
+\end{column}
+\begin{column}{0.33\textwidth}
+\begin{block}{Magnets}
+Fast-neutron fluence to superconducting coils causes insulation dose and stabilizer dpa. The inboard coils are the tightest constraint.
+\end{block}
+\end{column}
+\begin{column}{0.33\textwidth}
+\begin{block}{Breeder}
+$^6$Li$(n,\alpha)$T and $^7$Li$(n,n'\alpha)$T make tritium. Flux must reach the breeding blanket for fuel self-sufficiency.
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.7em}
+\begin{block}{The tension}
+These three want the flux in \emph{different} places: away from vulnerable wall and magnets, toward the breeder. A directional source lets you trade among them.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Neutron wall loading (NWL), defined}
+NWL is the uncollided $14.1$\,MeV neutron power crossing the first wall per unit area:
+\[
+Q_{\rm NWL}(\brw) \;=\; E_n \int_{4\pi} \! d\Omega\; \Phi_n(\brw,\bn)\,(\bn\cdot\hat{\bm N})
+\;\;\propto\;\; E_n \, j_n(\brw),
+\]
+with $E_n=14.1$\,MeV, $\hat{\bm N}$ the wall normal, $j_n$ the normal neutron current.
+\begin{itemize}
+  \item Units: MW/m$^2$. Design limits are typically a few MW/m$^2$; the \emph{peaking factor} (max/avg) often matters more than the mean.
+  \item For a filamentary ring source and a wall patch, each source point contributes a line-of-sight term $\propto 1/|\brw-\bx|^2$ times the emission weight in that direction.
+\end{itemize}
+\begin{block}{Why it matters here}
+If the birth kernel is anisotropic, $\Phi_n(\brw,\bn)$ is no longer set by geometry alone --- the polarization steers where the load lands. That steering is exactly what $\eta$ will quantify.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Tritium breeding ratio (TBR), defined}
+\[
+\mathrm{TBR} \;=\; \frac{\text{tritons bred per unit time}}{\text{tritons burned per unit time}}.
+\]
+\begin{itemize}
+  \item Tritium is not found in nature at reactor scale; each DT reaction burns one triton, so the plant \emph{must} breed its own: need $\mathrm{TBR}\gtrsim 1.05$--$1.1$ after accounting for losses, decay, and non-breeding penetrations.
+  \item Bred in a lithium blanket: $^6$Li$(n,\alpha)$T (exothermic, thermal-favoring) and $^7$Li$(n,n'\alpha)$T (threshold $\sim 2.5$\,MeV, uses the fast $14$\,MeV flux).
+  \item Neutron multipliers (Be, Pb) and $^6$Li enrichment raise TBR.
+\end{itemize}
+\begin{block}{Directional coupling}
+Steering flux \emph{into} breeder-rich regions raises TBR; steering it toward a space-starved inboard blanket wastes it. In a spherical tokamak the outboard breeder is $\sim 78.5\%$ of the volume, which is why Bae 2025 sees the ``parallel'' scheme give the highest TBR.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Why directionality is an engineering lever}
+An isotropic source distributes the $14.1$\,MeV load by geometry alone --- you can only move it by moving walls.
+\vspace{0.4em}
+\begin{block}{SPF adds a knob}
+Aligning the fuel spins makes the birth pattern anisotropic about the local field $\bb$. Now the \emph{same} plasma can:
+\begin{itemize}
+  \item shed load off a vulnerable first-wall region or a diagnostic port;
+  \item cut fast-neutron flux at the inboard magnets (Bae: $-40\%$ inboard TF flux $\Rightarrow +68\%$ magnet life);
+  \item bias flux toward the breeder to lift TBR.
+\end{itemize}
+\end{block}
+\vspace{0.3em}
+\alert{But} this only pays off if the anisotropy survives (i) the stellarator's twisting field and (ii) scattering in the blanket. Quantifying that survival is the whole project.
+\end{frame}
+
+% =====================================================================
+\section{Spin-polarized fusion: the anisotropic birth kernel}
+% =====================================================================
+
+\begin{frame}[t]{Spin of the reactants}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\begin{block}{Deuteron: spin $1$ (a boson)}
+Three magnetic sub-states $m=+1,0,-1$. Fractions $d_+,d_0,d_-$ with $d_++d_0+d_-=1$.
+\end{block}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{block}{Triton: spin $\tfrac12$ (a fermion)}
+Two sub-states $m=\pm\tfrac12$. Fractions $t_+,t_-$ with $t_++t_-=1$.
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.6em}
+The DT reaction proceeds dominantly through the $J^\pi=\tfrac{3}{2}^+$ resonance ($^5$He$^*$). The combined spin state of D and T controls both the reaction rate and the emission direction, because the resonance couples spin to the outgoing orbital angular momentum.
+\begin{block}{Reference direction}
+The quantization axis is the \emph{local magnetic field} $\bb$. All angular statements ($\theta_B$) are measured from $\bb$ at the birth point.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Vector vs tensor polarization of the deuteron}
+Because the deuteron is spin $1$, its spin state carries \emph{two} independent moments:
+\[
+p_z = d_+ - d_-\quad(\text{rank-1, \emph{vector}}),
+\qquad
+p_{zz} = 1 - 3 d_0 \quad(\text{rank-2, \emph{tensor}}).
+\]
+\begin{itemize}
+  \item $p_z$ distinguishes ``spins up'' from ``spins down'' (a polar, dipole quantity).
+  \item $p_{zz}$ distinguishes ``aligned along the axis'' ($d_0$ small) from ``in the equatorial plane'' ($d_0$ large) --- it is blind to the sign of $z$. This is the \emph{alignment}.
+  \item The triton (spin $\tfrac12$) has only a vector polarization; no tensor moment exists for spin $\tfrac12$.
+\end{itemize}
+\begin{block}{Foreshadowing (and a terminology trap)}
+The rank-2 \emph{spin} moment $p_{zz}$ is what sets the emission's quadrupole strength $a_2$. Later we meet a rank-2 \emph{field-geometry} tensor. \alert{These are different objects} --- do not both call them ``tensor polarization.'' (See the terminology-warning slide.)
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Kulsrud 1982: two effects at once}
+Kulsrud, Furth, Valeo, Goldhaber (PRL \textbf{49}, 1248, 1982) showed that polarizing DT fuel does two things:
+\begin{enumerate}
+  \item \textbf{Rate.} Aligning the spins into the $S=\tfrac32$ channel enhances the fusion cross section by up to $50\%$ relative to unpolarized fuel.
+  \item \textbf{Anisotropy.} The neutron is no longer emitted isotropically; its angular distribution about $\bb$ becomes quadrupolar, $\propto 1 + a_2 P_2(\cos\theta_B)$.
+\end{enumerate}
+\vspace{0.4em}
+\begin{block}{The prize and the caveat}
+Effect (1) is a bigger burn; effect (2) is \emph{directional control} of where the neutrons land. This deck is about effect (2). A crucial (and often-overlooked) subtlety: depending on which spin state you prepare, the neutrons emit \emph{perpendicular} to $\bb$ or \emph{parallel} to $\bb$.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Schwartz Eq.~1: the three collision modes}
+Write the deuteron sub-state fractions $d_+,d_0,d_-$ and triton fractions $t_+,t_-$. Group the D--T spin combinations into three \emph{collision-mode} fractions:
+\[
+a = d_+ t_+ + d_- t_-, \qquad
+b = d_0, \qquad
+c = d_+ t_- + d_- t_+,
+\]
+with $a+b+c=1$.
+\begin{itemize}
+  \item $a$: D and T spins \emph{co-aligned} (both $+$ or both $-$) $\Rightarrow$ pure $S=\tfrac32,\,m=\pm\tfrac32$.
+  \item $b=d_0$: the deuteron in its $m=0$ (transverse/aligned-in-plane) state.
+  \item $c$: D and T \emph{anti-aligned} $\Rightarrow$ a mix of $S=\tfrac32,\,m=\pm\tfrac12$ and $S=\tfrac12$.
+\end{itemize}
+\begin{block}{Unpolarized limit}
+Random spins give $(a,b,c)=(\tfrac13,\tfrac13,\tfrac13)$. We will use the corners $(1,0,0)$, $(0,1,0)$, $(0,0,1)$ as pure ``A/B/C modes.''
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Schwartz Eq.~2: the differential cross section}
+\begin{block}{Authoritative angular form ($\theta$ measured from local $\bb$)}
+\[
+\frac{d\sigma}{d\Omega}
+= \frac{\sigo}{2\pi}\Big[\ \tfrac{3}{4}\,a\,\sin^2\theta
+\;+\; \big(\tfrac{2}{3}b + \tfrac{1}{3}c\big)\big(\tfrac{1}{4}+\tfrac{3}{4}\cos^2\theta\big)\ \Big].
+\]
+\end{block}
+Two angular shapes, with two effective weights:
+\[
+\wperp = \tfrac{3}{4}a \quad(\text{the }\sin^2\theta\text{ piece}),
+\qquad
+\wpar = \tfrac{2}{3}b + \tfrac{1}{3}c \quad(\text{the }\tfrac14+\tfrac34\cos^2\theta\text{ piece}).
+\]
+Integrating over the sphere (using $\int\sin^2\theta\,d\Omega = 8\pi/3$ and $\int(\tfrac14+\tfrac34\cos^2\theta)\,d\Omega = 2\pi$):
+\[
+\sigma_{\rm tot} = \sigo\big[\,a + \tfrac{2}{3}b + \tfrac{1}{3}c\,\big].
+\]
+\alert{Separate concerns:} the \emph{direction} pdf needs only $(\wperp,\wpar)$; the \emph{total rate} $\sigma_{\rm tot}/\sigo$ is a separate scalar that multiplies source strength.
+\end{frame}
+
+\begin{frame}[t]{Corner cases: memorize these}
+\renewcommand{\arraystretch}{1.15}
+\begin{center}
+\begin{tabular}{lccl}
+\toprule
+Mode $(a,b,c)$ & $\sigma_{\rm tot}/\sigo$ & rate vs unpol & angular shape \\
+\midrule
+Unpolarized $(\tfrac13,\tfrac13,\tfrac13)$ & $2/3$ & $\times 1$ (ref) & isotropic \\
+Pure A $(1,0,0)$ & $1$ & $\times 3/2\ (+50\%)$ & $\sin^2\theta$: \alert{perp} to $\bb$ \\
+Pure B $(0,1,0)$ & $2/3$ & $\times 1$ & $\tfrac14+\tfrac34\cos^2\theta$: \alert{parallel} \\
+Pure C $(0,0,1)$ & $1/3$ & $\times 1/2\ (-50\%)$ & $\tfrac14+\tfrac34\cos^2\theta$: \alert{parallel} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{0.5em}
+\begin{itemize}
+  \item The unpolarized \emph{integrated} cross section is $\tfrac23\sigo$, \textbf{not} $\sigo$. Pure A is the $+50\%$ enhancement relative to that.
+  \item Pure A emits \emph{perpendicular} to $\bb$ (zero along $\bb$); pure B/C emit \emph{parallel}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]{The C-mode subtlety (a correction worth stressing)}
+\begin{block}{B and C share the SAME angular shape}
+Set $a=0$ in Eq.~2. The bracket becomes $(\tfrac23 b + \tfrac13 c)(\tfrac14+\tfrac34\cos^2\theta)$: the $b$ and $c$ terms multiply the \emph{identical} $\theta$-function. So pure C is \alert{NOT isotropic} --- it has the same directionality as B, just half the total rate.
+\end{block}
+\vspace{0.3em}
+A common secondary-source mistake is to call mode C ``the isotropic $S=\tfrac12$ channel.'' From Eq.~2 that is simply false: B and C are directionally identical; they differ only in $\sigma_{\rm tot}$.
+\begin{block}{Consequence we will exploit}
+The birth-direction pdf depends only on $(\wperp,\wpar)$. Isotropic and pure-C therefore produce \emph{identical} normalized wall patterns --- a strong, cheap correctness check.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{From Eq.~2 to $1+a_2P_2$: the quadrupole coefficient}
+Write $\mu=\cos\theta$. Using $\sin^2\theta=\tfrac23(1-P_2)$ and $\tfrac14+\tfrac34\mu^2=\tfrac12(1+P_2)$, the normalized birth kernel collapses to a single quadrupole:
+\[
+w(\theta_B)\propto 1 + a_2\,P_2(\cos\theta_B),
+\qquad
+\boxed{\,a_2 = \frac{\wpar - a}{\wpar + a}\,},
+\quad \wpar=\tfrac23 b+\tfrac13 c .
+\]
+\renewcommand{\arraystretch}{1.1}
+\begin{center}
+\begin{tabular}{lcl}
+\toprule
+Mode & $a_2$ & meaning \\
+\midrule
+Pure A $(1,0,0)$ & $-1$ & maximal \emph{perpendicular} lobe ($\sin^2$) \\
+Unpolarized & $0$ & isotropic \\
+Pure B / C & $+1$ & maximal \emph{parallel} lobe \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{block}{Why this matters}
+The entire angular physics reduces to one number $a_2\in[-1,+1]$, set by the \emph{spin} state. Everything downstream (parity, tensor matching, $\eta$) rides on this single $P_2$.
+\end{block}
+\end{frame}
+
+% =====================================================================
+\section{A primer on directional statistics}
+% =====================================================================
+
+\begin{frame}[t]{Directions live on a sphere}
+A set of unit field directions $\{\bb_i\}$ with source weights $\{w_i\}$ is a distribution on $S^2$, not in $\mathbb R^3$. Ordinary means mislead: the average of $+\be$ and $-\be$ is the zero vector, which is not a direction at all.
+\vspace{0.4em}
+\begin{block}{Two regimes of directional data}
+\begin{itemize}
+  \item \textbf{Polar / axial (with a head):} $+\bb$ and $-\bb$ are different. Use vector (first-moment) statistics.
+  \item \textbf{Apolar / nematic (headless):} $+\bb$ and $-\bb$ are the same axis. Use tensor (second-moment) statistics.
+\end{itemize}
+\end{block}
+\alert{The punchline of this deck}: the SPF kernel is \emph{headless} (even in $\bb$), so the correct statistic is the second-moment/nematic kind --- but the intuitive one people reach for ($C$) is the first-moment kind.
+\end{frame}
+
+\begin{frame}[t]{The mean resultant length $\bar R$ (Mardia--Jupp)}
+For weighted unit vectors, the first trigonometric moment and its magnitude:
+\[
+\bar{\bm b}=\sum_i w_i\,\bb_i,
+\qquad
+\bar R = |\bar{\bm b}| \in [0,1].
+\]
+\begin{itemize}
+  \item $\bar R = 1$: all directions identical (perfectly concentrated).
+  \item $\bar R = 0$: directions cancel (e.g.\ isotropic, \emph{or} antipodally balanced).
+  \item Circular/spherical standard deviation: $\sqrt{-2\ln \bar R}$.
+\end{itemize}
+\begin{block}{This is exactly $C$}
+The study's coherence $C=|\avg{\bb}|$ \emph{is} the mean resultant length of Mardia \& Jupp, \emph{Directional Statistics}. It is a standard tool --- we claim novelty in \emph{applying} it, not in inventing it. Its weakness is built in: it is a first moment, so antipodal balance kills it.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{The von Mises--Fisher distribution}
+The Gaussian analog on the sphere, concentrated about a mean direction $\bm\mu$:
+\[
+p(\bb)\ \propto\ \exp\!\big(\kappa\,\bm\mu\cdot\bb\big),\qquad \kappa\ge 0 .
+\]
+\begin{itemize}
+  \item $\kappa$ is the concentration; large $\kappa$ $\Rightarrow$ tight cap, $\bar R\to 1$.
+  \item The maximum-likelihood mean direction is the normalized resultant $\bar{\bm b}/\bar R$, and $\bar R$ estimates $\kappa$.
+\end{itemize}
+\begin{block}{Use in this project}
+A co-toroidal ``cap'' of field directions in a good QA stellarator is well described by a vMF distribution about $\ephi$. In that cap regime the first moment $C$ and the second moment are locked together --- which is why $C$ \emph{appears} to work. It is a model of the benign regime, not a law.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{The orientation / direction tensor (Woodcock 1977)}
+When directions are headless, use the second moment:
+\[
+\M \;=\; \sum_i w_i\, \bb_i \bb_i^\T,
+\qquad \mathrm{tr}\,\M = 1,
+\qquad \M=\M^\T .
+\]
+This is the \emph{orientation tensor} of Scheidegger and the \emph{fabric tensor} of Woodcock (GSA Bull.\ \textbf{88}, 1231, 1977), used in geology to classify crystal fabrics. Its eigenvalues $\lambda_1\ge\lambda_2\ge\lambda_3$ (summing to $1$) classify the shape:
+\renewcommand{\arraystretch}{1.1}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Eigenvalues & Woodcock name & geometry \\
+\midrule
+$(1,0,0)$ & point / cluster & tight director bundle \\
+$(\tfrac12,\tfrac12,0)$ & girdle & planar fan \\
+$(\tfrac13,\tfrac13,\tfrac13)$ & random & isotropic smear \\
+\bottomrule
+\end{tabular}
+\end{center}
+$\M$ keeps the \emph{structure} of the spread that $\bar R$ throws away, and it is invariant under $\bb\to-\bb$.
+\end{frame}
+
+\begin{frame}[t]{The nematic order parameter (liquid crystals)}
+A liquid-crystal director $\bb$ is headless (rod, not arrow). de Gennes defined the scalar order of rod-like molecules about a director axis as the second Legendre moment:
+\[
+S = \avg{P_2(\cos\beta)} = \avg{\tfrac{3}{2}\cos^2\beta - \tfrac12},
+\]
+$\beta$ = angle to the axis. Equivalently, from the largest eigenvalue of $\M$,
+\[
+S = \frac{3\lambda_1 - 1}{2}.
+\]
+\begin{itemize}
+  \item $S=1$: fully aligned along one axis (allowing both $\pm$ senses).
+  \item $S=0$: isotropic ($\M=\I/3$).
+  \item $S<0$: preferentially perpendicular to the axis.
+\end{itemize}
+\begin{block}{Why import it}
+$S$ is the natural scalar for a headless orientation field --- exactly what the SPF kernel produces. We use ``nematic'' as an \emph{analogy}, not as new mathematics.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Legendre $P_2$ and the quadrupole / spin-2 view}
+\[
+P_0=1,\qquad P_1(\mu)=\mu,\qquad P_2(\mu)=\tfrac{3\mu^2-1}{2}.
+\]
+\begin{itemize}
+  \item $P_1$ is the \textbf{dipole} (rank-1): polar, changes sign under $\mu\to-\mu$.
+  \item $P_2$ is the \textbf{quadrupole} (rank-2): axial/nematic, even under $\mu\to-\mu$.
+  \item As a spherical harmonic, $P_2(\bn\cdot\bb)$ is an $\ell=2$ (``spin-2'') zonal function; it couples only to the $\ell=2$ moment of any distribution it is integrated against (a selection rule we use next).
+\end{itemize}
+\begin{block}{Tensor identity (the workhorse of this deck)}
+\[
+P_2(\bn\cdot\bb)=\tfrac32(\bn\cdot\bb)^2-\tfrac12
+= \bn^\T\!\Big(\tfrac32\,\bb\bb^\T-\tfrac12\I\Big)\bn .
+\]
+The direction $\bn$ contracts a \emph{rank-2 tensor} built from $\bb$. There is no way to write it with $\bb$ alone.
+\end{block}
+\end{frame}
+
+% =====================================================================
+\section{Magnetic geometry: tokamak vs stellarator}
+% =====================================================================
+
+\begin{frame}[t]{Quasisymmetry in one slide (QA / QH / QI)}
+Confinement needs $|\bm B|$ to have a hidden symmetry in Boozer coordinates $(\theta,\varphi)$, even if the shape does not. Classes:
+\begin{itemize}
+  \item \textbf{QA} (quasi-axisymmetric): $|B|=|B|(\theta)$, tokamak-like. Field direction $\bb$ stays close to toroidal $\ephi$ $\Rightarrow$ high $C$.
+  \item \textbf{QH} (quasi-helical): $|B|$ depends on a helical combination $M\theta-N\varphi$. Field direction makes a large \emph{helical excursion} $\Rightarrow$ low $C$, and can even reverse toroidal sense.
+  \item \textbf{QI} (quasi-isodynamic): $|B|$ contours close poloidally (omnigenous). Intermediate; behavior depends on how the source-weighted $\bb$ fans.
+\end{itemize}
+\begin{block}{Key caution}
+Quasisymmetry constrains $|B|$, \emph{not} the field \emph{direction} $\bb$ and \emph{not} the shape. Two configs with equal QS error can have very different $C$. So the study's independent variable is the source-weighted dispersion of $\bb$ itself --- not QS error, not ``deviation from axisymmetry.''
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{The field direction $\bb$: tokamak vs stellarator}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\begin{block}{Tokamak}
+$\bb$ is nearly \emph{toroidal} and slowly varying across the burn volume. In the local cylindrical basis it is $\approx(0,1,0)$ everywhere. Biased emissions from all source points add \emph{coherently} at a detector $\Rightarrow$ strong steering, $C\approx 1$.
+\end{block}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{block}{Stellarator}
+$\bb$ \emph{rotates} across the volume (helical excursion, pitch varying with position). Emissions from different points are biased in different directions and partially cancel at a fixed detector $\Rightarrow$ eroded steering, $C<1$.
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.6em}
+\begin{block}{The novel physics}
+This source-axis dispersion has no analog in a tokamak. Quantifying how much SPF steering it erases is the field-geometry loss --- the new axis of this work.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Angular order: first vs.\ second}
+Let
+\[
+\mu = \bn\cdot\bb .
+\]
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{First order: dipole}
+\[
+\Pone(\mu)=\mu
+\]
+\[
+w(\bn)\sim 1+a_1\Pone(\mu)
+\]
+Distinguishes $+\bb$ from $-\bb$.
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Second order: quadrupole}
+\[
+\Ptwo(\mu)=\frac{3\mu^2-1}{2}
+\]
+\[
+w(\bn)\sim 1+a_2\Ptwo(\mu)
+\]
+Distinguishes ``parallel to the axis'' from ``perpendicular to the axis.''
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.5em}
+Key distinction: dipoles are polar; quadrupoles are axial/nematic. The SPF kernel (previous section) has $a_1=0$ and $a_2\in[-1,1]$.
+\end{frame}
+
+% =====================================================================
+\section{The parity argument (the centerpiece)}
+% =====================================================================
+
+\begin{frame}[t]{The identity that settles the order}
+The SPF birth kernel can be written as
+\[
+w(\theta_B) \propto 1+a_2\Ptwo(\cos\theta_B),
+\qquad
+\Ptwo(\mu)=\frac{3\mu^2-1}{2}.
+\]
+There is no $\Pone$ term.
+\vspace{0.8em}
+\begin{block}{Tensor form}
+\[
+\Ptwo(\bn\cdot\bb)
+=\frac{3}{2}(\bn\cdot\bb)^2-\frac{1}{2}
+=\bn^\T\left(\frac{3}{2}\bb\bb^\T-\frac{1}{2}\I\right)\bn .
+\]
+\end{block}
+The magnetic field enters through $\bb\bb^\T$, not through $\bb$.
+\end{frame}
+
+\begin{frame}[t]{Why $\bb\rightarrow -\bb$ does not change SPF steering}
+Because
+\[
+(\bn\cdot(-\bb))^2=(\bn\cdot\bb)^2,
+\]
+we have
+\[
+\Ptwo(\bn\cdot(-\bb))=\Ptwo(\bn\cdot\bb).
+\]
+\begin{block}{Implication}
+A reversed magnetic-field direction does not reverse the SPF quadrupole pattern. For this kernel, $+\bb$ and $-\bb$ are the same director axis.
+\end{block}
+So any argument based on cancellation of $\avg{\bb}$ is at best a proxy argument, not the exact symmetry argument.
+\end{frame}
+
+\begin{frame}[t]{Free-streaming wall steering}
+For a wall patch at $\brw$, define
+\[
+\bn(\bx;\brw)=\frac{\brw-\bx}{|\brw-\bx|}.
+\]
+Ignoring constants common to the polarized and unpolarized cases, the anisotropic steering contribution has the form
+\[
+\Delta\Phi(\brw)\propto
+ a_2\int dV\,s(\bx)
+ \left[\frac{3}{2}\bn^\T\bigl(\bb\bb^\T\bigr)\bn-\frac{1}{2}\right]
+ \frac{1}{|\brw-\bx|^2}.
+\]
+\begin{block}{Read the equation physically}
+Every source point emits a quadrupolar pattern about its local magnetic-field axis; the wall sees the line-of-sight projection of that rank-2 pattern. The field enters only through $\bb\bb^\T$ --- the first moment $\avg{\bb}$ never appears.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Multipole matching: why the tensor is fundamental}
+The source-weighted distribution of $\bb$ has moments:
+\[
+\text{monopole}: 1,
+\qquad
+\text{dipole}: \avg{\bb},
+\qquad
+\text{quadrupole}: \avg{\bb\bb^\T}-\frac{1}{3}\I .
+\]
+\begin{block}{Selection rule (the crisp statement)}
+A rank-$\ell$ angular kernel couples \emph{only} to the rank-$\ell$ moment of the director distribution. The SPF kernel is $\ell=2$, so it is deaf to the $\ell=1$ moment $C=|\avg{\bb}|$ and resonant with the $\ell=2$ moment.
+\end{block}
+The natural object is therefore
+\[
+\Qten = \avg{\bb\bb^\T}-\frac{1}{3}\I,
+\qquad\text{not}\qquad \avg{\bb}.
+\]
+$C$ is not just noisier than $S$ --- it is \emph{off-resonance}. It can predict $\eta$ only through its correlation with the $\ell=2$ moment.
+\end{frame}
+
+\begin{frame}[t]{The scalar $C$: useful, but lower order}
+The transcript's scalar coherence is
+\[
+C = \left|\avg{\bb}\right|.
+\]
+\begin{block}{What $C$ measures}
+$C$ measures the net signed vector alignment of the local magnetic-field directions (the mean resultant length).
+\end{block}
+It is a first-moment statistic. Therefore it is sensitive to field reversals:
+\[
+\frac{1}{2}(+\be)+\frac{1}{2}(-\be)=0.
+\]
+But the SPF quadrupole does not see the sign:
+\[
+(+\be)(+\be)^\T=(-\be)(-\be)^\T=\be\be^\T.
+\]
+\end{frame}
+
+\begin{frame}[t]{The tensor $\M$: the object the kernel actually sees}
+Define the second moment tensor
+\[
+\M = \avg{\bb\bb^\T}.
+\]
+For any line of sight $\bn$,
+\[
+\avg{\Ptwo(\bn\cdot\bb)}
+= \frac{3}{2}\bn^\T\M\bn-\frac{1}{2}
+= \frac{3}{2}\bn^\T\Qten\bn.
+\]
+\begin{block}{Meaning}
+$\M$ tells you whether the field directions form a tight director bundle, a planar fan, an isotropic smear, or a more complicated shape on the sphere --- exactly the Woodcock classification.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Nematic order parameter (applied to $\M$)}
+Let the eigenvalues of $\M$ be
+\[
+\lambda_1\ge \lambda_2\ge \lambda_3,
+\qquad
+\lambda_1+\lambda_2+\lambda_3=1.
+\]
+The scalar nematic order parameter is
+\[
+S=\frac{3\lambda_1-1}{2}.
+\]
+\begin{itemize}
+  \item $S=1$: all directors lie along one axis, allowing $+\be$ and $-\be$.
+  \item $S=0$: isotropic distribution, $\M=\I/3$.
+  \item $S<0$: preferentially perpendicular to the chosen axis, depending on convention.
+\end{itemize}
+\vspace{0.3em}
+In neutronics language: this is the leading quadrupole/angular-moment statistic --- the $\ell=2$ selection-rule partner of the kernel.
+\end{frame}
+
+\begin{frame}[t]{Axis-specific order: $\Sphi$}
+Sometimes the relevant reference direction is fixed, e.g.\ toroidal $\ephi$.
+Define
+\[
+\lamphi = \ephi^\T\M\,\ephi
+= \avg{(\bb\cdot\ephi)^2},
+\qquad
+\Sphi = \frac{3\lamphi-1}{2}.
+\]
+\begin{block}{Why this matters}
+The leading director may not be exactly toroidal in a helical stellarator. Then $S$ about the principal eigenvector and $\Sphi$ about the toroidal direction answer different questions. $\ephi$ is the physically special axis because the \emph{tokamak} ($\bb=\ephi$ everywhere) is the $C=S_\phi=1$ anchor the benefit is measured against.
+\end{block}
+\alert{Code note:} in \texttt{coherence\_metrics.py}, $\lamphi=\M[1,1]=\avg{b_\phi^2}$ in the cylindrical frame, and $\Sphi=(3\lamphi-1)/2$ is flagged as the physically-matched predictor.
+\end{frame}
+
+\begin{frame}[t]{The frame is decisive: local cylindrical basis}
+$C$, $\M$, $\Sphi$ are only meaningful once the frame for $\bb$ is fixed. We express $\bb$ in the \emph{local cylindrical basis} $(\be_R,\ephi,\be_Z)$ at each point \emph{before} taking moments.
+\begin{itemize}
+  \item A purely toroidal field is $(0,1,0)$ at \emph{every} point in this basis $\Rightarrow$ tokamak calibrates to $C=1$, $\Sphi=1$.
+  \item In the fixed lab $(x,y,z)$ frame the same toroidal field \emph{winds} around the torus and integrates to $\approx 0$.
+\end{itemize}
+\begin{block}{Measured directly (device 59509)}
+\[
+C_{\rm cyl}=0.997 \qquad\text{vs}\qquad C_{\rm lab}=0.006 .
+\]
+Lab-frame $C$ cannot even distinguish a tokamak from a stellarator. The cylindrical basis is the single most important definitional choice in the study.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Why $C$ often appears to work anyway}
+For a unimodal, same-sense cap of field directions around one axis, let the angular spread be small:
+\[
+\bb \approx \be + \delta\bm\theta,
+\qquad
+\avg{\delta\theta^2}\ll 1.
+\]
+Then
+\[
+C \approx 1-\frac{1}{2}\avg{\delta\theta^2},
+\qquad
+S \approx 1-\frac{3}{2}\avg{\delta\theta^2}.
+\]
+Equivalently, for cap-like distributions,
+\[
+S \approx \frac{3C^2-1}{2}, \qquad C^2 \lesssim \lamphi \lesssim C .
+\]
+\begin{block}{Takeaway}
+$C$ and $S$ are monotone-locked for ordinary co-toroidal caps. $C$ can predict $\eta$ by correlation even if it is not the symmetry-matched variable. This is a statement about the \emph{regime}, not about which variable is fundamental.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Failure mode 1: antipodal / reversed-sense fields}
+Consider equal source weight at $+\be$ and $-\be$.
+\[
+\avg{\bb}=\frac{1}{2}\be+\frac{1}{2}(-\be)=0,
+\qquad
+C=0.
+\]
+But
+\[
+\M=\avg{\bb\bb^\T}=\be\be^\T,
+\qquad
+S=1.
+\]
+\begin{block}{Physical implication}
+A vector-coherence model says steering dies ($C=0$). The quadrupole tensor says the two halves \emph{reinforce} ($S=1$), because $+\be$ and $-\be$ emit \emph{identically} under a headless kernel. For SPF, the tensor is right.
+\end{block}
+This is the qualitative witness case: where $\bb$ reverses toroidal sense, $C$ and $\Sphi$ diverge maximally.
+\end{frame}
+
+\begin{frame}[t]{Failure mode 2: same $C$, different tensor shape}
+Two source distributions can share the same $|\avg{\bb}|$ but have different second moments.
+\vspace{0.5em}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{Tight cap}
+Large $\lambda_1$, small $\lambda_2,\lambda_3$.
+\[
+S\approx 1
+\]
+Strong director alignment.
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Planar fan (girdle)}
+Two large eigenvalues, one small eigenvalue.
+\[
+\lambda_1\approx\lambda_2
+\]
+Different wall projection even at similar $C$.
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.5em}
+$C$ is blind to tensor spectrum and orientation; $\M$ is not. This is the second, quantitative way $C$ can mislead even without an outright reversal.
+\end{frame}
+
+\begin{frame}[t]{Verified on real QUASR data: $\lamphi\approx C^2$}
+Running the metrics on the accepted device family (exact Biot--Savart $\bb$, $(1-\rho^2)$ source weight):
+\begin{itemize}
+  \item $\lamphi \approx C^2$ with \textbf{correlation $0.998$} and \textbf{RMS residual $0.0075$}.
+  \item Source-weighted $b_\phi<0$ (reversal) fraction is \textbf{essentially zero} in the accepted family: it is all co-toroidal \emph{caps}.
+  \item $\Sphi$ dynamic range across the family: $\mathbf{0.997 \to 0.167}$ --- i.e.\ at the low-coherence end roughly $1-0.167\approx 83\%$ of the ideal steering order is gone (if $\eta\sim\Sphi$).
+\end{itemize}
+\begin{block}{Interpretation}
+On the accepted sweep, $C$ and $\Sphi$ are reparameterizations of one trend, so $C$ ``does not visibly fail.'' That does not make $C$ fundamental --- it means the accepted manifold lives in the monotone-locked cap regime. The tensor is still the object that would survive a reversal.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{The reversal witness and the audit filter}
+\begin{block}{The one discriminating device}
+Device \textbf{1190023} (a high-iota QH) is the unique reversal case, with a source-weighted reversal fraction of $\mathbf{3.9\%}$. It is exactly where $C$ would under-predict while $\Sphi$ still tracks $\eta$.
+\end{block}
+\alert{But} it is filtered out by the coil-fit audit (LCFS $B\!\cdot\!\hat N/|B| > \sim 8\%$: $\bb$ too unreliable there).
+\begin{block}{Why this is a selection effect to disclose}
+The audit preferentially removes low-$C$, reversal-prone, aggressive-QH devices. So the production set \emph{cannot} prove ``$C$ is the true law''; it can only show $C$ is a good proxy \emph{in the accepted design manifold}. Report accepted and rejected/outlier devices separately; the tensor logic is what covers the edge cases the filter hides.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{The executable parity check}
+A concrete unit test now in the suite. Take any config, flip \emph{half} the field vectors $\bb\to-\bb$, and recompute:
+\renewcommand{\arraystretch}{1.15}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Quantity & under $\bb\to-\bb$ (half) & why \\
+\midrule
+$C=|\avg{\bb}|$ & \alert{collapses} & first moment cancels \\
+$\M=\avg{\bb\bb^\T}$ & \textbf{invariant} & $(-\bb)(-\bb)^\T=\bb\bb^\T$ \\
+eigenvalues, $\lamphi$, $\Sphi$ & \textbf{invariant} & functions of $\M$ only \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{0.5em}
+\begin{block}{What it proves}
+This is the parity argument made executable: the physically-correct wall observable is a linear functional of $\M$ alone, so it must be invariant under a sign flip that annihilates $C$. Any predictor that moves under this flip is provably not the matched variable.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Terminology warning (put a slide on this)}
+\begin{block}{Do NOT call the field quantity ``tensor polarization''}
+``Tensor polarization'' is a reserved term: it is the deuteron's rank-2 \emph{spin} moment $p_{zz}=1-3d_0$ (Hupin--Navr\'atil). It lives in \emph{spin} space and helps set $a_2$.
+\end{block}
+For the \emph{field geometry}, use:
+\begin{itemize}
+  \item ``field-direction \textbf{orientation tensor}'' for $\M=\avg{\bb\bb^\T}$;
+  \item ``\textbf{nematic order} $\Sphi$'' for the scalar;
+  \item ``\textbf{mean resultant length} $C$'' for $|\avg{\bb}|$.
+\end{itemize}
+\alert{Symbol collision to avoid:} Bae 2025's $(a,b,c)$ are the Hupin--Navr\'atil vector/tensor polarizations of the \emph{spins}; Schwartz's $(a,b,c)$ (this deck) are \emph{collision-mode fractions}. Never equate the two triples --- compare only by emission shape $W(\theta)$.
+\end{frame}
+
+\begin{frame}[t]{Elegant framing: $\eta$ is a contraction of two rank-2 tensors}
+\[
+\eta \;\sim\;
+\underbrace{\big(p_{zz}\text{-set } a_2\big)}_{\text{spin tensor polarization}}
+\;:\;
+\underbrace{\big(\M=\avg{\bb\bb^\T}\big)}_{\text{field orientation tensor}} .
+\]
+\begin{block}{Same multipole order on both sides}
+The birth kernel's angular strength is a rank-2 object in \emph{spin} space (the deuteron alignment $p_{zz}$). The field's coherence is a rank-2 object in \emph{real} space (the orientation tensor $\M$). The realized steering is their contraction --- a quadrupole meeting a quadrupole.
+\end{block}
+This is why a first-moment field statistic ($C$) is off-resonance: there is no rank-1 object on the spin side for it to pair with. The matched pairing is $\ell=2$ with $\ell=2$.
+\end{frame}
+
+\begin{frame}[t]{Geometry-folded predictor: beyond scalar $S$}
+The exact free-streaming predictor is not only ``how ordered'' the field is. It is also where the ordered axis points relative to the wall.
+\[
+G(\brw) = \int dV\,s(\bx)
+\left[\frac{3}{2}\bn^\T\M(\bx)\bn-\frac{1}{2}\right]
+\frac{1}{|\brw-\bx|^2}.
+\]
+For a source-sample estimate, use the local $\bb\bb^\T$ directly:
+\[
+G(\brw) \sim \sum_i w_i
+\left[\frac{3}{2}\bn_i^\T(\bb_i\bb_i^\T)\bn_i-\frac{1}{2}\right]
+\frac{1}{R_i^2}.
+\]
+\begin{block}{Hierarchy}
+$C$ is cheapest. $\Sphi$ is symmetry-matched (scalar). Geometry-folded tensor contraction $G[\M]$ is closest to the actual observable (folds in line-of-sight and where the director points).
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Predicted behavior by quasisymmetry class}
+The physical expectation:
+\begin{itemize}
+  \item \textbf{QA}: nearly toroidal $\bb$, high $C$, high $\Sphi$, strong steering survival.
+  \item \textbf{QH}: helical field directions tilt away from $\ephi$ and spread more strongly; most likely class for $C$--$S$ divergence and toroidal-sense reversal.
+  \item \textbf{QI}: depends on how much the source-weighted field directions fan or reverse.
+\end{itemize}
+\vspace{0.5em}
+\begin{block}{Best possible result}
+Curves that scatter under $\eta(C)$ but re-collapse under $\eta(\Sphi)$ or a geometry-folded tensor predictor $G[\M]$. That would be the clean demonstration that the tensor, not the vector, is the law.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Empirical twist from the sweep}
+The workflow found that the production family is mostly cap-shaped:
+\begin{itemize}
+  \item source-weighted $b_\phi<0$ fraction is essentially zero in the accepted family;
+  \item $C$ and $\lamphi$ are tightly correlated ($\lamphi\approx C^2$, corr $0.998$);
+  \item so $C$ and $\Sphi$ are reparameterizations of the same trend on this manifold.
+\end{itemize}
+\vspace{0.5em}
+\begin{block}{Interpretation}
+On the current accepted sweep, $C$ may not visibly fail. That does not make $C$ fundamental; it means the accepted geometry lives in a regime where first and second moments are monotone-locked. Publish the tensor derivation \emph{and} the empirical cap fact together --- honesty about the regime is part of the result.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Selection / audit implication}
+The sweep noted one discriminating device (1190023) with strong $C$--tensor divergence, but that it was filtered out by a coil-fit audit.
+\vspace{0.5em}
+\begin{block}{Why this matters}
+If the audit preferentially removes low-$C$, reversal-prone, or helical-outlier devices, then the production set cannot prove ``$C$ is the true law.'' It can only show that $C$ is a good proxy in the accepted design manifold.
+\end{block}
+\vspace{0.5em}
+Decision: report the tensor logic and test accepted vs.\ rejected/outlier devices separately; state the exclusion count, threshold, and its correlation with the independent variable in the methods.
+\end{frame}
+
+% =====================================================================
+\section{The two directionality losses and $\eta$}
+% =====================================================================
+
+\begin{frame}[t]{What exactly is $\eta$?}
+Start with a directional observable $Q$, such as inboard/outboard wall loading or coil fast flux.
+\[
+\delta = \frac{Q_{\rm polarized}-Q_{\rm unpolarized}}{Q_{\rm unpolarized}}.
+\]
+Normalize by an ideal coherent anchor:
+\[
+\eta = \frac{\delta({\rm configuration})}
+{\delta({\rm coherent\ tokamak\ anchor},\ C\approx 1)}
+\ \in[0,1].
+\]
+\begin{block}{Interpretation}
+$\eta=1$: full ideal SPF steering survives.\newline
+$\eta\rightarrow 0$: the directional steering has washed out.
+\end{block}
+$\eta$ is the \emph{fraction of ideal steering retained}, not the total reaction-rate enhancement.
+\end{frame}
+
+\begin{frame}[t]{Three different quantities that can be called eta}
+\begin{tabular}{lll}
+\toprule
+Quantity & Meaning & Role \\
+\midrule
+$\eta_{\rm rate}$ & reactivity/rate factor ($=a+\tfrac23 b+\tfrac13 c$) & changes total neutron production \\
+$\eta$ & directional efficiency & sweep headline \\
+$A$ & scattering survival & blanket attenuation factor \\
+\bottomrule
+\end{tabular}
+\vspace{0.8em}
+\begin{block}{Do not mix these}
+The order-parameter discussion is about \emph{directional} efficiency, not the total reaction-rate enhancement.
+\end{block}
+A rate factor multiplies source strength ($\times\tfrac32$ for A, $\times\tfrac12$ for C); $\eta$ measures directional information retained relative to an ideal directional signal. The two are cleanly separated in the sampler (direction pdf vs.\ strength scalar).
+\end{frame}
+
+\begin{frame}[t]{$\eta_{\rm source}$, $\eta_{\rm coil}$, and $A$}
+Separate two measurement stages:
+\[
+\eta_{\rm source}: \text{free-streaming / near-source directional survival (predictor }\Sphi\text{)},
+\]
+\[
+\eta_{\rm coil}: \text{deep detector/coil survival after blanket transport}.
+\]
+Then define
+\[
+A = \frac{\eta_{\rm coil}}{\eta_{\rm source}}.
+\]
+\begin{block}{Meaning of $A$}
+$A$ is the blanket's multiplicative attenuation of the directional signal that already survived field-geometry dephasing. $\eta_{\rm source}$ is fast-converging and pre-blanket; $A$ is a scalar set mostly by scattering optical depth $\tau$.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Why $\eta$ is interesting}
+SPF is valuable only if the anisotropic birth direction can do engineering work:
+\begin{itemize}
+  \item reduce load on a vulnerable wall region;
+  \item push flux toward a breeder or away from a port;
+  \item reduce fast neutron exposure at coils or other sensitive structures.
+\end{itemize}
+\vspace{0.5em}
+\begin{block}{Scaling-law payoff}
+If $\eta_{\rm source}$ is predictable from cheap field statistics such as $\Sphi$ or $G[\M]$ --- \emph{seconds} of Biot--Savart per config, no neutronics --- then stellarator candidates can be screened for SPF benefit \emph{before} expensive transport runs.
+\end{block}
+\end{frame}
+
+\begin{frame}[t]{Two ways directionality dies}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{1. Field-geometry dephasing}
+Birth axes vary across the burning volume. The quadrupole patterns are individually clean but add incoherently at the wall. \emph{Coherent, deterministic, in vacuum.}
+\[
+\text{controlled by }\M,\ \Sphi,\ G[\M]
+\]
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{2. Blanket scattering washout}
+Neutrons scatter through material and gradually forget their birth direction. \emph{Stochastic, irreversible, in transport.}
+\[
+\text{controlled by optical depth }\tau
+\]
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.8em}
+These are different physics: deterministic coherent geometry versus stochastic transport randomization. They act on \emph{orthogonal} variables (field direction vs.\ optical depth) at \emph{orthogonal} stages (birth vs.\ transport).
+\end{frame}
+
+\begin{frame}[t]{Intuition: antenna array vs.\ random walk}
+\begin{block}{Field dephasing = phased-array coherence}
+Each source element emits a directed pattern. If all axes align, the array has strong directive gain. If axes fan out, the global pattern smears even though each element remains anisotropic. Reversible/geometric in principle.
+\end{block}
+\begin{block}{Blanket scattering = random walk / thermalization}
+A neutron with directional memory undergoes collisions. After enough collisions, the outgoing direction is weakly correlated with the birth direction. Transport-driven, irreversible loss of information.
+\end{block}
+The first is the \emph{novel} axis (no tokamak analog); the second is mundane (any blanket does it) but decides whether the benefit reaches the magnet.
+\end{frame}
+
+\begin{frame}[t]{Loss 1 in depth: field-geometry dephasing}
+\begin{block}{Mechanism}
+Each birth point emits its clean $1+a_2P_2(\cos\theta_B)$ lobe about its \emph{own} $\bb(\bx)$. At a fixed wall patch, the contributions superpose. If the $\bb$ axes are dispersed, the rank-2 lobes point in different directions and \emph{partially cancel} --- the phased-array picture.
+\end{block}
+\begin{itemize}
+  \item Lives entirely in \emph{vacuum} / free-streaming: it is set before a single collision.
+  \item Predictor is the field orientation tensor $\M$ (scalar proxy $\Sphi$; full observable $G[\M]$).
+  \item \alert{No isotropic-tokamak analog:} an isotropic source has no birth lobe to dephase.
+\end{itemize}
+This is the axis this project adds to the SPF literature. It only exists once the source is anisotropic \emph{and} the field twists.
+\end{frame}
+
+\begin{frame}[t]{Loss 2 in depth: blanket scattering washout}
+\begin{block}{Mechanism}
+A neutron carrying a birth direction random-walks through the blanket; each elastic/inelastic scatter partially randomizes $\bn$. After optical depth $\tau$, the directional bias is attenuated by a factor $A(\tau)$.
+\end{block}
+\begin{itemize}
+  \item Measured directly (precise\_QA run): the directional signal fell from $\mathbf{13.5\%}$ (free-streaming) to $\mathbf{8.5\%}$ (with scattering) --- a survival $A\approx\mathbf{0.63}$.
+  \item Depends on $\tau$ and little else \emph{if} field geometry and blanket separate; that separability is a testable claim, not an assumption.
+  \item Same mechanism as any blanket moderation --- not new physics --- but it sets whether the $\pm40\%$ geometric steering survives to $\pm13\%$ at depth.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Why isotropic sources are different}
+For an isotropic birth source,
+\[
+w(\bn)=\text{constant} \quad (a_2=0).
+\]
+There is no $\Ptwo$ birth anisotropy to dephase and no SPF steering signal to preserve.
+\vspace{0.5em}
+\begin{block}{Blanket scattering still happens}
+The blanket still moderates, absorbs, and redistributes neutrons. But directionally, it is not washing out a \emph{purposeful} birth anisotropy, because none existed.
+\end{block}
+SPF makes directionality an engineering signal; then \emph{both} field geometry (Loss 1) and blanket scattering (Loss 2) matter. This is why Lion-style isotropic-source stellarator NWL cannot see Loss 1: the effect is identically zero when $a_2=0$.
+\end{frame}
+
+\begin{frame}[t]{Tokamak vs.\ stellarator: the contrast table}
+\renewcommand{\arraystretch}{1.25}
+\begin{center}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.27\textwidth}
+                >{\raggedright\arraybackslash}p{0.32\textwidth}
+                >{\raggedright\arraybackslash}p{0.30\textwidth}}
+\toprule
+Case & Field-geometry dephasing (Loss 1) & Blanket washout (Loss 2) \\
+\midrule
+Tokamak, isotropic source & none: no SPF birth axis to dephase & occurs, but not a directional-signal loss \\
+Tokamak SPF (Bae, Schwartz) & nearly none: $C\approx\Sphi\approx 1$ & yes: realized steering attenuated \\
+Stellarator SPF (\emph{this work}) & \alert{yes: novel source-axis dispersion} & yes: same transport washout at depth \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{0.6em}
+The new science is the stellarator field-geometry factor (Loss 1). The blanket factor (Loss 2) is not new, but it decides whether the directional benefit reaches engineering-relevant depths.
+\end{frame}
+
+\begin{frame}[t]{Factorization claim}
+The structural model is
+\[
+\eta_{\rm coil}
+\approx
+\underbrace{G[\M;\text{geometry}]}_{\eta_{\rm source}:\;\text{rank-2 field/director survival}}
+\times
+\underbrace{A(\tau)}_{\text{blanket scattering attenuation}}
+\;\approx\; \Sphi\cdot A(\tau).
+\]
+\begin{block}{Why multiplication is plausible}
+The two losses act on different variables, at different stages, with different physics.
+\end{block}
+\begin{itemize}
+  \item Field geometry: before transport, deterministic, source dependent.
+  \item Blanket: after birth, stochastic, material/optical-depth dependent.
+\end{itemize}
+Both the universality (one $\eta_{\rm source}(C)$ curve across QA/QH/QI) and the separability (factorization) are \emph{falsifiable outputs} of the sweep, not assumptions.
+\end{frame}
+
+\begin{frame}[t]{Where factorization can break}
+Factorization assumes blanket attenuation is nearly direction-agnostic. Three break modes to watch:
+\begin{enumerate}
+  \item \textbf{Energy coupling:} source energy--angle correlation differs by config and the blanket attenuates energy-dependently. Signature: $\eta_{\rm source}(C)$ invariant but $A(\tau)$ scatters with the source spectrum.
+  \item \textbf{Geometric non-separability:} the residual steered-flux \emph{direction} depends on $C$, and a non-uniform blanket attenuates anisotropically $\Rightarrow$ $A$ depends on $C$ at fixed $\tau$.
+  \item \textbf{Near-source contamination:} $\eta_{\rm source}$ is not truly pre-blanket $\Rightarrow$ it slopes with blanket recipe.
+\end{enumerate}
+\begin{block}{Honest caveat}
+A \emph{uniform} offset shell attenuates more isotropically than a lumpy, ported blanket, so it makes $A(\tau)$ look ``too clean.'' Separability holding here is necessary but not sufficient evidence it holds for an engineered device.
+\end{block}
+\end{frame}
+
+% =====================================================================
+\section{Literature and novelty}
+% =====================================================================
+
+\begin{frame}[t]{Kulsrud 1982 --- the anisotropy foundation}
+\begin{block}{Kulsrud, Furth, Valeo, Goldhaber, PRL \textbf{49}, 1248 (1982)}
+Established that polarizing DT fuel (i) enhances the reaction rate up to $50\%$ and (ii) makes the neutron emission anisotropic about $\bb$. This is the physics origin of everything here.
+\end{block}
+\begin{itemize}
+  \item Provides the $1+a_2P_2$ kernel structure (later refined by Schwartz's explicit $(a,b,c)$ decomposition).
+  \item Reviewed and extended by Ciullo et al.\ (2016) and others; depolarization mechanisms are an active question but out of this deck's scope.
+\end{itemize}
+Our claim relative to Kulsrud: \emph{none} on the physics --- we \emph{use} it.
+\end{frame}
+
+\begin{frame}[t]{Schwartz 2025 --- analytic NWL, axisymmetric only}
+\begin{block}{Schwartz, arXiv:2507.11758 (2025)}
+Closed-form neutron-wall-loading for a polarized source, giving the $d\sigma/d\Omega$ of Eq.~2 and the $\pm43\%$ inboard / $\mp22\%$ outboard midplane steering numbers we validate against.
+\end{block}
+\begin{itemize}
+  \item \alert{Axisymmetric only:} the closed form needs a planar (toroidal-ring) source and a co-toroidal field. It explicitly \emph{delegates stellarators} to Lion's numerical method.
+  \item Its companion \texttt{anarrima} package is our external analytic oracle.
+  \item The $C=1$ tokamak limit of our sweep must reproduce Schwartz --- this is the validation anchor.
+\end{itemize}
+Our claim: independent reproduction (compiled OpenMC source vs.\ Schwartz analytic), plus the extension \emph{past} axisymmetry that his closed form cannot reach.
+\end{frame}
+
+\begin{frame}[t]{Bae 2025 --- OpenMC SPF in a spherical tokamak}
+\begin{block}{Bae et al., \emph{Nucl.\ Fusion} \textbf{65}, 086051 (2025)}
+The closest prior work: 3D OpenMC Monte Carlo of SPF in the STAR spherical tokamak, Pb--Li blanket, sample-bank source.
+\end{block}
+\renewcommand{\arraystretch}{1.1}
+\begin{center}
+\begin{tabular}{lccl}
+\toprule
+Bae scheme & $W(\theta)$ & rel.\ $\sigma$ & our mode \\
+\midrule
+unpolarized & $1$ & $\sigo$ & iso \\
+parallel & $(1+3\cos^2\theta)/2$ & $\sigo$ & B/C \\
+perpendicular & $(9/4)\sin^2\theta$ & $3\sigo/2$ & A \\
+\bottomrule
+\end{tabular}
+\end{center}
+Results: TBR parallel $+2.7\%$, perp $-1.8\%$; parallel cuts inboard TF flux $40\%$ $\Rightarrow +68\%$ magnet life. \alert{Symbol-collision warning:} Bae's $(a,b,c)$ are Hupin--Navr\'atil spin polarizations, \emph{not} Schwartz's collision-mode fractions.
+\end{frame}
+
+\begin{frame}[t]{Lion 2022 --- 3D stellarator NWL, isotropic source}
+\begin{block}{Lion et al.\ (2022)}
+A numerical method for stellarator neutron wall loading in fully 3D geometry --- but with \emph{isotropic} sources ($a_2=0$).
+\end{block}
+\begin{itemize}
+  \item Handles the hard 3D geometry Schwartz's closed form cannot.
+  \item But with $a_2=0$ there is \emph{no} SPF birth anisotropy, hence \emph{no} Loss-1 field-geometry dephasing to see.
+  \item It is the numerical machinery Schwartz points to for non-axisymmetric devices.
+\end{itemize}
+The gap: \emph{3D stellarator} $+$ \emph{anisotropic SPF source} $+$ \emph{a field-coherence predictor}. That intersection is the open ground.
+\end{frame}
+
+\begin{frame}[t]{The open ground and the honest novelty claim}
+\begin{block}{What is genuinely new here}
+\begin{enumerate}
+  \item Stellarator SPF \emph{steering} (anisotropic source in a twisting field) --- neither Schwartz (axisymmetric) nor Lion (isotropic) covers it; Bae is a tokamak.
+  \item A \emph{cheap field-coherence predictor} ($C$, $\Sphi$, $G[\M]$) for that steering, with the parity argument singling out the tensor.
+  \item The $C=1$ limit reproducing Schwartz's axisymmetric result as the validation anchor.
+\end{enumerate}
+\end{block}
+\begin{block}{What is NOT new (state it plainly)}
+The order parameters are standard tools: mean resultant length (Mardia--Jupp), orientation/fabric tensor (Woodcock 1977, Scheidegger), nematic order (de Gennes). We claim novelty at the \emph{application/framing} level and cite these antecedents. We do not present $C$, $\M$, or $\Sphi$ as new mathematics.
+\end{block}
+\end{frame}
+
+% =====================================================================
+\section{Practice: what to compute, decide, and report}
+% =====================================================================
+
+\begin{frame}[t]{Analysis decisions}
+\begin{enumerate}
+  \item Keep $C$ as a familiar proxy, but label it precisely: mean resultant length / vector coherence.
+  \item Promote $\Sphi$ or tensor order as the symmetry-matched field-direction coherence.
+  \item Fit $\eta_{\rm source}(C)$ and $\eta_{\rm source}(\Sphi)$ head-to-head.
+  \item Add a geometry-folded predictor $G[\M]$ for the closest transport-free comparison.
+  \item Audit accepted and rejected devices separately to test whether filters hide the tensor-vs-$C$ witness cases.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}[t]{Minimal code quantities to store}
+For each source sample, with weights $w_i$ and field directions $\bb_i$ (in the local cylindrical frame):
+\[
+\bar{\bm b}=\sum_i w_i\bb_i,
+\qquad
+C=|\bar{\bm b}|,
+\]
+\[
+\M=\sum_i w_i\bb_i\bb_i^\T,
+\qquad
+\Qten=\M-\frac{1}{3}\I.
+\]
+Then compute
+\[
+\lambda_1,\lambda_2,\lambda_3;
+\qquad
+S=\frac{3\lambda_1-1}{2};
+\qquad
+\Sphi=\frac{3\,\ephi^\T\M\,\ephi-1}{2}.
+\]
+Also store the \textbf{reversal fraction} (source weight with $b_\phi<0$) --- the witness statistic for $C$--$\Sphi$ divergence. (These are exactly the outputs of \texttt{coherence\_metrics.coherence\_metrics}.)
+\end{frame}
+
+\begin{frame}[t]{How to present the order parameter in a paper}
+Recommended framing:
+\begin{block}{Plain-language bridge}
+``Because the polarized neutron kernel is even under $\bb\rightarrow-\bb$, the relevant field-direction coherence is a quadrupolar, nematic-like order parameter rather than a vector mean.''
+\end{block}
+Then define
+\[
+\M=\avg{\bb\bb^\T},
+\qquad
+\Sphi=\frac{3\avg{(\bb\cdot\ephi)^2}-1}{2}.
+\]
+Use ``nematic'' as an analogy/import from directional statistics, not as new physics or new mathematics. Cite Mardia--Jupp, Woodcock, de Gennes for the tools; claim the \emph{application} to SPF steering.
+\end{frame}
+
+\begin{frame}[t]{Decision tree for interpreting results}
+\begin{enumerate}
+  \item If $\eta(C)$ collapses and $\eta(\Sphi)$ does not improve it: report $C$ as a practical proxy, with the tensor derivation explaining why the regime is benign.
+  \item If $\eta(C)$ scatters but $\eta(\Sphi)$ collapses: headline tensor/nematic coherence.
+  \item If both scatter but $G[\M]$ collapses: orientation and line-of-sight geometry matter beyond scalar order.
+  \item If $\eta_{\rm coil}/\eta_{\rm source}$ depends on $\Sphi$ or geometry: factorization is imperfect; blanket attenuation couples to the steering direction.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}[t]{The compact mental model}
+\[
+\boxed{\text{SPF birth anisotropy is quadrupolar, not dipolar.}}
+\]
+\[
+\boxed{\text{Therefore the field enters as }\bb\bb^\T\text{, not }\bb.}
+\]
+\[
+\boxed{C=|\avg{\bb}|\text{ is a proxy; }\Sphi\text{ or }\M\text{ is the matched variable.}}
+\]
+\[
+\boxed{\eta_{\rm coil}\approx \eta_{\rm source}[\M]\,A(\tau).}
+\]
+\vspace{0.5em}
+The project is about how much ideal SPF steering survives: first through stellarator field-director dephasing (Loss 1, novel), then through blanket scattering (Loss 2, mundane but decisive).
+\end{frame}
+
+\begin{frame}[t]{One-slide derivation to remember}
+\[
+w(\bn|\bb)\propto 1+a_2\Ptwo(\bn\cdot\bb),
+\qquad a_2=\frac{\wpar-a}{\wpar+a}\in[-1,1]
+\]
+\[
+\Ptwo(\bn\cdot\bb)
+=\frac{3}{2}\bn^\T(\bb\bb^\T)\bn-\frac{1}{2}
+\]
+\[
+\avg{\Ptwo(\bn\cdot\bb)}
+=\frac{3}{2}\bn^\T\avg{\bb\bb^\T}\bn-\frac{1}{2}
+\]
+\[
+\therefore\quad
+\text{steering}\sim \text{line-of-sight contraction of }\M=\avg{\bb\bb^\T}.
+\]
+No $\avg{\bb}$ is required by the exact parity of the kernel.
+\end{frame}
+
+\begin{frame}[t]{Final takeaways}
+\begin{enumerate}
+  \item The kernel has no dipole term; SPF steering is rank-2/quadrupolar, with strength $a_2\in[-1,1]$ set by the deuteron spin alignment $p_{zz}$.
+  \item Anti-parallel field directions \emph{reinforce}, not cancel, for this kernel (executable $\bb\to-\bb$ test).
+  \item $C$ can work on co-toroidal cap-like design families because $\Sphi\approx(3C^2-1)/2$ ($\lamphi\approx C^2$, corr $0.998$ on real data).
+  \item The tensor is still the physically correct object; test, store, and use it for edge cases (device 1190023, the audit-filtered reversal witness).
+  \item $\eta$ measures survival of directional steering; $A$ measures blanket washout of that already-created signal ($A\approx0.63$ measured).
+  \item Clean paper structure: parity $\rightarrow$ tensor order parameter $\rightarrow$ $\eta_{\rm source}$ geometry law $\rightarrow$ blanket attenuation/factorization.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}[t,allowframebreaks]{Key references}
+\footnotesize
+\begin{thebibliography}{9}
+\bibitem{kulsrud1982} R.\,M.\ Kulsrud, H.\,P.\ Furth, E.\,J.\ Valeo, M.\ Goldhaber,
+``Fusion reactor plasmas with polarized nuclei,'' \emph{Phys.\ Rev.\ Lett.} \textbf{49}, 1248 (1982).
+\bibitem{ciullo2016} G.\ Ciullo et al., \emph{Nuclear Fusion with Polarized Fuel} (review), Springer (2016).
+\bibitem{schwartz2025} H.\ Schwartz, ``Analytic neutron wall loading for polarized fusion sources,'' arXiv:2507.11758 (2025); companion \texttt{anarrima} package.
+\bibitem{bae2025} H.\ Bae, S.\ Borowiec, A.\ Badalassi, C.\ Parisi, A.\ Diallo, J.\ Menard, A.\ Khodak, N.\ Brown,
+``Neutronics analysis of spin-polarized fuel in spherical tokamaks,'' \emph{Nucl.\ Fusion} \textbf{65}, 086051 (2025).
+\bibitem{lion2022} J.\ Lion et al., ``Numerical neutron wall loading for 3D stellarator geometries'' (2022).
+\bibitem{hupin} G.\ Hupin, P.\ Navr\'atil et al., deuteron vector/tensor polarization formalism ($p_z$, $p_{zz}$).
+\bibitem{mardia2000} K.\,V.\ Mardia, P.\,E.\ Jupp, \emph{Directional Statistics}, Wiley (2000).
+\bibitem{woodcock1977} N.\,H.\ Woodcock, ``Specification of fabric shapes using an eigenvalue method,''
+\emph{Geol.\ Soc.\ Am.\ Bull.} \textbf{88}, 1231 (1977).
+\bibitem{degennes} P.\,G.\ de Gennes, J.\ Prost, \emph{The Physics of Liquid Crystals}, 2nd ed., Oxford (1993).
+\end{thebibliography}
+\end{frame}
+
+\end{document}

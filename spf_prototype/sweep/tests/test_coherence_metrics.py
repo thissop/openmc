@@ -121,3 +121,59 @@ def test_invalid_inputs_raise():
         cm.coherence_C(np.array([[0.0, 0, 0]]), frame="lab")    # zero vector
     with pytest.raises(ValueError):
         cm.coherence_C(np.array([[1.0, 0, 0]]), weights=[-1.0], frame="lab")
+
+
+# --------------------------------------------------------------------------- #
+# G1: nematic order S_phi / lambda_phi and the PARITY property (headless kernel)
+# --------------------------------------------------------------------------- #
+def _cap_about_ephi(half_angle, n=40000, seed=0):
+    """n unit vectors in a cap of `half_angle` about the toroidal slot (column 1,
+    e_phi), azimuthally uniform, drawn uniform in cos(theta) over [cos(HA), 1].
+    Returned as raw (N,3) so coherence_metrics(..., frame='lab') treats column 1 as
+    the toroidal axis directly (lambda_phi = T[1,1] then measures the cap width)."""
+    rng = np.random.default_rng(seed)
+    cos_t = 1.0 - rng.random(n) * (1.0 - np.cos(half_angle))   # cos in [cos(HA), 1]
+    sin_t = np.sqrt(np.clip(1.0 - cos_t ** 2, 0.0, 1.0))
+    az = rng.random(n) * 2.0 * np.pi
+    return np.stack([sin_t * np.cos(az), cos_t, sin_t * np.sin(az)], axis=1)
+
+
+def test_Sphi_limits_aligned_and_isotropic():
+    aligned = np.tile([0.0, 1.0, 0.0], (500, 1))               # all e_phi
+    m = cm.coherence_metrics(aligned, frame="lab")
+    assert m["lambda_phi"] == pytest.approx(1.0, abs=1e-12)
+    assert m["S_phi"] == pytest.approx(1.0, abs=1e-12)         # aligned -> full order
+    assert m["reversal_frac"] == pytest.approx(0.0, abs=1e-12)
+    rng = np.random.default_rng(1)
+    iso = rng.normal(size=(8000, 3)); iso /= np.linalg.norm(iso, axis=1, keepdims=True)
+    mi = cm.coherence_metrics(iso, frame="lab")
+    assert mi["lambda_phi"] == pytest.approx(1 / 3, abs=3e-2)  # isotropic -> 1/3
+    assert mi["S_phi"] == pytest.approx(0.0, abs=5e-2)         # -> 0 (no steering)
+
+
+def test_cap_sandwich_C2_le_lamphi_le_C():
+    # symmetric cap about e_phi: perp means ~0 so C = <cos_t>, lambda_phi = <cos_t^2>,
+    # giving C^2 <= lambda_phi <= C (Jensen, and cos<=1 on the cap). No reversal.
+    m = cm.coherence_metrics(_cap_about_ephi(np.radians(50)), frame="lab")
+    assert m["C"] ** 2 <= m["lambda_phi"] + 1e-6
+    assert m["lambda_phi"] <= m["C"] + 1e-6
+    assert m["reversal_frac"] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_parity_Sphi_invariant_but_C_collapses_under_bhat_flip():
+    """THE parity argument, executable: the SPF kernel is EVEN in b_hat, so eta is a
+    functional of the SECOND moment only. Flipping b_hat -> -b_hat on half the source
+    must leave lambda_phi/S_phi/tensor_evals UNCHANGED while the first moment C
+    collapses -- proving C is not the causal variable and S_phi is."""
+    cap = _cap_about_ephi(np.radians(30), n=40000, seed=2)
+    m0 = cm.coherence_metrics(cap, frame="lab")
+    flipped = cap.copy(); flipped[::2] *= -1.0                 # flip exactly half
+    m1 = cm.coherence_metrics(flipped, frame="lab")
+    # 2nd-moment predictors are invariant under the sign flip ...
+    assert m1["lambda_phi"] == pytest.approx(m0["lambda_phi"], abs=1e-9)
+    assert m1["S_phi"] == pytest.approx(m0["S_phi"], abs=1e-9)
+    assert m1["tensor_evals"] == pytest.approx(m0["tensor_evals"], abs=1e-9)
+    # ... but the first moment C collapses (half the vectors now oppose) ...
+    assert m0["C"] > 0.9 and m1["C"] < 0.1
+    # ... and half the source now reads as reversed toroidal sense.
+    assert m1["reversal_frac"] == pytest.approx(0.5, abs=1e-9)

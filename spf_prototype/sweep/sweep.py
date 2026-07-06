@@ -76,6 +76,18 @@ def tau_proxy(layers):
     return float(sum(SIGMA_S.get(n, 0.0) * t for n, t in layers if n != "sol"))
 
 
+def _make_field(dev, cfg, defaults, stem):
+    """The b_hat source for a config: CoilField (Biot-Savart, DEFAULT) or, when
+    field_source='equilibrium' (G3), EquilibriumField reading the pre-generated
+    data/<stem>_equil map -- a flux function that admits the reversal devices the coil
+    B.n audit filters. Both expose the same .B/.bhat interface downstream."""
+    src = cfg.get("field_source", defaults.get("field_source", "coil"))
+    if src == "equilibrium":
+        import equilibrium_field as ef
+        return ef.EquilibriumField(str(DATADIR / f"{stem}_equil"), meta=dev.meta)
+    return bsf.CoilField(dev.coils, meta=dev.meta)
+
+
 # --------------------------------------------------------------------------- #
 # Geometry staging: write the surface npz + field map a config needs
 # --------------------------------------------------------------------------- #
@@ -157,7 +169,7 @@ def run_transport(stem, scale, h5m, layers, a_native_cm, results_dir, particles,
     a_cm = float(a_native_cm) * UNIT_CM * scale
 
     stream_list = [("free", 1e-4)] if streams == "free" else [("free", 1e-4), ("scatter", 1.0)]
-    vals = {}          # (stream, mode) -> coil_fast (mean, sd)
+    vals = {}          # (stream, mode) -> dict(coil_fast=(m,sd), wall_dir=(m,sd))
     lost = 0
     for stream, dscale in stream_list:
         for mode, abc in rc.MODES.items():
@@ -171,8 +183,11 @@ def run_transport(stem, scale, h5m, layers, a_native_cm, results_dir, particles,
                 _attach_weight_windows(model, mats)
             sp = model.run(cwd=str(cwd), output=False)
             lost = max(lost, _lost_particles(sp))
-            cf = rg._mat_score(sp, "coil_fast", mats["coil"].id, ("flux",))
-            vals[(stream, mode)] = cf
+            # BOTH observables per run (statepoints persist for re-analysis): the deep
+            # coil_fast (eta_coil) and the near-source wall directional contrast (eta_source)
+            vals[(stream, mode)] = dict(
+                coil_fast=rg._mat_score(sp, "coil_fast", mats["coil"].id, ("flux",)),
+                wall_dir=rg._wall_directional(sp, R0_cm))
     return vals, lost
 
 
@@ -204,22 +219,43 @@ def _attach_weight_windows(model, mats):
 
 
 def deltas_from_vals(vals):
-    """Raw fractional changes of coil_fast, polarized vs unpolarized, per stream."""
+    """Directional steering deltas, polarized vs unpolarized (see docs/EXPERIMENTAL_DESIGN.md):
+      delta_free_<mode>    := near-source WALL directional-contrast DIFFERENCE (free stream)
+                              -> the PRIMARY, low-noise eta_source (parity-correct S_phi test).
+      delta_scatter_<mode> := deep COIL_FAST FRACTIONAL change (scatter stream) -> eta_coil.
+    Every raw (observable, stream, mode) value is also stored under 'observables_raw' so no
+    output is lost -- results are pulled back to the Mac and re-analyzed there."""
     out = {}
-    for stream in ("free", "scatter"):
-        u = vals.get((stream, "unpolarized"))
-        if u is None or not np.isfinite(u[0]) or u[0] == 0:
-            continue
+
+    # PRIMARY eta_source: the near-source wall CONTRAST is already self-normalizing
+    # (an in/out asymmetry in [-1,1]), so its steering signal is the DIFFERENCE from the
+    # unpolarized load, not a fractional change.
+    uw = vals.get(("free", "unpolarized"), {}).get("wall_dir")
+    if uw and np.isfinite(uw[0]):
         for mode in POL_MODES:
-            p = vals.get((stream, mode))
-            if p is None or not np.isfinite(p[0]):
-                continue
-            d = (p[0] - u[0]) / u[0]
-            # 1-sigma on the ratio
-            sd = abs(p[0] / u[0]) * np.sqrt((p[1] / p[0]) ** 2 + (u[1] / u[0]) ** 2) \
-                if p[0] else float("nan")
-            out[f"delta_{stream}_{mode}"] = d
-            out[f"delta_{stream}_{mode}_sd"] = float(sd)
+            p = vals.get(("free", mode), {}).get("wall_dir")
+            if p and np.isfinite(p[0]):
+                out[f"delta_free_{mode}"] = float(p[0] - uw[0])
+                out[f"delta_free_{mode}_sd"] = float(np.hypot(p[1], uw[1]))
+
+    # eta_coil: deep coil_fast FRACTIONAL change (scatter stream)
+    uc = vals.get(("scatter", "unpolarized"), {}).get("coil_fast")
+    if uc and np.isfinite(uc[0]) and uc[0] != 0:
+        for mode in POL_MODES:
+            p = vals.get(("scatter", mode), {}).get("coil_fast")
+            if p and np.isfinite(p[0]):
+                out[f"delta_scatter_{mode}"] = float((p[0] - uc[0]) / uc[0])
+                out[f"delta_scatter_{mode}_sd"] = float(
+                    abs(p[0] / uc[0]) * np.hypot(p[1] / p[0] if p[0] else 0.0,
+                                                 uc[1] / uc[0]))
+
+    # save EVERY observable for EVERY (stream, mode) -- lossless for local re-analysis
+    raw = {}
+    for (stream, mode), d in vals.items():
+        for obs, ms in d.items():
+            if ms is not None:
+                raw[f"{obs}__{stream}__{mode}"] = [float(ms[0]), float(ms[1])]
+    out["observables_raw"] = raw
     return out
 
 
@@ -245,7 +281,7 @@ def run_config(cfg, defaults, out_dir, force=False):
                    aspect=dev.meta["aspect"], symmetry_class=cfg.get(
                        "symmetry_class", dev.meta["symmetry_class"]),
                    total_coil_length=dev.meta["total_coil_length"])
-        field_native = bsf.CoilField(dev.coils, meta=dev.meta)
+        field_native = _make_field(dev, cfg, defaults, stem)
         passed, audit = fa.audit_coilfield(field_native, dev)
         rec["field_audit"] = _audit_summary(audit)
         if not passed:
@@ -260,7 +296,10 @@ def run_config(cfg, defaults, out_dir, force=False):
         m = cm.coherence_metrics(bhat, pos=xyz, weights=w, frame="cylindrical")
         rec["C"] = m["C"]
         rec["tensor_evals"] = m["tensor_evals"].tolist()
-        rec["anisotropy"] = m["anisotropy"]
+        rec["anisotropy"] = m["anisotropy"]              # biaxiality (diagnostic only)
+        rec["lambda_phi"] = m["lambda_phi"]             # <b_phi^2>_s (toroidal axis)
+        rec["S_phi"] = m["S_phi"]                       # nematic order = HEADLINE predictor
+        rec["reversal_frac"] = m["reversal_frac"]       # >0 => C under-predicts (use S_phi)
         rec["angular_std_deg"] = float(np.degrees(m["angular_std"]))
         rec["C_lab"] = cm.coherence_C(bhat, frame="lab")   # diagnostic (should be ~0)
 

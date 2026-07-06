@@ -102,12 +102,30 @@ def direction_tensor(bhat, pos=None, weights=None, frame="cylindrical"):
 
 def coherence_metrics(bhat, pos=None, weights=None, frame="cylindrical"):
     """All cheap predictors in one call. Returns a dict:
-        C            : mean resultant length in [0,1]
+        C            : mean resultant length |<b>| in [0,1]  (FIRST moment / polar)
         mean_dir     : unit mean field direction (in `frame`)
         tensor_evals : (l1>=l2>=l3), sum = 1  (structure of the spread)
-        anisotropy   : l1 - l2   (planar-fan vs isotropic-smear discriminator)
+        anisotropy   : l1 - l2   (BIAXIALITY: planar-fan vs isotropic-smear; this is
+                       NOT the coherence-loss scalar -- use S_phi for that, see below)
+        lambda_phi   : <b_phi^2>_s = T[1,1], the direction-tensor weight along the
+                       toroidal axis e_phi (the frame's 2nd axis).  SECOND moment.
+        S_phi        : (3*lambda_phi - 1)/2, the NEMATIC (P2 / director) order about
+                       e_phi and the PHYSICALLY-MATCHED predictor of SPF steering. The
+                       emission kernel w ~ 1 + a2 P2(cos theta_B) is EVEN in b_hat
+                       (headless / quadrupolar), so every wall observable is a linear
+                       functional of the SECOND moment <b b^T> ONLY and is INDEPENDENT
+                       of the first moment C. C tracks eta only via its correlation
+                       with S_phi, which holds for a co-toroidal cap where
+                       C^2 <~ lambda_phi <~ C. See docs/THEORY.md (parity argument).
+        reversal_frac: source weight with b_phi < 0 (reversed toroidal sense). 0 for a
+                       cap (C and S_phi monotone-locked); >0 only where the field
+                       reverses, and THERE C under-predicts while S_phi still tracks eta.
         angular_std  : source-weighted RMS angle [rad] of bhat about mean_dir
         circular_std : directional-statistics sqrt(-2 ln C) [rad]
+
+    lambda_phi/S_phi/reversal_frac reference the frame's 2nd axis (the toroidal e_phi
+    in the cylindrical frame -- the tokamak C=1 calibration axis), so they are only
+    physically meaningful with frame='cylindrical'.
     """
     b, w = _prep(bhat, pos, weights, frame)
     mean_vec = (w[:, None] * b).sum(axis=0)
@@ -116,12 +134,16 @@ def coherence_metrics(bhat, pos=None, weights=None, frame="cylindrical"):
     T = np.einsum("i,ij,ik->jk", w, b, b)
     T = 0.5 * (T + T.T)
     evals = np.sort(np.linalg.eigvalsh(T))[::-1]
+    lam_phi = float(T[1, 1])                           # <b_phi^2>_s (toroidal axis)
+    S_phi = float((3.0 * lam_phi - 1.0) / 2.0)         # nematic order about e_phi
+    reversal_frac = float(w[b[:, 1] < 0.0].sum())      # source weight with b_phi < 0
     cosang = np.clip(b @ mean_dir, -1.0, 1.0)
     ang = np.arccos(cosang)
     angular_std = float(np.sqrt((w * ang ** 2).sum()))
     circular_std = float(np.sqrt(max(-2.0 * np.log(max(C, 1e-300)), 0.0)))
     return dict(C=C, mean_dir=mean_dir, tensor_evals=evals,
                 anisotropy=float(evals[0] - evals[1]),
+                lambda_phi=lam_phi, S_phi=S_phi, reversal_frac=reversal_frac,
                 angular_std=angular_std, circular_std=circular_std)
 
 

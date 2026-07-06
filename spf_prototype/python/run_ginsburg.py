@@ -141,6 +141,29 @@ def _mat_score(sp_path, tally_name, mat_id, score_substrs):
         return float(m[flat, :, s_idx].sum()), float(np.sqrt((sd[flat, :, s_idx]**2).sum()))
 
 
+def _wall_directional(sp_path, R0_cm, tally_name="firstwall_dir"):
+    """eta_source observable (G4): read the near-source first-wall directional mesh tally
+    and reduce it to the inboard/outboard-midplane steering CONTRAST via the OpenMC-free
+    wall_metrics.inboard_outboard_contrast (unit-tested off-cluster). (nan,nan) if the
+    tally is absent. NOTE (Ginsburg bring-up check): the mesh-cell flatten order is taken
+    as reshape(mesh.dimension) = (nR,nphi,nZ), the standard OpenMC idiom; confirm on the
+    tiny run that swapping R<->Z would not silently invert the inboard/outboard split."""
+    import numpy as np
+    import openmc
+    import wall_metrics
+    with openmc.StatePoint(sp_path) as s:
+        try:
+            t = s.get_tally(name=tally_name)
+        except (LookupError, KeyError):
+            return float("nan"), float("nan")
+        mesh = t.find_filter(openmc.MeshFilter).mesh
+        dim = tuple(int(d) for d in mesh.dimension)          # (nR, nphi, nZ)
+        mean = np.asarray(t.mean).reshape(dim)
+        sd = np.asarray(t.std_dev).reshape(dim)
+        return wall_metrics.inboard_outboard_contrast(
+            mean, sd, mesh.r_grid, mesh.z_grid, R0_cm)
+
+
 def extract_metrics(sp, results_dir):
     """Headline metrics from the MaterialFilter tallies (robust path). The
     phi-resolved wall mesh + the per-patch analytic comparison are left as a

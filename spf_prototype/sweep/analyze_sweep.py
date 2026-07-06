@@ -55,7 +55,9 @@ def assemble(recs, anchor):
     d_scat_a = anchor.get("delta_scatter_parallel") if anchor else None
     rows = []
     for r in recs:
-        row = dict(id=r["id"], C=r.get("C"), nfp=r.get("nfp"), iota=r.get("iota"),
+        row = dict(id=r["id"], C=r.get("C"), S_phi=r.get("S_phi"),
+                   lambda_phi=r.get("lambda_phi"), reversal_frac=r.get("reversal_frac"),
+                   nfp=r.get("nfp"), iota=r.get("iota"),
                    aspect=r.get("aspect"), symmetry_class=r.get("symmetry_class"),
                    blanket=r.get("blanket"), tau=r.get("tau"),
                    anisotropy=r.get("anisotropy"), angular_std_deg=r.get("angular_std_deg"),
@@ -73,7 +75,8 @@ def assemble(recs, anchor):
 
 
 def write_csv(rows, path):
-    cols = ["id", "symmetry_class", "nfp", "iota", "aspect", "C", "anisotropy",
+    cols = ["id", "symmetry_class", "nfp", "iota", "aspect", "C", "S_phi",
+            "lambda_phi", "reversal_frac", "anisotropy",
             "angular_std_deg", "blanket", "tau", "delta_free", "delta_scatter",
             "eta_source", "eta_coil", "A", "status", "lost", "audit_passed"]
     lines = [",".join(cols)]
@@ -120,6 +123,55 @@ def fit_eta_source_of_C(rows):
     return out, (C, eta)
 
 
+def fit_eta_source_of_S(rows):
+    """Fit eta_source(S_phi) -- the PARITY-CORRECT predictor (nematic order about the
+    toroidal axis). The kernel is even in b_hat, so eta is a functional of the SECOND
+    moment; S_phi, not the first-moment C, is the causal variable (docs/THEORY.md).
+    Reports the linear fit AND the PARAMETER-FREE prediction eta_source ~ S_phi/S_phi
+    (anchor): leading-order steering ~ S_phi, so this residual is a zero-free-parameter
+    test of the physics."""
+    tri = [(r["S_phi"], r["eta_source"], r["C"]) for r in rows
+           if r.get("S_phi") is not None and r.get("eta_source") is not None
+           and r.get("C") is not None and r["blanket"] in (None, "baseline")]
+    out = dict(n=len(tri))
+    if len(tri) < 3:
+        out["note"] = "insufficient transported configs for a fit"
+        return out, (np.array([]), np.array([]))
+    S = np.array([t[0] for t in tri]); eta = np.array([t[1] for t in tri])
+    Cs = np.array([t[2] for t in tri])
+    A = np.vstack([S, np.ones_like(S)]).T
+    (a, b), *_ = np.linalg.lstsq(A, eta, rcond=None)
+    pred = A @ [a, b]
+    ss = 1 - np.sum((eta - pred) ** 2) / np.sum((eta - eta.mean()) ** 2)
+    out["linear"] = dict(slope=float(a), intercept=float(b), R2=float(ss),
+                         rms_resid=float(np.sqrt(np.mean((eta - pred) ** 2))))
+    S_anchor = float(S[np.argmax(Cs)])                 # anchor = highest-C config
+    if S_anchor:
+        predpf = S / S_anchor
+        out["parameter_free"] = dict(
+            model="eta_source = S_phi / S_phi(anchor)", S_phi_anchor=S_anchor,
+            rms_resid=float(np.sqrt(np.mean((eta - predpf) ** 2))))
+    return out, (S, eta)
+
+
+def compare_predictors(rows):
+    """Head-to-head: does the first-moment C or the second-moment S_phi predict
+    eta_source better (tighter collapse = higher R^2)? The parity argument predicts
+    S_phi wins, or ties C on the cap-shaped family where lambda_phi ~ C^2."""
+    fitC, _ = fit_eta_source_of_C(rows)
+    fitS, _ = fit_eta_source_of_S(rows)
+    r2C = fitC.get("linear", {}).get("R2")
+    r2Cp = fitC.get("power", {}).get("R2")
+    r2S = fitS.get("linear", {}).get("R2")
+    cand = [("C_linear", r2C), ("C_power", r2Cp), ("S_phi_linear", r2S)]
+    best = max(cand, key=lambda kv: (kv[1] if kv[1] is not None else -np.inf))
+    return dict(R2_C_linear=r2C, R2_C_power=r2Cp, R2_S_phi_linear=r2S,
+                best_predictor=best[0], parameter_free_S_phi=fitS.get("parameter_free"),
+                note=("S_phi is the parity-correct predictor; C ties it only on a "
+                      "co-toroidal cap (lambda_phi ~ C^2). A C-vs-S_phi R^2 gap, or any "
+                      "reversal_frac>0 device, favors S_phi -- see docs/THEORY.md."))
+
+
 def multivariate(rows):
     """Does C alone predict eta_source, or do nfp/iota add information? Standardized
     linear regression eta_source ~ C + nfp + iota; compare R^2 to C-only."""
@@ -146,28 +198,53 @@ def multivariate(rows):
                          "nfp/iota add signal -> scalar C incomplete"))
 
 
+def _class_residuals(base, xkey):
+    """Per-class mean residual about the pooled linear eta_source(xkey) fit."""
+    pts = [(r[xkey], r["eta_source"], r.get("symmetry_class") or "unknown")
+           for r in base if r.get(xkey) is not None]
+    if len(pts) < 4:
+        return None
+    x = np.array([p[0] for p in pts]); y = np.array([p[1] for p in pts])
+    A = np.vstack([x, np.ones_like(x)]).T
+    beta, *_ = np.linalg.lstsq(A, y, rcond=None)
+    resid = y - A @ beta
+    by = {}
+    for (_, _, cls), e in zip(pts, resid):
+        by.setdefault(cls, []).append(e)
+    per = {k: dict(n=len(v), mean_resid=float(np.mean(v)), std_resid=float(np.std(v)))
+           for k, v in by.items()}
+    spread = (max(c["mean_resid"] for c in per.values())
+              - min(c["mean_resid"] for c in per.values()))
+    return dict(per_class=per, class_mean_spread=float(spread))
+
+
 def universality(rows):
-    """Do QA/QH/QI collapse onto one eta_source(C)? Compare per-class residuals about
-    the pooled fit; a class with a coherent nonzero mean residual means the classes
-    SEPARATE (then the tensor structure, not scalar C, is the real predictor)."""
-    base = [r for r in rows if r.get("eta_source") is not None and r.get("C") is not None
+    """Do QA/QH/QI collapse onto ONE curve? Compare per-class residuals about the
+    pooled linear fit for BOTH predictors (C and S_phi). A class with a coherent
+    nonzero mean residual SEPARATES under that predictor; the predictor with the
+    smaller class spread is the better one (and if neither collapses, the full tensor
+    structure -- not any scalar -- is the predictor). NOTE: on this family class is
+    aliased with C (QA high-C, QH low-C, disjoint), so a 'split' can be curvature in
+    eta(x); de-alias (G2) before over-reading a separation."""
+    base = [r for r in rows if r.get("eta_source") is not None
             and r["blanket"] in (None, "baseline")]
     if len(base) < 4:
         return dict(note="insufficient data")
-    C = np.array([r["C"] for r in base]); eta = np.array([r["eta_source"] for r in base])
-    A = np.vstack([C, np.ones_like(C)]).T
-    beta, *_ = np.linalg.lstsq(A, eta, rcond=None)
-    resid = eta - A @ beta
-    by = {}
-    for r, e in zip(base, resid):
-        by.setdefault(r["symmetry_class"] or "unknown", []).append(e)
-    per_class = {k: dict(n=len(v), mean_resid=float(np.mean(v)), std_resid=float(np.std(v)))
-                 for k, v in by.items()}
-    spread = max(c["mean_resid"] for c in per_class.values()) - \
-        min(c["mean_resid"] for c in per_class.values())
-    return dict(per_class=per_class, class_mean_spread=float(spread),
-                verdict=("classes collapse (universal)" if spread < 0.1 else
-                         "classes SEPARATE -> use tensor structure, not scalar C"))
+    rC = _class_residuals(base, "C"); rS = _class_residuals(base, "S_phi")
+    out = dict(by_C=rC, by_S_phi=rS)
+    # verdict from whichever predictors are available (older records lack S_phi); the
+    # tighter class collapse wins.
+    avail = {k: v["class_mean_spread"] for k, v in (("C", rC), ("S_phi", rS)) if v}
+    if avail:
+        better = min(avail, key=avail.get)
+        out["verdict"] = (f"classes collapse under {better} (universal)"
+                          if avail[better] < 0.1 else
+                          f"classes SEPARATE (min spread {avail[better]:.3f} under "
+                          f"{better}) -> tensor structure, not a scalar, is the predictor")
+        if rC and rS:
+            out["class_alias_warning"] = ("class is aliased with C on this family; "
+                                          "confirm with de-aliased configs (G2) before over-reading")
+    return out
 
 
 def separability(rows):
@@ -243,6 +320,27 @@ def make_figures(rows, fit, figs_dir):
         fig.tight_layout(); fig.savefig(figs / "fig_C_predicts_eta.png", dpi=200)
         plt.close(fig)
 
+    # 1b. the PARITY-CORRECT predictor: S_phi vs eta_source, with the parameter-free
+    #     physics line eta = S_phi/S_phi(anchor) overlaid (no fit).
+    trS = [r for r in base if r.get("eta_source") is not None and r.get("S_phi") is not None]
+    if trS:
+        fig, ax = plt.subplots(figsize=(6.4, 5))
+        for r in trS:
+            ax.scatter(r["S_phi"], r["eta_source"], color=cls_color(r), s=45, zorder=3,
+                       edgecolor="white")
+        Sa = max(trS, key=lambda r: r["C"])["S_phi"]          # anchor S_phi (highest C)
+        if Sa:
+            xs = np.linspace(min(r["S_phi"] for r in trS), max(r["S_phi"] for r in trS), 50)
+            ax.plot(xs, xs / Sa, color="#52514e", lw=1.5, ls="--",
+                    label="parameter-free  eta = S_phi / S_phi(anchor)")
+        ax.set_xlabel("nematic order  S_phi = (3*lambda_phi - 1)/2  (parity-correct)")
+        ax.set_ylabel("eta_source  (expensive, neutronics)")
+        ax.set_title("Does the SECOND-moment S_phi predict the SPF benefit?")
+        ax.legend(frameon=False)
+        _classes_legend(ax, CLASS_COLOR, trS)
+        fig.tight_layout(); fig.savefig(figs / "fig_S_predicts_eta.png", dpi=200)
+        plt.close(fig)
+
     # 2. eta_source vs nfp
     tr_nfp = [r for r in base if r.get("eta_source") is not None and r.get("nfp")]
     if tr_nfp:
@@ -302,11 +400,15 @@ def main():
     write_csv(rows, out / "sweep.csv")
 
     fit, _ = fit_eta_source_of_C(rows)
+    fit_S, _ = fit_eta_source_of_S(rows)
+    comparison = compare_predictors(rows)
     report = dict(
         n_configs=len(recs),
         n_transported=sum(1 for r in rows if r.get("eta_source") is not None),
         anchor_id=(anchor["id"] if anchor else None),
         eta_source_of_C=fit,
+        eta_source_of_S_phi=fit_S,
+        predictor_comparison=comparison,
         multivariate=multivariate(rows),
         universality=universality(rows),
         separability=separability(rows),
@@ -316,7 +418,10 @@ def main():
 
     print(f"[analyze] {report['n_configs']} configs, "
           f"{report['n_transported']} transported, anchor={report['anchor_id']}")
-    print(f"[analyze] eta_source(C): {fit.get('linear', fit.get('note'))}")
+    print(f"[analyze] eta_source(C):     {fit.get('linear', fit.get('note'))}")
+    print(f"[analyze] eta_source(S_phi): {fit_S.get('linear', fit_S.get('note'))}")
+    print(f"[analyze] predictor winner: {comparison.get('best_predictor')} "
+          f"(R2 C={comparison.get('R2_C_linear')}, S_phi={comparison.get('R2_S_phi_linear')})")
     print(f"[analyze] universality: {report['universality'].get('verdict', report['universality'].get('note'))}")
     print(f"[analyze] separability: A(tau)={report['separability'].get('A_of_tau')}")
     print(f"[analyze] wrote {out/'sweep.csv'}, {out/'report.json'}"
