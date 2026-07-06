@@ -41,9 +41,9 @@ that is **not fully synced into this local checkout**.
 - Compiled source: `spf_prototype/src/build/libpolarized_fusion_source.so` (present;
   source `.cpp` in `spf_prototype/src/`). `build_and_run.py` (`br.SO`, `br.build_so()`)
   builds/locates it.
-- HPC: `environment.yml` (conda-forge `openmc=0.15.*=dagmc*`), `ginsburg_job.sh`
-  (sbatch template), `ginsburg_preflight.sh`, `SETUP_GINSBURG.md`,
-  `RUN_ON_GINSBURG.md`, `GINSBURG_CLAUDE_HANDOFF.md`.
+- HPC: `environment.yml` (conda-forge `openmc=0.15.*=dagmc*`), `sweep/sweep.sbatch`
+  (the SLURM array), `ginsburg_preflight.sh` (env checks). Runbook: the self-contained
+  `sweep/docs/README.md`. Legacy precise_QA docs: `docs/archive/legacy_precise_qa/`.
 
 ## Field-map interop contract (spf_fieldmap_v1) — how a NEW field backend plugs in
 `.meta` (text k v): magic `spf_fieldmap_v1`, ndim 3, nR, nphi, nZ, R_min, R_max,
@@ -55,7 +55,7 @@ pair drives the trusted `.so` unchanged.** `coherence_metrics` reads b_hat from 
 SAME map via `fieldmap.FieldMapField.bhat`, so C and the neutronics source use an
 identical field by construction.
 
-## Ginsburg environment (for the runbook; from GINSBURG_CLAUDE_HANDOFF.md)
+## Ginsburg environment (for the runbook; see sweep/docs/README.md)
 - Account `astro`; `source /burg/opt/anaconda3-2023.09/etc/profile.d/conda.sh`;
   env `spf-stellarator`. HOME=/burg-archive/home/tjk2147 (~37 GB, cold); no scratch;
   prefer warm /burg if roomy.

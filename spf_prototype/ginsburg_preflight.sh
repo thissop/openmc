@@ -1,7 +1,7 @@
 #!/bin/bash
 # Ginsburg LOGIN-NODE preflight checks for the conformal stellarator SPF run.
 # 100% READ-ONLY: it inspects storage, conda/modules, cross sections, SLURM, and
-# build tools so we can set the real paths in ginsburg_job.sh / SETUP_GINSBURG.md
+# build tools so we can set the real paths in sweep/sweep.sbatch (see sweep/docs/README.md)
 # BEFORE cloning + creating the (multi-GB) conda env. Nothing is created or changed.
 #
 # Usage on the login node:
