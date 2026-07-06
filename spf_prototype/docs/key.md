@@ -13,15 +13,15 @@ up at the repo root and are shown with `../`.
    history, fold its substance (every number, verbatim key passages as attributed
    blockquotes) into the matching retrospective and `git mv` the original into the
    right `docs/notes/<sub>/` folder — never delete it.
-3. **Active design docs and operational runbooks stay in place** (e.g. the papers in
-   `docs/`, the `sweep/` study docs, the Ginsburg runbooks). Only *index* them here;
-   do not move them.
+3. **Active design docs and operational runbooks stay in place** (e.g. the `sweep/`
+   study docs incl. its self-contained Ginsburg runbook `sweep/docs/README.md`). Only
+   *index* them here; do not move them.
 4. **Taxonomy:** `docs/notes/{orientation,results,handoffs,planning}/` = condensed
    historical notes; `docs/reference/` = standing reference (parameters, scope,
-   prior work); `docs/archive/` = superseded (kept, never deleted); `docs/papers/`
-   material lives at `docs/` root; `docs/teaching/` = teaching deck; `docs/decks/`
-   is unused (the historical smoke-run deck is coupled to `figures.py` and stays at
-   the repo root — see below).
+   prior work); `docs/papers/` = external reference PDFs; `docs/decks/` = figure/slide
+   decks; `docs/teaching/` = teaching deck; `docs/archive/` = superseded (kept, never
+   deleted; incl. `legacy_precise_qa/`). The historical smoke-run deck is coupled to
+   `../figures.py` and stays at the repo root — see below.
 5. **Never move** any `.py`, `src/`, `CLAUDE.md`, `AGENTS.md`, or a file coupled to a
    `.py` build (the repo-root smoke-run deck). Non-destructive only.
 
@@ -140,6 +140,11 @@ up at the repo root and are shown with `../`.
 
 ## docs/archive/ — superseded / bulky artifacts (kept, never deleted)
 
+- `legacy_precise_qa/` — the superseded single-equilibrium precise_QA Ginsburg workflow
+  (`SETUP_GINSBURG.md`, `RUN_ON_GINSBURG.md`, `GINSBURG_CLAUDE_HANDOFF.md`,
+  `ginsburg_job.sh`), replaced by the QUASR sweep (`sweep/docs/README.md`,
+  `sweep/sweep.sbatch`); see its README. The driving CODE (`run_ginsburg.py`,
+  `run_conformal.py`) stays in `python/` — the sweep reuses it.
 - `tier2b_statepoints.tgz` (gitignored) — saved OpenMC statepoints from the Tier-2b
   free-streaming-vs-analytic cross-check; kept locally for re-analysis.
 - `README.md` — the prototype's original root README, superseded by this index.
@@ -152,12 +157,10 @@ up at the repo root and are shown with `../`.
 
 - `slides/spf_talk.tex` (ACTIVE) — from-scratch teaching Beamer deck (SPF physics,
   (a,b,c) bookkeeping, Schwartz analytic, OpenMC source, Tiers 1–7, honest findings).
-- `GINSBURG_CLAUDE_HANDOFF.md` (OPERATIONAL) — mission brief for Claude Code on Ginsburg
-  to verify the SPF-stellarator package and run smoke SLURM jobs.
-- `RUN_ON_GINSBURG.md` (OPERATIONAL) — conceptual Ginsburg pipeline runbook
-  (desc_to_fieldmap → geometry → DAGMC → conformal), smoke ladder, QA→QH scan.
-- `SETUP_GINSBURG.md` (OPERATIONAL) — copy-paste offline SLURM runbook (login-node
-  network setup, compute-node smoke ladder, sbatch, array-job scan).
+- `ginsburg_preflight.sh` (OPERATIONAL) — read-only Ginsburg env checks (account,
+  storage, cross sections, SLURM partitions); workflow-agnostic. The Ginsburg runbook is
+  now the self-contained `sweep/docs/README.md`; the legacy precise_QA Ginsburg docs are
+  archived under `docs/archive/legacy_precise_qa/`.
 
 ### spf_prototype/sweep/ — the QS-stellarator coherence sweep (ACTIVE/OPERATIONAL)
 

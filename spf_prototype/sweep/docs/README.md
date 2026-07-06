@@ -49,10 +49,34 @@ with C, the audit, tensor metrics, tau, scale, and a valid DAGMC .h5m.
 
 # GINSBURG RUNBOOK (exact commands)
 
-Ginsburg facts (from ../../GINSBURG_CLAUDE_HANDOFF.md, ../../SETUP_GINSBURG.md): account
-`astro`; env `spf-stellarator`; no shared cross sections (download once); LOGIN NODE
-= network only, ALL compute on a compute node / sbatch; the repo root has an
-`openmc/` SOURCE tree that must NOT shadow the conda openmc.
+## Ginsburg environment (self-contained; LOGIN NODE = network only)
+
+Account `astro`, env `spf-stellarator`. (The legacy precise_QA runbooks in
+`../../docs/archive/legacy_precise_qa/` are superseded; their env facts live here now.)
+
+⛔ **LOGIN-NODE RULE** — Columbia RCS auto-kills/blocks heavy login-node processes. The
+login node is for NETWORK INSTALLS ONLY (conda env, cross-section download). EVERYTHING
+that computes (pytest, the `.so` build, transport) runs on a COMPUTE node —
+`salloc -A astro -N 1 -c 8 -t 2:00:00` then `conda activate` there — or via `sbatch`.
+
+Login node (network), once:
+```
+module load anaconda/3-2023.09                                  # adjust to available version
+source /burg/opt/anaconda3-2023.09/etc/profile.d/conda.sh
+conda env create -f spf_prototype/environment.yml               # conda-forge; ~10-20 min
+conda activate spf-stellarator
+# cross sections: NONE are shared -- download ENDF/B-VIII.0 HDF5 once (~2-3 GB) from
+#   https://openmc.org/official-data-libraries/ to roomy storage, then EXPORT THE SAME
+#   path here and in sweep.sbatch:
+export OPENMC_CROSS_SECTIONS=$HOME/endfb-viii.0-hdf5/cross_sections.xml
+```
+
+Storage (preflight, June 2026): `HOME=/burg-archive/home/$USER` is the cold archive tier
+(~37 GB free — enough for the ~13 GB footprint), no scratch mount, no
+`/burg/astro/users/$USER` yet; prefer a warm `/burg` dir if you have room. SLURM: default
+`short` (12 h) covers a config, `burst` (14-day) for the array. `ginsburg_preflight.sh`
+(repo root) re-runs all these checks read-only. NB: the repo root has an `openmc/` SOURCE
+tree that must NOT shadow the conda openmc — the sbatch `cd`s to the submit dir to avoid it.
 
 Set these once in your shell:
 ```
