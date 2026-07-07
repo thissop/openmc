@@ -59,7 +59,7 @@ def main():
     geom = None
     for name, pol in MODES.items():
         m, geom = build(pol, stem, Rlo, Rhi, Zmax)
-        sp = m.run(cwd=f"rt_{name}")
+        sp = m.run(cwd=f"rt_{ID}_{name}")   # per-device cwd: array tasks must not share a run dir
         with openmc.StatePoint(sp) as s:
             mean = np.asarray(s.get_tally(name="wall").mean).ravel()
         nsurf = mean.size // NZ
@@ -81,4 +81,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        ID = int(sys.argv[1])
     main()

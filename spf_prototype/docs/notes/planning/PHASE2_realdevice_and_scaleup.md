@@ -33,6 +33,27 @@ idealized ±40.6%/−21.2% capstone because 803097's real 3D field is not purely
 lobe is partly off the inboard/outboard axis). Directly consistent with the geometry-dominance finding.
 Figure: `figs/stellarator_source/realdev_803097_wallsteering.png`.
 
+**Multi-device steering comparison (2026-07-07, `realdev_transport_batch.sbatch` [SLURM array] +
+`plot_multidevice_steering.py`).** Same wall-current tally across all 5 converged devices. *Bug fixed:*
+array tasks must use a **per-device run cwd** (`rt_{ID}_{name}`) — sharing it races on `summary.h5`
+(HDF5 open errors + silently corrupted/identical results). Clean midplane perp steering:
+
+| device | nfp | aspect | inboard perp | outboard perp |
+|---|---|---|---|---|
+| 886079 | 2 | 2.3 | **+43.1%** | −19.8% |
+| 932746 | 3 | 4.4 | +31.5% | −20.4% |
+| 59509  | 3 | 5.2 | +28.3% | −19.2% |
+| 803097 | 3 | 7.2 | +23.4% | −16.6% |
+| 1960314| 5 | 2.4 | +4.4% | **+7.2%** |
+
+**The steering magnitude AND its axis track how tokamak-like (low-nfp, near-toroidal) the field is.**
+886079 (nfp2) ≈ the ideal axisymmetric ±40.6%/−21.2%; nfp3 devices retain a moderate clean signal; the
+strongly-helical **nfp5 QH (1960314) is scrambled** — both R-faces rise, i.e. perp redistributes
+radial-vs-vertical, *off* the inboard/outboard axis, because the helical field has no clean
+inboard/outboard. This is the geometry/field-coherence dominance shown **quantitatively across real
+devices in transport** — the headline multi-device result. Figure:
+`figs/stellarator_source/multidevice_steering.png`.
+
 **Diagnosis (2026-07-07, `ginsburg_jobs/c1_diag.sbatch`).** The QUASR boundaries are NOT degenerate
 (803097 axisym cross-section area 2.07; 886079 area 20.7; sensible R/Z). The failure is a **θ-winding
 convention**: QUASR's LCFS parameterization winds θ *clockwise* (the m=1 R mode is negative, e.g.
