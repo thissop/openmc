@@ -1,14 +1,14 @@
 # Optimal SPF polarization for minimum first-wall peaking
 
-Real OpenMC transport of the native `StellaratorSource` on each device's **VMEC** equilibrium (real √g births + real b̂), free-streaming to a torus first wall; every neutron's wall crossing captured via `surface_source_write` and histogrammed in (poloidal θ, toroidal φ). NWL is exactly linear in the emission quadrupole `a₂` (kernel `1+a₂P₂(cosθ_B)`), so `NWL(a₂)=NWL_unpol+a₂(NWL_par−NWL_unpol)` is built from the three transport maps; `a₂∈[−1,+1]` (−1 = pure perpendicular / A mode, +1 = pure parallel / B–C mode, 0 = unpolarized). Optimum = min peaking factor `PF = max(NWL)/⟨NWL⟩`.
+Real OpenMC (+DAGMC) transport of the native `StellaratorSource` on each device's **VMEC** equilibrium (real √g births + real b̂), free-streaming through near-void to a **DAGMC conformal first wall** (the VMEC LCFS offset outward by 0.30·a along its poloidal normal); every neutron's wall crossing captured via `surf_source_write` and mapped (KD-tree on the wall grid) to (poloidal θ, toroidal φ). NWL is exactly linear in the emission quadrupole `a₂` (kernel `1+a₂P₂(cosθ_B)`), so `NWL(a₂)=NWL_unpol+a₂(NWL_par−NWL_unpol)` is built from the three transport maps; `a₂∈[−1,+1]` (−1 = pure perpendicular / A mode, +1 = pure parallel / B–C mode, 0 = unpolarized). Optimum = min peaking factor `PF = max(NWL)/⟨NWL⟩`.
 
 | device | nfp | optimal a₂ | achievable (a,b,c) | PF unpol | PF optimal | reduction | MC linearity |
 |---|---|---|---|---|---|---|---|
-| 803097 | 3 | **-1.00** (perpendicular) | (1.00, 0.00, 0.00) | 1.59 | 1.48 | **+6.8%** | 0.041 |
-| 886079 | 2 | **+0.59** (parallel) | (0.14, 0.72, 0.14) | 1.59 | 1.49 | **+6.1%** | 0.047 |
-| 932746 | 3 | **-0.27** (perpendicular) | (0.46, 0.27, 0.27) | 1.25 | 1.23 | **+1.6%** | 0.044 |
-| 59509 | 3 | **-0.50** (perpendicular) | (0.60, 0.20, 0.20) | 1.44 | 1.35 | **+6.2%** | 0.042 |
-| 1960314 | 5 | **-1.00** (perpendicular) | (1.00, 0.00, 0.00) | 1.69 | 1.44 | **+14.6%** | 0.049 |
+| 803097 | 3 | **-0.83** (perpendicular) | (0.84, 0.08, 0.08) | 1.40 | 1.38 | **+1.4%** | 0.054 |
+| 886079 | 2 | **+0.83** (parallel) | (0.06, 0.89, 0.06) | 1.78 | 1.49 | **+16.1%** | 0.057 |
+| 932746 | 3 | **+0.23** (parallel) | (0.26, 0.48, 0.26) | 1.38 | 1.32 | **+4.4%** | 0.053 |
+| 59509 | 3 | **+0.22** (parallel) | (0.26, 0.48, 0.26) | 1.37 | 1.31 | **+4.4%** | 0.052 |
+| 1960314 | 5 | **+0.60** (parallel) | (0.13, 0.73, 0.13) | 1.60 | 1.51 | **+6.0%** | 0.058 |
 
 **MC linearity** = mean|NWL_perp+NWL_par−2·NWL_unpol| / ⟨NWL_unpol⟩ (→0 confirms the load is linear in a₂; residual is Monte-Carlo noise).
 

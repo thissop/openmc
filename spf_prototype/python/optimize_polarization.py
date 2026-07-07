@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
 D = HERE.parent / "data"
-FIGD = HERE.parent / "figs" / "wallmaps"; FIGD.mkdir(parents=True, exist_ok=True)
+FIGD = HERE.parent / "figs" / "conformal_wallmaps"; FIGD.mkdir(parents=True, exist_ok=True)
 DOCS = HERE.parent / "docs" / "notes"
 IDS = [803097, 886079, 932746, 59509, 1960314]
 NFP = {803097: 3, 886079: 2, 932746: 3, 59509: 3, 1960314: 5}
@@ -51,12 +51,12 @@ def main():
     rows = []
     a2s = np.linspace(-1, 1, 801)
     for ID in IDS:
-        wm = D / f"quasr{ID}_wallmap.npz"
+        wm = D / f"quasr{ID}_conformalmap.npz"
         if not wm.exists():
-            print(f"skip {ID}: no wallmap"); continue
+            print(f"skip {ID}: no conformalmap"); continue
         f = dict(np.load(wm))
         u, p, q = f["unpol"], f["perp"], f["par"]
-        dA2 = np.broadcast_to(f["dA"][:, None], u.shape)
+        dA2 = f["dA"]                                   # (nt,nz) conformal-wall cell areas
         lin = np.abs(p + q - 2 * u).mean() / u.mean()
         PFs = [pf(u + a2 * (q - u), dA2)[0] for a2 in a2s]
         j = int(np.argmin(PFs))
@@ -83,8 +83,9 @@ def main():
             a.set_xlabel(r"toroidal $\phi$ [deg]"); a.set_ylabel(r"poloidal $\theta$ [deg]")
             a.set_title(f"{t}    PF={M.max():.2f}")
             fig.colorbar(im, ax=a, label="NWL / mean")
-        fig.suptitle(f"Device {r['ID']} (nfp{r['nfp']}) first-wall NWL, transport (StellaratorSource).  "
-                     f"Peaking {r['pf_unpol']:.2f} to {r['pf_opt']:.2f}", y=1.03)
+        fig.suptitle(f"Device {r['ID']} (nfp{r['nfp']}) NWL on DAGMC conformal wall, free-streaming "
+                     f"transport (StellaratorSource).  Peaking {r['pf_unpol']:.2f} to {r['pf_opt']:.2f}",
+                     y=1.03)
         fig.tight_layout()
         fig.savefig(FIGD / f"wallmap_{r['ID']}.png", dpi=170, bbox_inches="tight")
         plt.close(fig)
@@ -92,10 +93,12 @@ def main():
     # markdown
     lines = ["# Optimal SPF polarization for minimum first-wall peaking",
              "",
-             "Real OpenMC transport of the native `StellaratorSource` on each device's **VMEC** "
-             "equilibrium (real √g births + real b̂), free-streaming to a torus first wall; every "
-             "neutron's wall crossing captured via `surface_source_write` and histogrammed in "
-             "(poloidal θ, toroidal φ). NWL is exactly linear in the emission quadrupole "
+             "Real OpenMC (+DAGMC) transport of the native `StellaratorSource` on each device's "
+             "**VMEC** equilibrium (real √g births + real b̂), free-streaming through near-void to a "
+             "**DAGMC conformal first wall** (the VMEC LCFS offset outward by 0.30·a along its poloidal "
+             "normal); every neutron's wall crossing captured via `surf_source_write` and mapped "
+             "(KD-tree on the wall grid) to (poloidal θ, toroidal φ). NWL is exactly linear in the "
+             "emission quadrupole "
              "`a₂` (kernel `1+a₂P₂(cosθ_B)`), so `NWL(a₂)=NWL_unpol+a₂(NWL_par−NWL_unpol)` is built "
              "from the three transport maps; `a₂∈[−1,+1]` (−1 = pure perpendicular / A mode, "
              "+1 = pure parallel / B–C mode, 0 = unpolarized). Optimum = min peaking factor "
@@ -116,7 +119,7 @@ def main():
               "Grayscale (θ,φ) NWL/⟨NWL⟩ maps (unpolarized | optimal) per device: "
               "`figs/wallmaps/wallmap_<ID>.png`."]
     (DOCS / "OPTIMAL_POLARIZATION.md").write_text("\n".join(lines) + "\n")
-    print(f"\nwrote {len(rows)} maps -> figs/wallmaps/ + docs/notes/OPTIMAL_POLARIZATION.md")
+    print(f"\nwrote {len(rows)} maps -> figs/conformal_wallmaps/ + docs/notes/OPTIMAL_POLARIZATION.md")
 
 
 if __name__ == "__main__":
