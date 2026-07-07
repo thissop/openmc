@@ -24,7 +24,18 @@ pure reparameterization of the *same* physical boundary. Verification is the exi
 - **V1** (own-quadrature volume = DESC V), **V1b** (independent divergence-theorem volume), **V2**
   (single-signed √g). If all pass on 803097, the fix is correct and general.
 
-**Status:** testing on 803097 (QUASR path). → fill in result here.
+**Status (2026-07-07): the theta-flip did NOT fix it — DROPPED as a rabbit hole.** Re-tested 803097
+with `flip_theta=True`: identical `sqrt(g) == 0` failure in `ensure_positive_jacobian` during DESC's
+axisymmetric-seed construction. So the cause is NOT theta-winding — DESC's default initial guess for
+803097's boundary **self-intersects** (√g crosses zero near the axis, from the m≤8 boundary detail).
+This is a genuine DESC fixed-boundary convergence problem (needs a supplied magnetic axis / reduced
+boundary resolution / a different seed), with ~34-min queue-bound iterations. **Not worth grinding:**
+the StellaratorSource is already validated on a REAL equilibrium (`precise_QA` — all rigor gates + the
+transport ±40.6%/−21.1% capstone + the sampler on real √g), so a specific QUASR device would add
+capability we've shown, not physics we haven't. If revisited later: pass a good axis guess to
+`Equilibrium(...)`, or lower `mpol/ntor` in `_quasr_boundary_modes`, or use VMEC instead of DESC.
+Meanwhile the real-equilibrium demonstration runs on `precise_QA` (`python/realdev_stell_demo.py`):
+native StellaratorSource in transport on the real equilibrium (real √g births + real b̂), 3 modes.
 
 ## (b) Intelligent device scale-up (~10× more, spanning S_φ)
 
