@@ -3,6 +3,11 @@
 Running log of the autonomous session (StellaratorSource core class + real √g + SPF-in-TokamakSource
 + geometry→peaking). Newest status at top of each section. Times approximate.
 
+> **⚠️ SSH to Ginsburg expired late in the session** (Duo re-auth needed) — the last two cluster jobs are
+> prepped but did NOT run: the C++ `StellaratorSource` register+build, and the real-`√g` `precise_QA`
+> solve (with the fixed V1 quadrature). **To resume in ~3 commands: follow `ginsburg_jobs/RESTART.md`.**
+> Everything else below is done, validated locally where possible, and committed.
+
 ## TL;DR (read this first)
 - **HEADLINE SCIENCE (T3): the SPF peaking-factor modulation IS predictable from field coherence, and
   it is NOT random.** Analytic free-streaming study over 12 QUASR devices: PF_perp/PF_unpol vs S_φ has
@@ -51,12 +56,20 @@ Running log of the autonomous session (StellaratorSource core class + real √g 
 - [ ] **C++ `StellaratorSource` core class** (agent): the class + binary-fluxmap reader + CDF cascade +
       SPF direction, patterned on TokamakSource → `native_spf/`. Then build + axisymmetric-limit test.
 
-## NEXT (queued)
-- [ ] Run the sampler on the REAL 803097 fluxmap (not just synthetic) — validate on the equilibrium.
-- [ ] Write the **C++ StellaratorSource core class** (patterned on TokamakSource; reads the fluxmap,
-      CDF-cascade positions, SPF directions) → add to openmc_src, build, unit-test.
-- [ ] Apply the A SPF patch to the built OpenMC → reproduce Schwartz ±43% (native path).
-- [ ] Solve √g for more devices; feed the geometry→peaking study with real equilibria.
+## NEXT (queued, in priority order)
+1. **Transport ±43% capstone** — reproduce Schwartz's ±43% inboard / ∓22% outboard midplane NWL with
+   the *native* SPF `TokamakSource` (b̂=toroidal) AND the `StellaratorSource` on a circular/axisymmetric
+   fluxmap. Every piece is already validated (sampler analytic, A 23 tests, StellaratorSource bit-exact,
+   √g gates); this is the end-to-end integration against the anarrima oracle. Reuse the tier-2 machinery.
+2. **Fix the QUASR-boundary → DESC `[C1]` convention** so real-device (not just example) equilibria solve
+   (`ensure_positive_jacobian` degeneracy on the axisymmetric seed → boundary Fourier-mode sign/theta
+   orientation). Then produce device-specific real fluxmaps (803097, 886079, …) and feed the peaking study.
+3. **Add a QI arm** (you asked): QUASR is quasisymmetric-only (helicity 0=QA, ≠0=QH) — no QI. But DESC
+   (now stood up) ships QI/omnigenity examples and there are published QI boundaries; generate 2–3 QI
+   equilibria → same `quasr_fluxmap`→`geometry_peaking` pipeline → drop QI points onto the S_φ plot. Turns
+   the QA↔QH contrast into a 3-class QA/QH/QI landscape (stronger generality; probes the low-S_φ end).
+4. **Register the Python `StellaratorSource` API more fully** and wire the C++ prn-parity build-time gate.
+5. Depolarization / scattering arm A(τ); energy-radius coupling; alpha channel (all out of prototype scope).
 
 ## Notes / decisions
 - DESC deps conflict with OpenMC → DESC lives in `$HOME/desc_venv`; producers write portable files
