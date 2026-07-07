@@ -41,6 +41,12 @@ def report(recs):
     for nm, y in [("PF_perp/unpol", pperp), ("PF_par/unpol", ppar)]:
         rS, pS = spearmanr(S, y); rN, pN = spearmanr(nfp, y)
         print(f"{nm}: vs S_phi rho={rS:+.3f} (p={pS:.1e}) | vs nfp rho={rN:+.3f} (p={pN:.1e})")
+    print("--- DIRECTIONAL observables vs S_phi (field-intrinsic test, not the local peak) ---")
+    for key in ("io_shift_perp", "io_shift_par", "redist_perp", "redist_par"):
+        if key in recs[0]:
+            y = np.array([r[key] for r in recs])
+            rS, pS = spearmanr(S, y)
+            print(f"{key}: vs S_phi rho={rS:+.3f} (p={pS:.1e})   [span {y.min():+.3f}..{y.max():+.3f}]")
     qa, qh = cls == "QA", cls == "QH"
     for nm, y in [("PF_perp/unpol", pperp), ("PF_par/unpol", ppar)]:
         u, p = mannwhitneyu(y[qa], y[qh]) if qa.sum() and qh.sum() else (np.nan, np.nan)

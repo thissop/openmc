@@ -209,6 +209,25 @@ def analyze_device(ID, src_res=None, wall_res=None, block=128, keep_maps=False):
                PF_perp_over_unpol=pf["perp"] / pf["unpol"],
                PF_par_over_unpol=pf["par"] / pf["unpol"],
                n_src=int(xyz.shape[0]), n_wall=int(wpts.shape[0]))
+
+    # --- directional (field-intrinsic) observables: NOT the local peak. These measure how the
+    # emission bias redistributes the load, which should track the field (S_phi) far better than
+    # the geometry-dominated peak extremum. ---
+    Rw = np.hypot(wpts[:, 0], wpts[:, 1])
+    inb = Rw < stats["R0"]
+    tot = float(np.sum(wdA))
+    Qu_mean = float(np.sum(Q["unpol"] * wdA) / tot)
+
+    def io_asym(Qm):                 # inboard/outboard asymmetry (Schwartz's +-43% is this shift)
+        qin = float(np.sum(Qm[inb] * wdA[inb])); qout = float(np.sum(Qm[~inb] * wdA[~inb]))
+        return (qin - qout) / (qin + qout + 1e-30)
+
+    def rms_redist(Qm):              # global RMS fractional redistribution vs unpol
+        return float(np.sqrt(np.sum((Qm - Q["unpol"]) ** 2 * wdA) / tot) / (Qu_mean + 1e-30))
+
+    au, ap, aq = io_asym(Q["unpol"]), io_asym(Q["perp"]), io_asym(Q["par"])
+    rec.update(io_asym_unpol=au, io_shift_perp=ap - au, io_shift_par=aq - au,
+               redist_perp=rms_redist(Q["perp"]), redist_par=rms_redist(Q["par"]))
     maps = None
     if keep_maps:
         maps = dict(shape=wshape,
