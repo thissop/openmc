@@ -50,4 +50,14 @@ Pipeline (each step a script + a SLURM array where heavy):
 Selection-bias guard: report the S_φ histogram of the final set (must be ~flat, not peaked); report
 per-class counts; keep the reversal-device audit (`reversal_frac`) so 1190023-like configs are flagged.
 
-**Status:** blocked on (a); pool/selection scripts to be written next.
+**Status (2026-07-07): DONE for QA/QH (QI still pending DESC).** Pool of 354 stratified candidates →
+S_phi computed for all (0 failures), spanning **S_φ ∈ [−0.264, 0.999]** → flat down-select to **83
+devices** (26 QA, 57 QH; ~flat 8–16/bin) → parallel peaking run.
+**Result — the scale-up REVISED the T3 finding (honest):** Spearman(S_φ, PF_perp/unpol) = **−0.30
+(p=0.006)** at n=83, vs −0.83 at n=12. The strong small-n value was the QA↔QH cluster contrast. Class
+separation is robust (Mann-Whitney p=0.001), but S_φ as a *continuous* predictor is weak — the peak
+factor is geometry-dominated (the **G[M]** point). See `FINDINGS_geometry_peaking.md` revision box.
+**Next:** (i) test **G[M]** (the geometry-folded contraction) as the predictor — it includes the wall
+geometry S_φ lacks, so it should track PF far better; (ii) the **QI arm** once `[C1]`/DESC is back;
+(iii) optionally expand the pool (larger N_PER_STRATUM) to fill the sparse low-S_φ-QA / high-S_φ-QH
+bins toward n~120.
