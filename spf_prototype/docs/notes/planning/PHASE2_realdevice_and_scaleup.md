@@ -8,6 +8,17 @@ Newest status at the top of each section.
 
 ## (a) [C1] fix — real per-device √g
 
+**RESOLVED via VMEC (2026-07-07).** The DESC path was dropped (self-intersecting axisymmetric seed;
+the theta-flip did not fix it). **VMEC — the tool the QUASR boundaries are native to — solves it
+cleanly.** `python/vmec_fluxmap.py`: vmecpp (C++ VMEC) with a simsopt `input.*` as the VmecInput
+template (bypasses the finicky namelist), the theta-flipped positive-volume boundary, vacuum profiles
+(zero pressure/current) + an axis guess, and Nyquist-mode (`xm_nyq/xn_nyq`) √g/B extraction. On 803097:
+VMEC converges (volume 0.1974, aspect 10.0), the fluxmap gates pass (V1b independent divergence-theorem
+volume vs VMEC's, rel **3.0e-3**), and the conformal sampler validates on the real DEVICE √g (weight=1,
+inside, |b̂|=1, chi²/dof 0.39). **Real per-device √g is delivered** → `data/quasr803097_vmec_fluxmap.*`.
+Setup: `$HOME/vmec_venv` (`pip install vmecpp` pulls simsopt); mpi4py NOT needed (call vmecpp directly,
+not `simsopt.mhd.Vmec` which wants Fortran VMEC2000). The DESC debugging record stands below.
+
 **Diagnosis (2026-07-07, `ginsburg_jobs/c1_diag.sbatch`).** The QUASR boundaries are NOT degenerate
 (803097 axisym cross-section area 2.07; 886079 area 20.7; sensible R/Z). The failure is a **θ-winding
 convention**: QUASR's LCFS parameterization winds θ *clockwise* (the m=1 R mode is negative, e.g.
