@@ -3,10 +3,13 @@
 Running log of the autonomous session (StellaratorSource core class + real √g + SPF-in-TokamakSource
 + geometry→peaking). Newest status at top of each section. Times approximate.
 
-> **⚠️ SSH to Ginsburg expired late in the session** (Duo re-auth needed) — the last two cluster jobs are
-> prepped but did NOT run: the C++ `StellaratorSource` register+build, and the real-`√g` `precise_QA`
-> solve (with the fixed V1 quadrature). **To resume in ~3 commands: follow `ginsburg_jobs/RESTART.md`.**
-> Everything else below is done, validated locally where possible, and committed.
+> **✅ COMPLETED end-to-end (SSH dropped mid-session, then resumed after re-auth):**
+> (1) the C++ `StellaratorSource` core class is compiled into OpenMC (6 cluster tests pass);
+> (2) real `√g` validated on `precise_QA` — all rigor gates (V1 rel 9e-5, V1b rel 4e-3);
+> (3) the sampler is validated on that real equilibrium (χ²/dof 0.58, weight=1, |b̂|=1);
+> (4) **CAPSTONE: the native SPF `TokamakSource` reproduces Schwartz's NWL steering in transport —
+>     +40.0% inboard / −21.2% outboard (perp), the mirror for parallel — vs the anarrima oracle
+>     +40.6%/−21.2%.** Source → transport → analytic oracle, closed.
 
 ## TL;DR (read this first)
 - **HEADLINE SCIENCE (T3): the SPF peaking-factor modulation IS predictable from field coherence, and

@@ -36,12 +36,17 @@ def main(npz_path):
     inside = float(rr.max())
     bmax = float(np.abs(bnorm - 1.0).max())
 
-    # analytic rho-marginal from THIS fluxmap: p(rho) ~ S(rho) * <sqrt(g)>_{theta,zeta}(rho)
-    sg_of_rho = sqrtg.mean(axis=(1, 2))
-    edges = np.linspace(0, 1, 24 + 1); ctr = 0.5 * (edges[:-1] + edges[1:])
-    obs, _ = np.histogram(rr, bins=edges)
-    exp = np.interp(ctr, rho, S(rho) * sg_of_rho)
-    exp = exp * obs.sum() / exp.sum()
+    # fair sampler-correctness check: the sampler draws rho-CELL i with prob proportional to
+    # m_rho[i] = S(rho_i)*sum_{theta,zeta} sqrt(g), then jitters uniformly inside the cell. Bin the
+    # sampled rho into the sampler's OWN cell edges and compare to m_rho. (Binning against a smooth
+    # continuum S(rho)*<sqrt(g)> instead would measure the fluxmap's coarse rho-resolution, not the
+    # sampler -- that is the deterministic grid bias, separate from sampler correctness.)
+    drho = rho[1] - rho[0]
+    cell_edges = np.concatenate([[rho[0] - drho / 2], rho + drho / 2])
+    obs, _ = np.histogram(rr, bins=cell_edges)
+    m_rho = S(rho) * sqrtg.sum(axis=(1, 2))
+    exp = m_rho * obs.sum() / m_rho.sum()
+    ctr = rho
     m = exp > 5
     chi2 = float(np.sum((obs[m] - exp[m]) ** 2 / exp[m])); dof = int(m.sum() - 1)
 
