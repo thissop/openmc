@@ -64,9 +64,16 @@ Running log of the autonomous session (StellaratorSource core class + real √g 
    the *native* SPF `TokamakSource` (b̂=toroidal) AND the `StellaratorSource` on a circular/axisymmetric
    fluxmap. Every piece is already validated (sampler analytic, A 23 tests, StellaratorSource bit-exact,
    √g gates); this is the end-to-end integration against the anarrima oracle. Reuse the tier-2 machinery.
-2. **Fix the QUASR-boundary → DESC `[C1]` convention** so real-device (not just example) equilibria solve
-   (`ensure_positive_jacobian` degeneracy on the axisymmetric seed → boundary Fourier-mode sign/theta
-   orientation). Then produce device-specific real fluxmaps (803097, 886079, …) and feed the peaking study.
+2. **Fix the QUASR-boundary → DESC `[C1]` convention** (DIAGNOSED 2026-07-07, `ginsburg_jobs/c1_diag.sbatch`):
+   the boundaries are NOT degenerate — 803097 axisym cross-section area 2.07, 886079 area 20.7, sensible
+   R/Z. The issue is that **theta winds clockwise**: the m=1 R mode is negative (803097 R₁=−0.085) and the
+   poloidal Jacobian is consistently negative, so DESC's `ensure_positive_jacobian` hits a zero on the
+   axisymmetric seed. **Fix = reverse the theta winding in the boundary fit** (evaluate at −theta / negate
+   the Z sin modes in `quasr_equilibrium_field._desc_surface`), and VERIFY against gate V4 (rho=1 must
+   still reconstruct the ORIGINAL boundary — keep V4's reference consistent with the flip). A deliberate
+   convention change, not a rush. Then device-specific real fluxmaps (803097, 886079, …) → peaking study.
+   NB: the science (T3) already uses real coil-field b̂ + real boundary, so this only upgrades the
+   StellaratorSource POSITION sampling to real per-device equilibria; it is not a science blocker.
 3. **Add a QI arm** (you asked): QUASR is quasisymmetric-only (helicity 0=QA, ≠0=QH) — no QI. But DESC
    (now stood up) ships QI/omnigenity examples and there are published QI boundaries; generate 2–3 QI
    equilibria → same `quasr_fluxmap`→`geometry_peaking` pipeline → drop QI points onto the S_φ plot. Turns
