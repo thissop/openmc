@@ -1,0 +1,1494 @@
+#include "openmc/source.h"
+
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#define HAS_DYNAMIC_LINKING
+#endif
+
+#include <algorithm> // for lower_bound, max, clamp, distance
+#include <cassert>   // for assert (SPF invariant checks)
+#include <cmath>     // for sin, cos, abs, acos, cbrt, sqrt
+#include <utility>   // for move
+
+#ifdef HAS_DYNAMIC_LINKING
+#include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
+#endif
+
+#include "openmc/tensor.h"
+#include <fmt/core.h>
+
+#include "openmc/bank.h"
+#include "openmc/capi.h"
+#include "openmc/cell.h"
+#include "openmc/constants.h"
+#include "openmc/container_util.h"
+#include "openmc/error.h"
+#include "openmc/file_utils.h"
+#include "openmc/geometry.h"
+#include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
+#include "openmc/math_functions.h"
+#include "openmc/mcpl_interface.h"
+#include "openmc/memory.h"
+#include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
+#include "openmc/nuclide.h"
+#include "openmc/random_dist.h"
+#include "openmc/random_lcg.h"
+#include "openmc/search.h"
+#include "openmc/settings.h"
+#include "openmc/simulation.h"
+#include "openmc/state_point.h"
+#include "openmc/string_utils.h"
+#include "openmc/xml_interface.h"
+
+namespace openmc {
+
+std::atomic<int64_t> source_n_accept {0};
+std::atomic<int64_t> source_n_reject {0};
+
+namespace {
+
+void validate_particle_type(ParticleType type, const std::string& context)
+{
+  if (type.is_transportable())
+    return;
+
+  fatal_error(
+    fmt::format("Unsupported source particle type '{}' (PDG {}) in {}.",
+      type.str(), type.pdg_number(), context));
+}
+
+} // namespace
+
+//==============================================================================
+// Global variables
+//==============================================================================
+
+namespace model {
+
+vector<unique_ptr<Source>> external_sources;
+
+vector<unique_ptr<Source>> adjoint_sources;
+
+DiscreteIndex external_sources_probability;
+
+} // namespace model
+
+//==============================================================================
+// Source implementation
+//==============================================================================
+
+Source::Source(pugi::xml_node node)
+{
+  // Check for source strength
+  if (check_for_node(node, "strength")) {
+    strength_ = std::stod(get_node_value(node, "strength"));
+    if (strength_ < 0.0) {
+      fatal_error("Source strength is negative.");
+    }
+  }
+
+  // Check for additional defined constraints
+  read_constraints(node);
+}
+
+unique_ptr<Source> Source::create(pugi::xml_node node)
+{
+  // if the source type is present, use it to determine the type
+  // of object to create
+  if (check_for_node(node, "type")) {
+    std::string source_type = get_node_value(node, "type");
+    if (source_type == "independent") {
+      return make_unique<IndependentSource>(node);
+    } else if (source_type == "file") {
+      return make_unique<FileSource>(node);
+    } else if (source_type == "compiled") {
+      return make_unique<CompiledSourceWrapper>(node);
+    } else if (source_type == "mesh") {
+      return make_unique<MeshSource>(node);
+    } else if (source_type == "tokamak") {
+      return make_unique<TokamakSource>(node);
+    } else {
+      fatal_error(fmt::format("Invalid source type '{}' found.", source_type));
+    }
+  } else {
+    // support legacy source format
+    if (check_for_node(node, "file")) {
+      return make_unique<FileSource>(node);
+    } else if (check_for_node(node, "library")) {
+      return make_unique<CompiledSourceWrapper>(node);
+    } else {
+      return make_unique<IndependentSource>(node);
+    }
+  }
+}
+
+void Source::read_constraints(pugi::xml_node node)
+{
+  // Check for constraints node. For backwards compatibility, if no constraints
+  // node is given, still try searching for domain constraints from top-level
+  // node.
+  pugi::xml_node constraints_node = node.child("constraints");
+  if (constraints_node) {
+    node = constraints_node;
+  }
+
+  // Check for domains to reject from
+  if (check_for_node(node, "domain_type")) {
+    std::string domain_type = get_node_value(node, "domain_type");
+    if (domain_type == "cell") {
+      domain_type_ = DomainType::CELL;
+    } else if (domain_type == "material") {
+      domain_type_ = DomainType::MATERIAL;
+    } else if (domain_type == "universe") {
+      domain_type_ = DomainType::UNIVERSE;
+    } else {
+      fatal_error(
+        std::string("Unrecognized domain type for constraint: " + domain_type));
+    }
+
+    auto ids = get_node_array<int>(node, "domain_ids");
+    domain_ids_.insert(ids.begin(), ids.end());
+  }
+
+  if (check_for_node(node, "time_bounds")) {
+    auto ids = get_node_array<double>(node, "time_bounds");
+    if (ids.size() != 2) {
+      fatal_error("Time bounds must be represented by two numbers.");
+    }
+    time_bounds_ = std::make_pair(ids[0], ids[1]);
+  }
+  if (check_for_node(node, "energy_bounds")) {
+    auto ids = get_node_array<double>(node, "energy_bounds");
+    if (ids.size() != 2) {
+      fatal_error("Energy bounds must be represented by two numbers.");
+    }
+    energy_bounds_ = std::make_pair(ids[0], ids[1]);
+  }
+
+  if (check_for_node(node, "fissionable")) {
+    only_fissionable_ = get_node_value_bool(node, "fissionable");
+  }
+
+  // Check for how to handle rejected particles
+  if (check_for_node(node, "rejection_strategy")) {
+    std::string rejection_strategy = get_node_value(node, "rejection_strategy");
+    if (rejection_strategy == "kill") {
+      rejection_strategy_ = RejectionStrategy::KILL;
+    } else if (rejection_strategy == "resample") {
+      rejection_strategy_ = RejectionStrategy::RESAMPLE;
+    } else {
+      fatal_error(std::string(
+        "Unrecognized strategy source rejection: " + rejection_strategy));
+    }
+  }
+}
+
+void check_rejection_fraction(int64_t n_reject, int64_t n_accept)
+{
+  // Don't check unless we've hit a minimum number of total sites rejected
+  if (n_reject < EXTSRC_REJECT_THRESHOLD)
+    return;
+
+  // Compute fraction of accepted sites and compare against minimum
+  double fraction = static_cast<double>(n_accept) / n_reject;
+  if (fraction <= settings::source_rejection_fraction) {
+    fatal_error(fmt::format(
+      "Too few source sites satisfied the constraints (minimum source "
+      "rejection fraction = {}). Please check your source definition or "
+      "set a lower value of Settings.source_rejection_fraction.",
+      settings::source_rejection_fraction));
+  }
+}
+
+SourceSite Source::sample_with_constraints(uint64_t* seed) const
+{
+  bool accepted = false;
+  int64_t n_local_reject = 0;
+  SourceSite site {};
+
+  while (!accepted) {
+    // Sample a source site without considering constraints yet
+    site = this->sample(seed);
+
+    if (constraints_applied()) {
+      accepted = true;
+    } else {
+      // Check whether sampled site satisfies constraints
+      accepted = satisfies_spatial_constraints(site.r) &&
+                 satisfies_energy_constraints(site.E) &&
+                 satisfies_time_constraints(site.time);
+      if (!accepted) {
+        ++n_local_reject;
+
+        // Check per-particle rejection limit
+        if (n_local_reject >= MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+          fatal_error("Exceeded maximum number of source rejections per "
+                      "sample. Please check your source definition.");
+        }
+
+        // For the "kill" strategy, accept particle but set weight to 0 so that
+        // it is terminated immediately
+        if (rejection_strategy_ == RejectionStrategy::KILL) {
+          accepted = true;
+          site.wgt = 0.0;
+        }
+      }
+    }
+  }
+
+  // Flush local rejection count, update accept counter, and check overall
+  // rejection fraction
+  if (n_local_reject > 0) {
+    source_n_reject += n_local_reject;
+  }
+  ++source_n_accept;
+  check_rejection_fraction(source_n_reject, source_n_accept);
+
+  return site;
+}
+
+bool Source::satisfies_energy_constraints(double E) const
+{
+  return E > energy_bounds_.first && E < energy_bounds_.second;
+}
+
+bool Source::satisfies_time_constraints(double time) const
+{
+  return time > time_bounds_.first && time < time_bounds_.second;
+}
+
+bool Source::satisfies_spatial_constraints(Position r) const
+{
+  GeometryState geom_state;
+  geom_state.r() = r;
+  geom_state.u() = {0.0, 0.0, 1.0};
+
+  // Reject particle if it's not in the geometry at all
+  bool found = exhaustive_find_cell(geom_state);
+  if (!found)
+    return false;
+
+  // Check the geometry state against specified domains
+  bool accepted = true;
+  if (!domain_ids_.empty()) {
+    if (domain_type_ == DomainType::MATERIAL) {
+      auto mat_index = geom_state.material();
+      if (mat_index == MATERIAL_VOID) {
+        accepted = false;
+      } else {
+        accepted = contains(domain_ids_, model::materials[mat_index]->id());
+      }
+    } else {
+      for (int i = 0; i < geom_state.n_coord(); i++) {
+        auto id =
+          (domain_type_ == DomainType::CELL)
+            ? model::cells[geom_state.coord(i).cell()].get()->id_
+            : model::universes[geom_state.coord(i).universe()].get()->id_;
+        if ((accepted = contains(domain_ids_, id)))
+          break;
+      }
+    }
+  }
+
+  // Check if spatial site is in fissionable material
+  if (accepted && only_fissionable_) {
+    // Determine material
+    auto mat_index = geom_state.material();
+    if (mat_index == MATERIAL_VOID) {
+      accepted = false;
+    } else {
+      accepted = model::materials[mat_index]->fissionable();
+    }
+  }
+
+  return accepted;
+}
+
+//==============================================================================
+// IndependentSource implementation
+//==============================================================================
+
+IndependentSource::IndependentSource(
+  UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time)
+  : space_ {std::move(space)}, angle_ {std::move(angle)},
+    energy_ {std::move(energy)}, time_ {std::move(time)}
+{}
+
+IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
+{
+  // Check for particle type
+  if (check_for_node(node, "particle")) {
+    auto temp_str = get_node_value(node, "particle", false, true);
+    particle_ = ParticleType(temp_str);
+    if (particle_ == ParticleType::photon() ||
+        particle_ == ParticleType::electron() ||
+        particle_ == ParticleType::positron()) {
+      settings::photon_transport = true;
+    }
+  }
+  validate_particle_type(particle_, "IndependentSource");
+
+  // Check for external source file
+  if (check_for_node(node, "file")) {
+
+  } else {
+
+    // Spatial distribution for external source
+    if (check_for_node(node, "space")) {
+      space_ = SpatialDistribution::create(node.child("space"));
+    } else {
+      // If no spatial distribution specified, make it a point source
+      space_ = UPtrSpace {new SpatialPoint()};
+    }
+
+    // For backwards compatibility, check for only fissionable setting on box
+    // source
+    auto space_box = dynamic_cast<SpatialBox*>(space_.get());
+    if (space_box) {
+      if (!only_fissionable_) {
+        only_fissionable_ = space_box->only_fissionable();
+      }
+    }
+
+    // Determine external source angular distribution
+    if (check_for_node(node, "angle")) {
+      angle_ = UnitSphereDistribution::create(node.child("angle"));
+    } else {
+      angle_ = UPtrAngle {new Isotropic()};
+    }
+
+    // Determine external source energy distribution
+    if (check_for_node(node, "energy")) {
+      pugi::xml_node node_dist = node.child("energy");
+      energy_ = distribution_from_xml(node_dist);
+
+      // For decay photon sources, use the absolute photon emission rate in
+      // [photons/s] as the source strength
+      if (dynamic_cast<DecaySpectrum*>(energy_.get())) {
+        if (strength_ != 1.0) {
+          warning(fmt::format(
+            "Source strength of {} is ignored because the source uses a "
+            "DecaySpectrum energy distribution. The source strength will be "
+            "set from the DecaySpectrum emission rate.",
+            strength_));
+        }
+        strength_ = energy_->integral();
+      }
+    } else {
+      // Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
+      energy_ = UPtrDist {new Watt(0.988e6, 2.249e-6)};
+    }
+
+    // Determine external source time distribution
+    if (check_for_node(node, "time")) {
+      pugi::xml_node node_dist = node.child("time");
+      time_ = distribution_from_xml(node_dist);
+    } else {
+      // Default to a Constant time T=0
+      double T[] {0.0};
+      double p[] {1.0};
+      time_ = UPtrDist {new Discrete {T, p, 1}};
+    }
+  }
+}
+
+SourceSite IndependentSource::sample(uint64_t* seed) const
+{
+  SourceSite site {};
+  site.particle = particle_;
+  double r_wgt = 1.0;
+  double E_wgt = 1.0;
+
+  // Repeat sampling source location until a good site has been accepted
+  bool accepted = false;
+  int64_t n_local_reject = 0;
+
+  while (!accepted) {
+
+    // Sample spatial distribution
+    auto [r, r_wgt_temp] = space_->sample(seed);
+    site.r = r;
+    r_wgt = r_wgt_temp;
+
+    // Check if sampled position satisfies spatial constraints
+    accepted = satisfies_spatial_constraints(site.r);
+
+    // Check for rejection
+    if (!accepted) {
+      ++n_local_reject;
+      if (n_local_reject >= MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+        fatal_error("Exceeded maximum number of source rejections per "
+                    "sample. Please check your source definition.");
+      }
+    }
+  }
+
+  // Sample angle
+  auto [u, u_wgt] = angle_->sample(seed);
+  site.u = u;
+
+  site.wgt = r_wgt * u_wgt;
+
+  // Sample energy and time for neutron and photon sources
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
+    // Check for monoenergetic source above maximum particle energy
+    auto p = particle_.transport_index();
+    auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
+    auto decay_spectrum = dynamic_cast<DecaySpectrum*>(energy_.get());
+    if (energy_ptr) {
+      auto energies =
+        tensor::Tensor<double>(energy_ptr->x().data(), energy_ptr->x().size());
+      if ((energies > data::energy_max[p]).any()) {
+        fatal_error("Source energy above range of energies of at least "
+                    "one cross section table");
+      }
+    }
+
+    while (true) {
+      // Sample energy spectrum. For decay photon sources, also get the parent
+      // nuclide index to store in the source site for tallying purposes.
+      if (decay_spectrum) {
+        auto sample = decay_spectrum->sample_with_parent(seed);
+        site.E = sample.energy;
+        E_wgt = sample.weight;
+        site.parent_nuclide = sample.parent_nuclide;
+      } else {
+        auto [E, E_wgt_temp] = energy_->sample(seed);
+        site.E = E;
+        E_wgt = E_wgt_temp;
+      }
+
+      // Resample if energy falls above maximum particle energy
+      if (site.E < data::energy_max[p] &&
+          (satisfies_energy_constraints(site.E)))
+        break;
+
+      ++n_local_reject;
+      if (n_local_reject >= MAX_SOURCE_REJECTIONS_PER_SAMPLE) {
+        fatal_error("Exceeded maximum number of source rejections per "
+                    "sample. Please check your source definition.");
+      }
+    }
+
+    // Sample particle creation time
+    auto [time, time_wgt] = time_->sample(seed);
+    site.time = time;
+
+    site.wgt *= (E_wgt * time_wgt);
+  }
+
+  // Flush local rejection count into global counter
+  if (n_local_reject > 0) {
+    source_n_reject += n_local_reject;
+  }
+
+  return site;
+}
+
+//==============================================================================
+// FileSource implementation
+//==============================================================================
+
+FileSource::FileSource(pugi::xml_node node) : Source(node)
+{
+  auto path = get_node_value(node, "file", false, true);
+  load_sites_from_file(path);
+}
+
+FileSource::FileSource(const std::string& path)
+{
+  load_sites_from_file(path);
+}
+
+void FileSource::load_sites_from_file(const std::string& path)
+{
+  // If MCPL file, use the dedicated file reader
+  if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+    sites_ = mcpl_source_sites(path);
+  } else {
+    // Check if source file exists
+    if (!file_exists(path)) {
+      fatal_error(fmt::format("Source file '{}' does not exist.", path));
+    }
+
+    write_message(6, "Reading source file from {}...", path);
+
+    // Open the binary file
+    hid_t file_id = file_open(path, 'r', true);
+
+    // Check to make sure this is a source file
+    std::string filetype;
+    read_attribute(file_id, "filetype", filetype);
+    if (filetype != "source" && filetype != "statepoint") {
+      fatal_error("Specified starting source file not a source file type.");
+    }
+
+    // Read in the source particles
+    read_source_bank(file_id, sites_, false);
+
+    // Close file
+    file_close(file_id);
+  }
+
+  // Make sure particles in source file have valid types. If any particle is a
+  // photon, electron, or positron, enable photon transport so that the
+  // appropriate cross sections are loaded.
+  for (const auto& site : this->sites_) {
+    validate_particle_type(site.particle, "FileSource");
+    if (site.particle == ParticleType::photon() ||
+        site.particle == ParticleType::electron() ||
+        site.particle == ParticleType::positron()) {
+      settings::photon_transport = true;
+    }
+  }
+}
+
+SourceSite FileSource::sample(uint64_t* seed) const
+{
+  // Sample a particle randomly from list
+  size_t i_site = sites_.size() * prn(seed);
+  return sites_[i_site];
+}
+
+//==============================================================================
+// CompiledSourceWrapper implementation
+//==============================================================================
+
+CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node) : Source(node)
+{
+  // Get shared library path and parameters
+  auto path = get_node_value(node, "library", false, true);
+  std::string parameters;
+  if (check_for_node(node, "parameters")) {
+    parameters = get_node_value(node, "parameters", false, true);
+  }
+  setup(path, parameters);
+}
+
+void CompiledSourceWrapper::setup(
+  const std::string& path, const std::string& parameters)
+{
+#ifdef HAS_DYNAMIC_LINKING
+  // Open the library
+  shared_library_ = dlopen(path.c_str(), RTLD_LAZY);
+  if (!shared_library_) {
+    fatal_error("Couldn't open source library " + path);
+  }
+
+  // reset errors
+  dlerror();
+
+  // get the function to create the custom source from the library
+  auto create_compiled_source = reinterpret_cast<create_compiled_source_t*>(
+    dlsym(shared_library_, "openmc_create_source"));
+
+  // check for any dlsym errors
+  auto dlsym_error = dlerror();
+  if (dlsym_error) {
+    std::string error_msg = fmt::format(
+      "Couldn't open the openmc_create_source symbol: {}", dlsym_error);
+    dlclose(shared_library_);
+    fatal_error(error_msg);
+  }
+
+  // create a pointer to an instance of the custom source
+  compiled_source_ = create_compiled_source(parameters);
+
+#else
+  fatal_error("Custom source libraries have not yet been implemented for "
+              "non-POSIX systems");
+#endif
+}
+
+CompiledSourceWrapper::~CompiledSourceWrapper()
+{
+  // Make sure custom source is cleared before closing shared library
+  if (compiled_source_.get())
+    compiled_source_.reset();
+
+#ifdef HAS_DYNAMIC_LINKING
+  dlclose(shared_library_);
+#else
+  fatal_error("Custom source libraries have not yet been implemented for "
+              "non-POSIX systems");
+#endif
+}
+
+//==============================================================================
+// MeshElementSpatial implementation
+//==============================================================================
+
+std::pair<Position, double> MeshElementSpatial::sample(uint64_t* seed) const
+{
+  return {model::meshes[mesh_index_]->sample_element(elem_index_, seed), 1.0};
+}
+
+//==============================================================================
+// MeshSource implementation
+//==============================================================================
+
+MeshSource::MeshSource(pugi::xml_node node) : Source(node)
+{
+  int32_t mesh_id = stoi(get_node_value(node, "mesh"));
+  int32_t mesh_idx = model::mesh_map.at(mesh_id);
+  const auto& mesh = model::meshes[mesh_idx];
+
+  std::vector<double> strengths;
+  // read all source distributions and populate strengths vector for MeshSpatial
+  // object
+  for (auto source_node : node.children("source")) {
+    auto src = Source::create(source_node);
+    if (auto ptr = dynamic_cast<IndependentSource*>(src.get())) {
+      src.release();
+      sources_.emplace_back(ptr);
+    } else {
+      fatal_error(
+        "The source assigned to each element must be an IndependentSource.");
+    }
+    strengths.push_back(sources_.back()->strength());
+  }
+
+  // Set spatial distributions for each mesh element
+  for (int elem_index = 0; elem_index < sources_.size(); ++elem_index) {
+    sources_[elem_index]->set_space(
+      std::make_unique<MeshElementSpatial>(mesh_idx, elem_index));
+  }
+
+  // Make sure sources use valid particle types
+  for (const auto& src : sources_) {
+    validate_particle_type(src->particle_type(), "MeshSource");
+  }
+
+  // the number of source distributions should either be one or equal to the
+  // number of mesh elements
+  if (sources_.size() > 1 && sources_.size() != mesh->n_bins()) {
+    fatal_error(fmt::format("Incorrect number of source distributions ({}) for "
+                            "mesh source with {} elements.",
+      sources_.size(), mesh->n_bins()));
+  }
+
+  space_ = std::make_unique<MeshSpatial>(mesh_idx, strengths);
+}
+
+SourceSite MeshSource::sample(uint64_t* seed) const
+{
+  // Sample a mesh element based on the relative strengths
+  int32_t element = space_->sample_element_index(seed);
+
+  // Sample the distribution for the specific mesh element; note that the
+  // spatial distribution has been set for each element using MeshElementSpatial
+  return source(element)->sample_with_constraints(seed);
+}
+
+//==============================================================================
+// TokamakSource implementation
+//==============================================================================
+
+namespace {
+
+// --------------------------------------------------------------------------
+// SPF per-shape inverse-CDF marginal samplers in x = cosθ. These are a
+// line-for-line transcription of spf::sample_costheta_{perp,par}_invcdf
+// (spf_prototype/src/spf_sampler.hpp, lines 141-168). The roots were derived
+// and endpoint-verified there (u=0 -> x=-1, u=1 -> x=+1) and cross-checked
+// against rejection samplers via two-sample KS (tier-1 green). No magic
+// constants: every coefficient traces to Schwartz Eq. 2's two angular shapes.
+// --------------------------------------------------------------------------
+
+// sin²θ shape: p(x) ∝ (1 - x²). Inverse CDF solves x³ - 3x + (4u - 2) = 0.
+// Three real roots (|q|<=2); the one in [-1,1] is the k=1 trig root:
+//   x = 2 cos( (1/3) arccos(1 - 2u) - 2π/3 ).
+inline double spf_costheta_perp(double u)
+{
+  double x = 2.0 * std::cos(std::acos(1.0 - 2.0 * u) / 3.0 - 2.0 * PI / 3.0);
+  return std::clamp(x, -1.0, 1.0); // guard fp drift exactly at the endpoints
+}
+
+// 1/4 + 3/4 cos²θ shape: p(x) = 1/4 + 3/4 x² (already normalized on [-1,1]).
+// Inverse CDF solves x³ + x + (2 - 4u) = 0 (p=1>0 -> single real root, Cardano).
+inline double spf_costheta_par(double u)
+{
+  const double q = 2.0 - 4.0 * u;               // depressed cubic x³ + x + q = 0
+  const double sq = std::sqrt(q * q / 4.0 + 1.0 / 27.0); // disc > 0 always
+  // std::cbrt gives the real cube root (handles negative args correctly).
+  double x = std::cbrt(-q / 2.0 + sq) + std::cbrt(-q / 2.0 - sq);
+  return std::clamp(x, -1.0, 1.0);
+}
+
+} // namespace
+
+TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
+{
+  // Read geometry parameters
+  major_radius_ = std::stod(get_node_value(node, "major_radius"));
+  minor_radius_ = std::stod(get_node_value(node, "minor_radius"));
+  elongation_ = std::stod(get_node_value(node, "elongation"));
+  triangularity_ = std::stod(get_node_value(node, "triangularity"));
+  shafranov_shift_ = std::stod(get_node_value(node, "shafranov_shift"));
+
+  // Read optional vertical shift
+  if (check_for_node(node, "vertical_shift")) {
+    vertical_shift_ = std::stod(get_node_value(node, "vertical_shift"));
+  } else {
+    vertical_shift_ = 0.0;
+  }
+
+  // Read optional toroidal angle bounds
+  if (check_for_node(node, "phi_start")) {
+    phi_start_ = std::stod(get_node_value(node, "phi_start"));
+  } else {
+    phi_start_ = 0.0;
+  }
+  if (check_for_node(node, "phi_extent")) {
+    phi_extent_ = std::stod(get_node_value(node, "phi_extent"));
+  } else {
+    phi_extent_ = 2.0 * PI;
+  }
+  if (check_for_node(node, "n_alpha")) {
+    n_alpha_ = std::stoi(get_node_value(node, "n_alpha"));
+  } else {
+    n_alpha_ = 101; // Default
+  }
+
+  // Read emission profile
+  r_over_a_ = get_node_array<double>(node, "r_over_a");
+  emission_density_ = get_node_array<double>(node, "emission_density");
+
+  // Read energy distribution(s)
+  for (auto energy_node : node.children("energy")) {
+    energy_dists_.push_back(distribution_from_xml(energy_node));
+  }
+
+  // Read optional time distribution; default to a delta distribution at t=0
+  // for the same behavior as IndependentSource
+  if (check_for_node(node, "time")) {
+    time_ = distribution_from_xml(node.child("time"));
+  } else {
+    double T[] {0.0};
+    double p[] {1.0};
+    time_ = UPtrDist {new Discrete {T, p, 1}};
+  }
+
+  // Validate inputs
+  if (emission_density_.size() != r_over_a_.size()) {
+    fatal_error("TokamakSource: emission_density and r_over_a must have the "
+                "same length.");
+  }
+  if (r_over_a_.size() < 2) {
+    fatal_error(
+      "TokamakSource: At least 2 radial points are required for profiles.");
+  }
+  if (r_over_a_.front() != 0.0) {
+    fatal_error("TokamakSource: r_over_a must start at 0.");
+  }
+  if (r_over_a_.back() != 1.0) {
+    fatal_error("TokamakSource: r_over_a must end at 1.");
+  }
+  for (size_t i = 1; i < r_over_a_.size(); ++i) {
+    if (r_over_a_[i] <= r_over_a_[i - 1]) {
+      fatal_error("TokamakSource: r_over_a must be strictly increasing.");
+    }
+  }
+  for (size_t i = 0; i < emission_density_.size(); ++i) {
+    if (emission_density_[i] < 0.0) {
+      fatal_error("TokamakSource: emission_density values cannot be negative.");
+    }
+  }
+  if (major_radius_ <= 0.0) {
+    fatal_error("TokamakSource: major_radius must be > 0.");
+  }
+  if (minor_radius_ <= 0.0) {
+    fatal_error("TokamakSource: minor_radius must be > 0.");
+  }
+  if (minor_radius_ >= major_radius_) {
+    fatal_error("TokamakSource: minor_radius must be less than major_radius.");
+  }
+  if (elongation_ <= 0.0) {
+    fatal_error("TokamakSource: elongation must be > 0.");
+  }
+  if (triangularity_ < -1.0 || triangularity_ > 1.0) {
+    fatal_error("TokamakSource: triangularity must be in the range [-1, 1].");
+  }
+  if (shafranov_shift_ < 0.0) {
+    fatal_error("TokamakSource: shafranov_shift must be >= 0.");
+  }
+  if (shafranov_shift_ >= 0.5 * minor_radius_) {
+    fatal_error("TokamakSource: shafranov_shift must be less than half the "
+                "minor radius.");
+  }
+  if (phi_extent_ <= 0.0 || phi_extent_ > 2.0 * PI) {
+    fatal_error("TokamakSource: phi_extent must be > 0 and <= 2*pi.");
+  }
+  if (n_alpha_ <= 2) {
+    fatal_error("TokamakSource: n_alpha must be > 2.");
+  }
+  if (energy_dists_.empty()) {
+    fatal_error("TokamakSource: At least one energy distribution is required.");
+  }
+  if (energy_dists_.size() != 1 && energy_dists_.size() != r_over_a_.size()) {
+    fatal_error("TokamakSource: energy distributions must be either 1 (for all "
+                "r) or match the number of r_over_a points.");
+  }
+
+  // Compute normalized geometry parameters
+  epsilon_ = minor_radius_ / major_radius_;
+  delta_tilde_ = shafranov_shift_ / minor_radius_;
+
+  // Initialize isotropic angular distribution (unpolarized / fallback path)
+  angle_ = UPtrAngle {new Isotropic()};
+
+  // --- SPF: optional polarization (absent => isotropic, unchanged behavior) ---
+  // Physics (Schwartz 2025, Eq. 2), constants DERIVED not pasted:
+  //   dσ/dΩ = (σ0/2π)[ (3/4)a·sin²θ + ((2/3)b+(1/3)c)(1/4+(3/4)cos²θ) ]
+  //   w_perp = (3/4)a ; w_par = (2/3)b + (1/3)c ; η = a + (2/3)b + (1/3)c.
+  //   ∫sin²θ dΩ = 8π/3, ∫(1/4+3/4cos²θ) dΩ = 2π  =>  W_perp = 2πa, W_par = 2π·w_par
+  //   => P_perp = W_perp/(W_perp+W_par) = a/η. (Same as spf::make_mode_weights.)
+  if (check_for_node(node, "polarization")) {
+    auto abc = get_node_array<double>(node, "polarization"); // [a, b, c]
+    if (abc.size() != 3) {
+      fatal_error("TokamakSource: polarization must be 3 numbers 'a b c'.");
+    }
+    double a = abc[0], b = abc[1], c = abc[2];
+    // User input -> fatal_error on invalid; NaN fails the >= 0 test.
+    if (!(a >= 0.0) || !(b >= 0.0) || !(c >= 0.0)) {
+      fatal_error("TokamakSource: polarization fractions a,b,c must be >= 0.");
+    }
+    const double s = a + b + c;
+    if (!(s > 0.0)) {
+      fatal_error("TokamakSource: polarization a+b+c must be > 0.");
+    }
+    a /= s; // renormalize to sum 1 (Python side already warns on deviation)
+    b /= s;
+    c /= s;
+
+    w_perp_ = 0.75 * a;                          // (3/4) a
+    w_par_ = (2.0 / 3.0) * b + (1.0 / 3.0) * c;  // (2/3)b + (1/3)c
+    const double eta = a + (2.0 / 3.0) * b + (1.0 / 3.0) * c; // = w_perp·4/3 + ...
+    p_perp_ = a / eta;                           // == 2πa / (2πa + 2π·w_par)
+    // Invariant (not user input): P_perp is a valid probability. Hard-assert.
+    assert(p_perp_ >= -1e-15 && p_perp_ <= 1.0 + 1e-15 &&
+           "TokamakSource SPF: P_perp must lie in [0,1]");
+    polarized_ = true;
+
+    // Field model (default toroidal b̂=φ̂). "pitched" additionally needs a
+    // q-profile (r/a grid + q values) and an optional handedness sign.
+    field_model_ = 0;
+    if (check_for_node(node, "field_model")) {
+      std::string fm = get_node_value(node, "field_model");
+      if (fm == "toroidal") {
+        field_model_ = 0;
+      } else if (fm == "pitched") {
+        field_model_ = 1;
+      } else {
+        fatal_error(
+          "TokamakSource: field_model must be 'toroidal' or 'pitched'.");
+      }
+    }
+    if (field_model_ == 1) {
+      q_r_over_a_ = get_node_array<double>(node, "q_r_over_a");
+      q_values_ = get_node_array<double>(node, "q_values");
+      if (q_r_over_a_.size() != q_values_.size() || q_r_over_a_.size() < 2) {
+        fatal_error("TokamakSource: pitched field_model requires q_r_over_a and "
+                    "q_values of equal length >= 2.");
+      }
+      if (check_for_node(node, "field_sign")) {
+        field_sign_ = std::stod(get_node_value(node, "field_sign"));
+      }
+    }
+  }
+
+  precompute_sampling_cdfs();
+}
+
+void TokamakSource::precompute_sampling_cdfs()
+{
+  // Use precomputed normalized geometry parameters
+  double eps = epsilon_;    // Inverse aspect ratio (a/R0)
+  double Dt = delta_tilde_; // Normalized Shafranov shift (Delta/a)
+  double delta = triangularity_;
+
+  //==========================================================================
+  // RADIAL CDF (computed first since it's simpler and sampled first)
+  //==========================================================================
+  // The marginal radial PDF is obtained by analytically integrating the joint
+  // distribution f(r_tilde, alpha) over alpha. The result is:
+  //
+  //   p(r_tilde) ~ S(r_tilde) * [(1 + eps*Dt)*r_tilde
+  //                              - (3/8)*c1*eps*r_tilde^2
+  //                              - 2*eps*Dt*r_tilde^3]
+  //
+  // where the Bessel function coefficients are:
+  //   c0 = J_0(delta) + J_2(delta)
+  //   c1 = (J_1(2*delta) + J_3(2*delta)) / c0
+  //
+  // For delta -> 0, c0 -> 1 and c1 -> 0, giving the circular cross-section
+  // limit.
+
+  // Compute Bessel function coefficients. openmc::cyl_bessel_j handles
+  // negative arguments (negative triangularity) via the parity relation
+  // J_n(-x) = (-1)^n * J_n(x).
+  double J0_d = cyl_bessel_j(0, delta);
+  double J2_d = cyl_bessel_j(2, delta);
+  double J1_2d = cyl_bessel_j(1, 2.0 * delta);
+  double J3_2d = cyl_bessel_j(3, 2.0 * delta);
+  double c0 = J0_d + J2_d;
+  double c1 = (J1_2d + J3_2d) / c0;
+
+  // Coefficients for the radial polynomial: A*r - B*r^2 - C*r^3
+  radial_poly_a_ = 1.0 + eps * Dt;
+  radial_poly_b_ = 0.375 * c1 * eps; // 3/8 * c1 * eps
+  radial_poly_c_ = 2.0 * eps * Dt;
+
+  // Build the radial CDF on the user-provided r_over_a grid
+  const size_t n_r = r_over_a_.size();
+  radial_cdf_.resize(n_r);
+  vector<double> radial_pdf(n_r);
+
+  for (size_t i = 0; i < n_r; ++i) {
+    double r = r_over_a_[i];
+    double S = emission_density_[i];
+    // p(r) ~ S(r) * [A*r - B*r^2 - C*r^3]
+    double geometric_factor =
+      radial_poly_a_ * r - radial_poly_b_ * r * r - radial_poly_c_ * r * r * r;
+    radial_pdf[i] = S * std::max(0.0, geometric_factor);
+  }
+
+  // Integrate to get CDF using trapezoidal rule on irregular grid
+  radial_cdf_[0] = 0.0;
+  for (size_t i = 1; i < n_r; ++i) {
+    double dr = r_over_a_[i] - r_over_a_[i - 1];
+    double avg = 0.5 * (radial_pdf[i - 1] + radial_pdf[i]);
+    radial_cdf_[i] = radial_cdf_[i - 1] + avg * dr;
+  }
+
+  // Normalize CDF
+  double total = radial_cdf_[n_r - 1];
+  if (total <= 0.0) {
+    fatal_error(
+      "TokamakSource: Integrated emission density is zero or negative. "
+      "Check emission_density profile.");
+  }
+  double inv_total = 1.0 / total;
+  for (size_t i = 0; i < n_r; ++i) {
+    radial_cdf_[i] *= inv_total;
+  }
+
+  //==========================================================================
+  // POLOIDAL CDFs (for conditional sampling of alpha given r)
+  //==========================================================================
+  // The conditional distribution P(alpha | r) is a mixture:
+  //   P(alpha | r) ~ sum_k w_k(r) * I_hat_k * p_k(alpha)
+  // where:
+  //   - w_k(r) are the "dynamic" Bernstein weight functions (depend on r)
+  //   - I_hat_k are the "static" normalized integrals (precomputed constants)
+  //   - p_k(alpha) are the normalized basis distributions (precomputed CDFs)
+  //
+  // The static weights I_hat_k = I_k / (2*pi*c0) are:
+  //   I_hat_0 = 1 + eps*Dt
+  //   I_hat_1 = 1 + eps*Dt - (3/16)*c1*eps
+  //   I_hat_2 = 1 - (3/8)*c1*eps
+  //   I_hat_3 = 1 + eps*Dt
+  //   I_hat_4 = 1 + (1/2)*eps*Dt - (3/16)*c1*eps
+  //   I_hat_5 = 1 - eps*Dt - (3/8)*c1*eps
+
+  // Compute static weights analytically
+  poloidal_integrals_[0] = 1.0 + eps * Dt;
+  poloidal_integrals_[1] = 1.0 + eps * Dt - 0.1875 * c1 * eps; // 3/16 = 0.1875
+  poloidal_integrals_[2] = 1.0 - 0.375 * c1 * eps;             // 3/8 = 0.375
+  poloidal_integrals_[3] = 1.0 + eps * Dt;
+  poloidal_integrals_[4] = 1.0 + 0.5 * eps * Dt - 0.1875 * c1 * eps;
+  poloidal_integrals_[5] = 1.0 - eps * Dt - 0.375 * c1 * eps;
+
+  // Build the alpha grid on [0, pi] (half domain due to up-down symmetry)
+  int n_alpha = n_alpha_;
+  poloidal_alpha_grid_.resize(n_alpha);
+  double dalpha = PI / (n_alpha - 1);
+  for (int i = 0; i < n_alpha; ++i) {
+    poloidal_alpha_grid_[i] = i * dalpha;
+  }
+
+  // Compute basis function values g_k(alpha) for building CDFs
+  // Using Bernstein form:
+  //   R_tilde = b0*(1-r)^2 + 2*b1*r*(1-r) + b2*r^2
+  //   J_tilde = b3*(1-r) + b4*r
+  // with:
+  //   b0(alpha) = 1 + eps*Dt
+  //   b1(alpha) = b0 + (eps/2)*cos(psi),  psi = alpha + delta*sin(alpha)
+  //   b2(alpha) = 1 + eps*cos(psi)
+  //   b3(alpha) = cos(delta*sin(alpha))
+  //               + (delta/4)*(cos(alpha - delta*sin(alpha))
+  //                          - cos(3*alpha + delta*sin(alpha)))
+  //   b4(alpha) = b3(alpha) - 2*Dt*cos(alpha)
+
+  array<vector<double>, N_POLOIDAL_BASIS> basis;
+  for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
+    basis[k].resize(n_alpha);
+    poloidal_cdfs_[k].resize(n_alpha);
+  }
+
+  for (int i = 0; i < n_alpha; ++i) {
+    double alpha = poloidal_alpha_grid_[i];
+    double sin_alpha = std::sin(alpha);
+    double cos_alpha = std::cos(alpha);
+    double delta_sin_alpha = delta * sin_alpha;
+    double psi = alpha + delta_sin_alpha;
+    double cos_psi = std::cos(psi);
+
+    // Bernstein coefficients b0-b4
+    double b0 = 1.0 + eps * Dt;
+    double b1 = b0 + 0.5 * eps * cos_psi;
+    double b2 = 1.0 + eps * cos_psi;
+    double b3 =
+      std::cos(delta_sin_alpha) + 0.25 * delta *
+                                    (std::cos(alpha - delta_sin_alpha) -
+                                      std::cos(3.0 * alpha + delta_sin_alpha));
+    double b4 = b3 - 2.0 * Dt * cos_alpha;
+
+    // 6 basis functions g_k(alpha) = b_i * b_j
+    basis[0][i] = b0 * b3; // w0 = (1-r)^3
+    basis[1][i] = b1 * b3; // w1 = 2*r*(1-r)^2
+    basis[2][i] = b2 * b3; // w2 = r^2*(1-r)
+    basis[3][i] = b0 * b4; // w3 = r*(1-r)^2
+    basis[4][i] = b1 * b4; // w4 = 2*r^2*(1-r)
+    basis[5][i] = b2 * b4; // w5 = r^3
+  }
+
+  // Build normalized CDFs for each basis function p_k(alpha)
+  for (int k = 0; k < N_POLOIDAL_BASIS; ++k) {
+    // Build CDF using trapezoidal integration
+    poloidal_cdfs_[k][0] = 0.0;
+    for (int i = 1; i < n_alpha; ++i) {
+      double avg = 0.5 * (basis[k][i - 1] + basis[k][i]);
+      poloidal_cdfs_[k][i] = poloidal_cdfs_[k][i - 1] + avg * dalpha;
+    }
+
+    // Normalize CDF to [0, 1]
+    double norm = poloidal_cdfs_[k][n_alpha - 1];
+    if (norm > 0.0) {
+      double inv_norm = 1.0 / norm;
+      for (int i = 0; i < n_alpha; ++i) {
+        poloidal_cdfs_[k][i] *= inv_norm;
+      }
+    }
+  }
+}
+
+double TokamakSource::sample_r_over_a(uint64_t* seed) const
+{
+  double xi = prn(seed);
+
+  // Binary search to find the interval in the CDF
+  auto it = std::lower_bound(radial_cdf_.begin(), radial_cdf_.end(), xi);
+  size_t i = std::distance(radial_cdf_.begin(), it);
+
+  if (i == 0)
+    return r_over_a_.front();
+  if (i >= radial_cdf_.size())
+    return r_over_a_.back();
+
+  // Linear interpolation within the interval
+  double cdf_lo = radial_cdf_[i - 1];
+  double cdf_hi = radial_cdf_[i];
+  double r_lo = r_over_a_[i - 1];
+  double r_hi = r_over_a_[i];
+
+  double t = (xi - cdf_lo) / (cdf_hi - cdf_lo);
+  return r_lo + t * (r_hi - r_lo);
+}
+
+double TokamakSource::mixture_weight(int k, double r) const
+{
+  double s = 1.0 - r;
+  switch (k) {
+  case 0:
+    return s * s * s * poloidal_integrals_[0];
+  case 1:
+    return 2.0 * r * s * s * poloidal_integrals_[1];
+  case 2:
+    return r * r * s * poloidal_integrals_[2];
+  case 3:
+    return r * s * s * poloidal_integrals_[3];
+  case 4:
+    return 2.0 * r * r * s * poloidal_integrals_[4];
+  case 5:
+    return r * r * r * poloidal_integrals_[5];
+  default:
+    UNREACHABLE();
+  }
+}
+
+double TokamakSource::sample_poloidal_angle(double r_norm, uint64_t* seed) const
+{
+  // Sample from the conditional distribution P(alpha | r_tilde) using
+  // mixture sampling with 6 precomputed basis CDFs.
+  //
+  // The conditional is: P(alpha | r) ~ sum_k w_k(r) * I_hat_k * p_k(alpha)
+  // where:
+  //   - w_k(r) are the "dynamic" Bernstein weight functions
+  //   - I_hat_k are the "static" normalized integrals (precomputed in
+  //   poloidal_integrals_)
+  //   - p_k(alpha) are the normalized basis distributions (precomputed CDFs)
+  //
+  // The normalization sum_k w_k(r) * I_hat_k equals the radial geometric
+  // polynomial evaluated at r, which is known analytically.
+  //
+  // Algorithm:
+  // 1. Compute total from analytical normalization
+  // 2. Lazily evaluate mixture weights with early exit to select component k
+  // 3. Sample alpha from CDF_k using inverse transform
+
+  // Analytical normalization: sum_k w_k(r) * I_hat_k
+  double total =
+    radial_poly_a_ - radial_poly_b_ * r_norm - radial_poly_c_ * r_norm * r_norm;
+  double xi = prn(seed) * total;
+
+  // Sample component via lazy evaluation with early exit
+  // Order optimized for peaked emission profiles: 0, 1, 4, 5, 3, 2
+  constexpr int order[] = {0, 1, 4, 5, 3, 2};
+  double cumsum = 0.0;
+  int component = order[N_POLOIDAL_BASIS - 1];
+  for (int i = 0; i < N_POLOIDAL_BASIS; ++i) {
+    cumsum += mixture_weight(order[i], r_norm);
+    if (xi < cumsum) {
+      component = order[i];
+      break;
+    }
+  }
+
+  // Sample alpha from the selected CDF using inverse transform
+  double eta = prn(seed);
+  const auto& cdf = poloidal_cdfs_[component];
+  const size_t n_alpha = poloidal_alpha_grid_.size();
+
+  auto it = std::lower_bound(cdf.begin(), cdf.end(), eta);
+  size_t j = std::distance(cdf.begin(), it);
+
+  // Sample alpha from [0, pi]
+  double alpha;
+  if (j == 0) {
+    alpha = poloidal_alpha_grid_.front();
+  } else if (j >= n_alpha) {
+    alpha = poloidal_alpha_grid_.back();
+  } else {
+    // Linear interpolation within the bin
+    double cdf_lo = cdf[j - 1];
+    double cdf_hi = cdf[j];
+    double alpha_lo = poloidal_alpha_grid_[j - 1];
+    double alpha_hi = poloidal_alpha_grid_[j];
+    double t = (eta - cdf_lo) / (cdf_hi - cdf_lo);
+    alpha = alpha_lo + t * (alpha_hi - alpha_lo);
+  }
+
+  // Exploit up-down symmetry: randomly flip to [pi, 2*pi] with 50% probability
+  // This is equivalent to flipping the sign of Z in the final position
+  if (prn(seed) >= 0.5) {
+    alpha = 2.0 * PI - alpha;
+  }
+  return alpha;
+}
+
+std::pair<double, double> TokamakSource::sample_energy(
+  double r_norm, uint64_t* seed) const
+{
+  if (energy_dists_.size() == 1) {
+    // Single distribution for all r
+    return energy_dists_[0]->sample(seed);
+  }
+
+  // Multiple distributions: stochastic selection between bracketing r points
+  // Find the interval containing r_norm
+  auto it = std::lower_bound(r_over_a_.begin(), r_over_a_.end(), r_norm);
+  size_t i = std::distance(r_over_a_.begin(), it);
+  if (i > 0)
+    --i;
+
+  // Handle boundary cases
+  if (i >= energy_dists_.size() - 1) {
+    return energy_dists_.back()->sample(seed);
+  }
+
+  // Stochastic interpolation: randomly select one of the two bracketing
+  // distributions based on distance to each
+  double t = (r_norm - r_over_a_[i]) / (r_over_a_[i + 1] - r_over_a_[i]);
+  size_t idx = (prn(seed) < t) ? i + 1 : i;
+  return energy_dists_[idx]->sample(seed);
+}
+
+Position TokamakSource::flux_to_cartesian(
+  double r, double alpha, double phi) const
+{
+  // Flux surface parameterization:
+  // R = R0 + r*cos(alpha + delta*sin(alpha)) + Delta*(1 - (r/a)^2)
+  // Z = kappa * r * sin(alpha)
+  // x = R * cos(phi)
+  // y = R * sin(phi)
+  // z = Z
+
+  double psi = alpha + triangularity_ * std::sin(alpha);
+  double r_over_a_sq = (r * r) / (minor_radius_ * minor_radius_);
+
+  double R =
+    major_radius_ + r * std::cos(psi) + shafranov_shift_ * (1.0 - r_over_a_sq);
+  double Z = elongation_ * r * std::sin(alpha);
+
+  double x = R * std::cos(phi);
+  double y = R * std::sin(phi);
+  double z = Z;
+
+  return {x, y, z};
+}
+
+double TokamakSource::interp_q(double r_norm) const
+{
+  // Linear interpolation of q on the r/a grid, clamped at the endpoints.
+  // The grid is validated (size >= 2) in the constructor for the pitched model.
+  const auto& xg = q_r_over_a_;
+  const auto& yg = q_values_;
+  if (r_norm <= xg.front())
+    return yg.front();
+  if (r_norm >= xg.back())
+    return yg.back();
+  // First grid point strictly greater than r_norm.
+  auto it = std::upper_bound(xg.begin(), xg.end(), r_norm);
+  const size_t i = static_cast<size_t>(std::distance(xg.begin(), it));
+  const double t = (r_norm - xg[i - 1]) / (xg[i] - xg[i - 1]);
+  return yg[i - 1] + t * (yg[i] - yg[i - 1]);
+}
+
+Direction TokamakSource::field_direction(
+  double r, double alpha, double phi) const
+{
+  const double sphi = std::sin(phi), cphi = std::cos(phi);
+
+  if (field_model_ == 0) {
+    // Pure toroidal b̂ = φ̂ = (−sin φ, cos φ, 0). Already unit. This is exactly
+    // spf::ToroidalField ({−y/rxy, x/rxy, 0}) evaluated with phi in scope, and
+    // is the axisymmetric B̂=φ̂ case the Schwartz/anarrima oracle assumes.
+    return {-sphi, cphi, 0.0};
+  }
+
+  // Pitched model: toroidal + poloidal tangent scaled by local pitch
+  // λ = r/(q·R). Exact unit poloidal tangent from the Miller α-derivatives
+  //   R(r,α) = R0 + r·cos ψ + Δ(1 − (r/a)²),  ψ = α + δ·sin α
+  //   Z(r,α) = κ·r·sin α
+  //   tR = ∂R/∂α = −r·sin ψ·(1 + δ·cos α),  tZ = ∂Z/∂α = κ·r·cos α.
+  const double delta = triangularity_;
+  const double psi = alpha + delta * std::sin(alpha);
+  const double R = major_radius_ + r * std::cos(psi) +
+                   shafranov_shift_ *
+                     (1.0 - (r * r) / (minor_radius_ * minor_radius_));
+
+  const double tR = -r * std::sin(psi) * (1.0 + delta * std::cos(alpha));
+  const double tZ = elongation_ * r * std::cos(alpha);
+  const double tnorm = std::sqrt(tR * tR + tZ * tZ);
+  // At r == 0 the poloidal tangent is degenerate; the field is purely toroidal.
+  if (!(tnorm > 0.0))
+    return {-sphi, cphi, 0.0};
+  const double pR = tR / tnorm, pZ = tZ / tnorm;
+
+  // Local pitch magnitude from the q-profile (q_cyl relation), s = handedness.
+  const double q = interp_q(r / minor_radius_);
+  const double lambda = (q > 0.0) ? (r / (q * R)) : 0.0;
+  const double sl = field_sign_ * lambda;
+
+  // B = φ̂ + s·λ·p̂, expressed in Cartesian, then normalized.
+  //   R̂(φ) = (cos φ, sin φ, 0),  φ̂(φ) = (−sin φ, cos φ, 0),  ẑ = (0,0,1).
+  double Bx = -sphi + sl * pR * cphi;
+  double By = cphi + sl * pR * sphi;
+  double Bz = sl * pZ;
+  const double Bnorm = std::sqrt(Bx * Bx + By * By + Bz * Bz);
+  return {Bx / Bnorm, By / Bnorm, Bz / Bnorm};
+}
+
+Direction TokamakSource::sample_polarized_direction(
+  Direction bhat, uint64_t* seed) const
+{
+  // 1. cosθ relative to b̂ via stratified selection of the two P2 shapes.
+  //    RNG draw order: selector -> shape-u -> phi (matches spf_sampler.hpp so
+  //    the native port is bit-for-bit identical on a fixed seed sequence).
+  double x; // cosθ relative to b̂
+  if (prn(seed) < p_perp_) {
+    x = spf_costheta_perp(prn(seed));
+  } else {
+    x = spf_costheta_par(prn(seed));
+  }
+  const double az = 2.0 * PI * prn(seed);
+  const double st = std::sqrt(std::max(0.0, 1.0 - x * x));
+  const Direction local {st * std::cos(az), st * std::sin(az), x};
+
+  // 2. Rotate from the b̂-aligned local frame to global via Gram-Schmidt with a
+  //    least-aligned reference axis (avoids the b̂ ∥ ẑ_world degeneracy).
+  Direction b = bhat / bhat.norm();
+  const double ax = std::abs(b.x), ay = std::abs(b.y), az2 = std::abs(b.z);
+  Direction ref = (ax <= ay && ax <= az2) ? Direction {1.0, 0.0, 0.0}
+                  : (ay <= az2)           ? Direction {0.0, 1.0, 0.0}
+                                          : Direction {0.0, 0.0, 1.0};
+  Direction ex = ref - b.dot(ref) * b;
+  ex /= ex.norm();
+  Direction ey = b.cross(ex);
+
+  Direction u = local.x * ex + local.y * ey + local.z * b;
+  return u / u.norm(); // guard fp drift; |u| ≈ 1
+}
+
+SourceSite TokamakSource::sample(uint64_t* seed) const
+{
+  SourceSite site;
+  site.particle = ParticleType::neutron();
+  site.wgt = 1.0;
+  site.delayed_group = 0;
+
+  // 1. Sample r/a from radial CDF
+  double r_norm = sample_r_over_a(seed);
+  double r = r_norm * minor_radius_;
+
+  // 2. Sample poloidal angle from conditional distribution P(alpha|r)
+  double alpha = sample_poloidal_angle(r_norm, seed);
+
+  // 3. Sample toroidal angle uniformly in [phi_start, phi_start + phi_extent]
+  double phi = phi_start_ + phi_extent_ * prn(seed);
+
+  // 4. Convert to Cartesian coordinates
+  site.r = flux_to_cartesian(r, alpha, phi);
+
+  // 4a. Apply vertical shift if non-zero
+  if (vertical_shift_ != 0.0) {
+    site.r.z += vertical_shift_;
+  }
+
+  // 5. Sample birth direction.
+  //    Unpolarized -> isotropic (bit-for-bit the previous behavior).
+  //    Polarized   -> Schwartz P2 mode-mixture about the local field b̂.
+  //    (r, alpha, phi are all still in scope from steps 1-3.)
+  if (polarized_) {
+    Direction bhat = field_direction(r, alpha, phi);
+    site.u = sample_polarized_direction(bhat, seed);
+  } else {
+    site.u = angle_->sample(seed).first;
+  }
+
+  // 6. Sample energy from distribution(s), applying the importance weight so
+  // that biased distributions are handled correctly
+  auto [E, E_wgt] = sample_energy(r_norm, seed);
+  site.E = E;
+
+  // 7. Sample particle creation time
+  auto [time, time_wgt] = time_->sample(seed);
+  site.time = time;
+
+  site.wgt *= E_wgt * time_wgt;
+
+  return site;
+}
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+void initialize_source()
+{
+  write_message("Initializing source particles...", 5);
+
+// Generation source sites from specified distribution in user input
+#pragma omp parallel for
+  for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+    // initialize random number seed
+    int64_t id = simulation::total_gen * settings::n_particles +
+                 simulation::work_index[mpi::rank] + i + 1;
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
+
+    // sample external source distribution
+    simulation::source_bank[i] = sample_external_source(&seed);
+  }
+
+  // Write out initial source
+  if (settings::write_initial_source) {
+    write_message("Writing out initial source...", 5);
+    std::string filename = settings::path_output + "initial_source.h5";
+    hid_t file_id = file_open(filename, 'w', true);
+    write_source_bank(file_id, simulation::source_bank, simulation::work_index);
+    file_close(file_id);
+  }
+}
+
+SourceSite sample_external_source(uint64_t* seed)
+{
+  // Sample from among multiple source distributions
+  int i = 0;
+  int n_sources = model::external_sources.size();
+  if (n_sources > 1) {
+    if (settings::uniform_source_sampling) {
+      i = prn(seed) * n_sources;
+    } else {
+      i = model::external_sources_probability.sample(seed);
+    }
+  }
+
+  // Sample source site from i-th source distribution
+  SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
+
+  // For uniform source sampling, multiply the weight by the ratio of the actual
+  // probability of sampling source i to the biased probability of sampling
+  // source i, which is (strength_i / total_strength) / (1 / n)
+  if (n_sources > 1 && settings::uniform_source_sampling) {
+    double total_strength = model::external_sources_probability.integral();
+    site.wgt *=
+      model::external_sources[i]->strength() * n_sources / total_strength;
+  }
+
+  // If running in MG, convert site.E to group
+  if (!settings::run_CE) {
+    site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
+      data::mg.rev_energy_bins_.end(), site.E);
+    site.E = data::mg.num_energy_groups_ - site.E - 1.;
+  }
+
+  return site;
+}
+
+void free_memory_source()
+{
+  model::external_sources.clear();
+  model::adjoint_sources.clear();
+  reset_source_rejection_counters();
+}
+
+void reset_source_rejection_counters()
+{
+  source_n_accept = 0;
+  source_n_reject = 0;
+}
+
+//==============================================================================
+// C API
+//==============================================================================
+
+extern "C" int openmc_sample_external_source(
+  size_t n, uint64_t* seed, void* sites)
+{
+  if (!sites || !seed) {
+    set_errmsg("Received null pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (model::external_sources.empty()) {
+    set_errmsg("No external sources have been defined.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  auto sites_array = static_cast<SourceSite*>(sites);
+
+  // Derive independent per-particle seeds from the base seed so that
+  // each iteration has its own RNG state for thread-safe parallel sampling.
+  uint64_t base_seed = *seed;
+
+#pragma omp parallel for schedule(static)
+  for (size_t i = 0; i < n; ++i) {
+    uint64_t particle_seed = init_seed(base_seed + i, STREAM_SOURCE);
+    sites_array[i] = sample_external_source(&particle_seed);
+  }
+  return 0;
+}
+
+} // namespace openmc
