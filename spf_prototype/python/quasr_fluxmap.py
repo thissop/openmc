@@ -164,7 +164,7 @@ def build(ID, outdir=None, L=8, n_rho=16, n_theta=64, n_zeta=192, ftol=1e-2, max
     # sqrt(g)(rho=0)=0 prepended. (A crude right-Riemann sum was ~8% off on a coarse rho grid;
     # this is O(drho^2) and converges with n_rho -- the deterministic discretization error.)
     dth, dze = 2.0 * np.pi / n_theta, 2.0 * np.pi / n_zeta
-    _trap = getattr(np, "trapezoid", getattr(np, "trapz"))
+    _trap = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
     sg_of_rho = sg_abs.mean(axis=(1, 2)) * (2.0 * np.pi) ** 2           # integral over theta,zeta
     rho_ax = np.concatenate([[0.0], rho]); sg_ax = np.concatenate([[0.0], sg_of_rho])
     V_quad = float(_trap(sg_ax, rho_ax))
@@ -184,6 +184,7 @@ def build(ID, outdir=None, L=8, n_rho=16, n_theta=64, n_zeta=192, ftol=1e-2, max
     print(f"[fluxmap] V1b: divergence-theorem {V_div:.6g}  rel {relVd:.2e}", flush=True)
     assert relVd < 1e-2, f"V1b FAILED rel={relVd:.2e}"
 
+    res = scale = float("nan")            # defined even when V4 is skipped (DESC-example mode)
     # ---- V4: rho=1 reconstructs the fitted boundary (only for QUASR-solved eqs) ----
     if Rmodes is not None:
         Rfit = np.zeros((n_theta, n_zeta)); Zfit = np.zeros_like(Rfit)
