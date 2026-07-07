@@ -49,6 +49,11 @@ if "source_type == 'stellarator'" not in t:
         "                return StellaratorSource.from_xml_element(elem)\n")
     open(sp,"w").write(t.replace(a, a+br,1)); print("source.py patched")
 else: print("source.py already patched")
+# 4. openmc/__init__.py: export StellaratorSource into the openmc namespace (openmc.StellaratorSource)
+ini=f"{SRC}/openmc/__init__.py"; t=open(ini).read()
+if "import StellaratorSource" not in t:
+    open(ini,"a").write("\nfrom openmc.stellarator_source import StellaratorSource\n"); print("__init__.py patched")
+else: print("__init__.py already patched")
 PY
 
 echo "=== rebuild (compiles stellarator_source.cpp + relink) ==="
