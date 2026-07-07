@@ -40,7 +40,7 @@ DATADIR = HERE.parent / "data"
 LENGTH_SCALE_CM = 100.0
 
 
-def _quasr_boundary_modes(ID, ntheta=64, nphi=128, mpol=8, ntor=8):
+def _quasr_boundary_modes(ID, ntheta=64, nphi=128, mpol=8, ntor=8, flip_theta=True):
     """Evaluate the QUASR LCFS on a (theta, phi) grid (pure-numpy quasr_geom) and FIT real
     Fourier modes R_mn, Z_mn. Evaluate-then-fit keeps this INDEPENDENT of quasr_geom's
     internal mode convention; the only convention we then own is the fit basis
@@ -51,7 +51,13 @@ def _quasr_boundary_modes(ID, ntheta=64, nphi=128, mpol=8, ntor=8):
     th = np.linspace(0, 2 * np.pi, ntheta, endpoint=False)
     ph = np.linspace(0, 2 * np.pi, nphi, endpoint=False)
     TH, PH = np.meshgrid(th, ph, indexing="ij")
-    R, Z = dev.device.RZ(TH, PH, 1.0)                      # LCFS, native units
+    # [C1] QUASR's LCFS parameterization winds theta CLOCKWISE (negative poloidal Jacobian -- the m=1
+    # R mode comes out negative), so DESC's ensure_positive_jacobian rejects the axisymmetric seed.
+    # Evaluate at -theta so the fitted modes wind counter-clockwise (positive Jacobian). This is a pure
+    # reparameterization of the SAME physical boundary; gate V4 (rho=1 reconstructs the fitted boundary,
+    # in this same convention) verifies it downstream.
+    TH_eval = (-TH) % (2.0 * np.pi) if flip_theta else TH
+    R, Z = dev.device.RZ(TH_eval, PH, 1.0)                 # LCFS, native units
     Rmodes, Zmodes = {}, {}
     for m in range(mpol + 1):
         for n in range(-ntor, ntor + 1):
