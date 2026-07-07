@@ -1,0 +1,677 @@
+\documentclass[11pt]{article}
+
+% Per the design brief: standard article class; amsmath / amssymb / graphicx only.
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+
+% --- lightweight macros (no external package dependence) ---
+\newcommand{\sg}{\sqrt{g}}
+\newcommand{\Jpol}{\mathcal{J}_{\mathrm{pol}}}
+\newcommand{\Rs}{R_{s}}
+\newcommand{\Rt}{R_{\theta}}
+\newcommand{\Rp}{R_{\varphi}}
+\newcommand{\Zs}{Z_{s}}
+\newcommand{\Zt}{Z_{\theta}}
+\newcommand{\Zp}{Z_{\varphi}}
+\newcommand{\bhat}{\hat{\mathbf{b}}}
+\newcommand{\uhat}{\hat{\mathbf{u}}}
+\newcommand{\rhat}{\hat{\mathbf{R}}}
+\newcommand{\phihat}{\hat{\boldsymbol{\varphi}}}
+\newcommand{\zhat}{\hat{\mathbf{z}}}
+\newcommand{\es}{\mathbf{e}_{s}}
+\newcommand{\et}{\mathbf{e}_{\theta}}
+\newcommand{\ep}{\mathbf{e}_{\varphi}}
+\newcommand{\Nfp}{N_{\mathrm{fp}}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{\bfseries A Native, Conformal, Spin-Polarized Volumetric Neutron Source
+for 3D Stellarator Equilibria: Design and Evaluation of the
+\code{StellaratorSource}}
+
+\author{SPF prototype -- methods evaluation memo}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+We evaluate a proposed OpenMC neutron source, \code{StellaratorSource}, that samples
+fusion birth positions directly from the true three-dimensional flux surfaces of a
+solved stellarator equilibrium and birth directions from the spin-polarized
+emission kernel about the local magnetic-field direction read from that same
+equilibrium. The birth-position density is the metric measure
+$p(s,\theta,\varphi)\propto S(s)\,\sg(s,\theta,\varphi)$, and we derive from first
+principles the metric identity $\sg=R\,(\Rs\Zt-\Rt\Zs)$ (up to an
+orientation-dependent sign) together with the fact that, unlike the axisymmetric
+case, the toroidal angle $\varphi$ is \emph{not} uniform because $\sg$ depends on
+$\varphi$. We show why Peterson's rejection-free closed-form (Bernstein-mixture)
+tokamak sampler does not generalize---a stellarator $\sg$ is a device-specific,
+non-separable two-dimensional Fourier density, not a finite polynomial in one
+variable---and that what survives is the marginal$\to$conditional decomposition,
+realized here as a rejection-free CDF cascade
+$p(s)\,p(\varphi\mid s)\,p(\theta\mid s,\varphi)$ over a precomputed $\sg$ grid. We
+prove unit birth weight and $O(\log N)$ sampling by construction, layer the
+tier-1--validated Schwartz $P_2$ polarized-direction sampler on top with $\bhat$
+taken from the \emph{same} grid, and lay out a computational-cost assessment and a
+gated validation plan (V1--V5) with explicit acceptance thresholds. We are careful
+throughout to separate what is proven analytically from what remains to be
+confirmed numerically on a real DESC equilibrium, since the DESC producer is not
+available on the current development machine.
+\end{abstract}
+
+\tableofcontents
+
+%======================================================================
+\section{Problem statement}
+\label{sec:problem}
+
+\subsection{Existing sources mis-sample a stellarator plasma}
+
+OpenMC's parametric fusion sources describe the plasma with an axisymmetric
+tokamak parameterization. Peterson's native \code{TokamakSource} (PR \#3999)
+is a substantial advance: it samples the plasma volume \emph{conformally} and
+\emph{rejection-free} from the exact flux-coordinate density
+$p(\tilde r,\alpha)\propto S(\tilde r)\,R(\tilde r,\alpha)\,\mathcal{J}(\tilde
+r,\alpha)$ using a Miller flux-surface model
+\begin{equation}
+R(r,\alpha)=R_0+r\cos(\alpha+\delta\sin\alpha)+\Delta\!\left(1-(r/a)^2\right),
+\qquad
+Z(r,\alpha)=\kappa\, r\sin\alpha ,
+\label{eq:miller}
+\end{equation}
+with $\varphi$ sampled uniformly. This is correct---but only because the tokamak
+is axisymmetric. It cannot represent a stellarator's toroidally varying, shaped,
+non-axisymmetric plasma.
+
+Our own current prototype is worse in a specific, diagnosable way. The
+\code{shape=plasma} branch of \code{polarized\_fusion\_source.cpp} samples a
+\emph{circular} parabolic torus by \emph{rejection}:
+\begin{equation}
+p\sim R_0-a+2a\,\xi_1,\quad z\sim -a+2a\,\xi_2,\quad
+\rho^2=\frac{(p-R_0)^2+z^2}{a^2},\quad
+\text{accept if } \rho^2\le 1\ \wedge\ \xi_3\le\frac{(1-\rho^2)\,p}{p_{\max}} .
+\label{eq:oldrej}
+\end{equation}
+Three coupled deficiencies follow, all of which the present design targets:
+
+\begin{enumerate}
+\item \textbf{No shaping.} The cross section is a circle of radius $a$: no
+elongation $\kappa$, triangularity $\delta$, Shafranov shift $\Delta$, and---most
+importantly for a stellarator---no $\varphi$-varying cross section at all.
+\item \textbf{Rejection-based.} Acceptance in \eqref{eq:oldrej} is non-constant,
+wastes RNG draws, and gives no \emph{closed-form} guarantee of unit birth weight:
+the weight is unity only because we accept/reject rather than reweight, which is a
+fragile coincidence rather than a proof.
+\item \textbf{Position and field live on different geometries.} The real
+equilibrium enters \emph{only} through $\bhat$. The birth point sits on a
+\emph{circular} flux surface, while $\bhat$ is read from the \emph{actual}
+stellarator field via a spatial $(R,\varphi,Z)\!\to\!\bhat$ KDTree/IDW lookup
+(\code{bmode=fieldmap}, \code{spf\_fieldmap\_v1}). Two different flux-surface
+objects are stitched together at a shared Cartesian point $(x,y,z)$.
+\end{enumerate}
+
+\subsection{Requirement}
+
+We require a source that (i) places births \emph{conformally} on the real 3D flux
+surfaces of a solved equilibrium; (ii) carries \emph{unit} birth weight by
+construction (no rejection, no importance reweighting); and (iii) reads the local
+field direction $\bhat$ from the \emph{same} equilibrium at the \emph{same} point,
+so position and field are self-consistent. This is the direct 3D generalization of
+Peterson's tokamak result, and it also removes the position/field mismatch of the
+current prototype. The polarized angular physics---already tier-1 validated---rides
+on top unchanged, because position and direction remain exactly separable.
+
+%======================================================================
+\section{The birth pdf and why the measure is $\sg$}
+\label{sec:physics}
+
+\subsection{Flux coordinates and the emission density}
+
+Let $(s,\theta,\varphi)$ be flux coordinates: $s\in[0,1]$ a normalized flux label
+(DESC $\rho=\sqrt{\psi_{\mathrm{tor}}/\psi_{\mathrm{tor,LCFS}}}$), $\theta$
+poloidal, and $\varphi$ the toroidal angle, \emph{identified with the geometric
+cylindrical angle} following the VMEC/DESC convention. The flux surfaces are
+$R=R(s,\theta,\varphi)$, $Z=Z(s,\theta,\varphi)$, mapped to Cartesian by
+\begin{equation}
+x=R\cos\varphi,\qquad y=R\sin\varphi,\qquad z=Z .
+\label{eq:cyl2cart}
+\end{equation}
+For a thermal DT plasma the fusion emission density is a \emph{flux function},
+$S=S(s)$, because it is set by $n_i^2\langle\sigma v\rangle$ and both $n_i$ and
+$T_i$ are constant on a flux surface to leading order. The physical (Cartesian)
+volume element pulls back to
+\begin{equation}
+\dd V=\sg(s,\theta,\varphi)\dd s\dd\theta\dd\varphi ,
+\label{eq:dV}
+\end{equation}
+where $\sg=\big|\det\partial(x,y,z)/\partial(s,\theta,\varphi)\big|$ is the metric
+Jacobian. The number of births in a coordinate cell is $S(s)\dd V$, so the
+\textbf{birth-position pdf} is
+\begin{equation}
+\boxed{\;
+p(s,\theta,\varphi)=\frac{S(s)\,\sg(s,\theta,\varphi)}{N},\qquad
+N=\int_0^1\!\!\int_0^{2\pi}\!\!\int_0^{2\pi}
+S(s)\,\sg(s,\theta,\varphi)\dd\varphi\dd\theta\dd s\; }
+\label{eq:pdf}
+\end{equation}
+The measure is $\sg$, not $\dd s\dd\theta\dd\varphi$, precisely because a uniform
+draw in flux coordinates over-weights regions where the coordinate cells are small
+in physical volume; \eqref{eq:dV} is the change of variables that corrects this.
+
+\subsection{The metric, derived}
+\label{sec:metric}
+
+Write $\es=\partial_s(x,y,z)$, $\et=\partial_\theta(x,y,z)$,
+$\ep=\partial_\varphi(x,y,z)$ for the columns of the Jacobian, and $R_s\equiv
+\partial R/\partial s$, etc. Differentiating \eqref{eq:cyl2cart},
+\begin{align}
+\es&=(\Rs\cos\varphi,\ \Rs\sin\varphi,\ \Zs),\\
+\et&=(\Rt\cos\varphi,\ \Rt\sin\varphi,\ \Zt),\\
+\ep&=(\Rp\cos\varphi-R\sin\varphi,\ \Rp\sin\varphi+R\cos\varphi,\ \Zp).
+\end{align}
+The signed Jacobian is the triple product $\det=\es\cdot(\et\times\ep)$. The cross
+product is, component by component,
+\begin{align}
+(\et\times\ep)_x&=\Zp\Rt\sin\varphi-\Zt\Rp\sin\varphi-\Zt R\cos\varphi,\\
+(\et\times\ep)_y&=\Zt\Rp\cos\varphi-\Zt R\sin\varphi-\Rt\Zp\cos\varphi,\\
+(\et\times\ep)_z&=\Rt R\,(\cos^2\varphi+\sin^2\varphi)=R\,\Rt .
+\end{align}
+The $z$-component already shows the key collapse: the $\Rp$ terms cancel and the
+$k$-component reduces to $R\,\Rt$. Dotting with $\es$, \emph{every}
+$\sin\varphi\cos\varphi$ term---and these are exactly the ones carrying the
+$\varphi$-derivatives $\Rp,\Zp$---cancels in pairs, and the $\cos^2\varphi$ and
+$\sin^2\varphi$ terms combine, leaving
+\begin{equation}
+\boxed{\;
+\det\partial(x,y,z)/\partial(s,\theta,\varphi)
+=R\,(\Rt\Zs-\Rs\Zt)
+=-\,R\,\Jpol,\qquad
+\Jpol\equiv \Rs\Zt-\Rt\Zs=\frac{\partial(R,Z)}{\partial(s,\theta)}\; }
+\label{eq:metric}
+\end{equation}
+(verified symbolically). Two remarks matter for correctness:
+
+\begin{itemize}
+\item \textbf{The $\varphi$-\emph{derivatives} drop, but the
+$\varphi$-\emph{dependence} does not.} No $\Rp$ or $\Zp$ survives---this is why the
+result has the same \emph{form} as the tokamak metric, ``major radius $R$ times a
+poloidal Jacobian.'' But $R(s,\theta,\varphi)$, $\Rs$, $\Rt$, $\Zs$, $\Zt$ each
+still carry $\varphi$, because the cross section breathes with toroidal angle.
+Hence $\sg=\sg(s,\theta,\varphi)$.
+\item \textbf{Sign / orientation.} The physical measure in \eqref{eq:dV} uses the
+\emph{magnitude}, $\sg=|R\,\Jpol|=R\,|\Rs\Zt-\Rt\Zs|$ (with $R>0$). The overall
+sign of \eqref{eq:metric} depends on the handedness of the $(s,\theta,\varphi)$
+ordering and on DESC's internal convention; our derivation with ordering
+$(\es,\et,\ep)$ yields $-R\,\Jpol$, whereas the design memo boxes the opposite-sign
+form $R\,(\Rs\Zt-\Rt\Zs)$. Only $|\sg|$ enters the pdf, so this is immaterial to
+sampling \emph{provided} $\sg$ is single-signed over the interior---which is exactly
+what validation gate V2 and convention flag \code{[C5]} enforce.
+\end{itemize}
+
+\subsection{Why $\varphi$ is not uniform, and the contrast with Peterson}
+\label{sec:notuniform}
+
+\paragraph{Axisymmetric (tokamak) limit.} If $R=R(s,\theta)$, $Z=Z(s,\theta)$ with
+no $\varphi$-dependence, then $\sg=R(s,\theta)\,|\Jpol(s,\theta)|$ is independent of
+$\varphi$ and \eqref{eq:pdf} \emph{factorizes}:
+\begin{equation}
+p(s,\theta,\varphi)=
+\underbrace{\frac{S(s)\,R(s,\theta)\,|\Jpol(s,\theta)|}{N}}_{p(s,\theta)}
+\;\cdot\;
+\underbrace{\frac{1}{2\pi}}_{p(\varphi)} .
+\label{eq:tokamakfactor}
+\end{equation}
+This is precisely Peterson's $p(\tilde r,\alpha)\propto S(\tilde r)\,R\,\mathcal{J}$
+with $\varphi\sim U[0,2\pi)$. The $R$ factor is the ``toroidal effect'': differential
+volume is larger at larger $R$, and because $(s,\theta)$ (his $(\tilde r,\alpha)$)
+correlate with $R$, the two flux coordinates must be sampled \emph{jointly}, not
+independently.
+
+\paragraph{Stellarator.} Here $\sg=R(s,\theta,\varphi)\,|\Jpol(s,\theta,\varphi)|$
+\emph{depends on} $\varphi$, with two consequences:
+\begin{itemize}
+\item \textbf{$\varphi$ is not uniform.} Its marginal is
+$p(\varphi)\propto\iint S(s)\,\sg(s,\theta,\varphi)\dd s\dd\theta$, which varies with
+$\varphi$: more births occur where the local flux tube is fatter or shifted to
+larger $R$. Sampling $\varphi$ uniformly---the fatal shortcut---would systematically
+misplace births toroidally.
+\item \textbf{$(s,\theta,\varphi)$ are jointly correlated.} No factorization
+survives; the full 3D density must be sampled respecting the coupling. This is the
+direct generalization of Peterson's $(\tilde r,\alpha)$ correlation to one more
+dimension.
+\end{itemize}
+The single fact ``$\sg$ depends on $\varphi$'' is the entire reason a stellarator
+source needs more than ``tokamak pattern $+$ uniform $\varphi$.''
+
+%======================================================================
+\section{Why Peterson's closed form does not generalize}
+\label{sec:bernstein}
+
+Peterson's construction is rejection-free \emph{and} closed-form: he expands the
+joint weight $S(\tilde r)\,R\,\mathcal{J}$ into a finite Bernstein-polynomial
+mixture and samples each term analytically. That closure rests on three
+axisymmetry-specific properties:
+\begin{enumerate}
+\item $R(\tilde r,\alpha)$ and $Z(\tilde r,\alpha)$ from \eqref{eq:miller} are
+\emph{low-degree} polynomial/trig-polynomial parametric surfaces;
+\item hence $\mathcal{J}(\tilde r,\alpha)$ and the product
+$S(\tilde r)\,R\,\mathcal{J}$ are \emph{finite polynomials} in $\tilde r$ (and finite
+trigonometric polynomials in $\alpha$)---exactly a Bernstein basis of modest degree;
+\item there is \emph{no} $\varphi$-dependence, so the closed form is 2D in $(\tilde
+r,\alpha)$ and $\varphi$ is free.
+\end{enumerate}
+
+For a stellarator, $\sg$ obtained from a VMEC/DESC equilibrium is a
+\emph{truncated Fourier series}
+\begin{equation}
+\sg(s,\theta,\varphi)=\sum_{m,n} g_{mn}(s)\,
+\cos\!\big(m\theta-n\Nfp\varphi\big)\;(+\ \text{sine terms if not
+stellarator-symmetric}),
+\label{eq:fouriersg}
+\end{equation}
+with device-specific harmonics $g_{mn}(s)$ and a genuine two-dimensional
+$(\theta,\varphi)$ structure that is \emph{not} a finite polynomial in a single
+variable and is \emph{not separable}. There is no exact finite Bernstein mixture for
+a general non-separable 2D Fourier density, so the closed-form, term-by-term sampler
+does not carry over.
+
+What \emph{does} carry over is the \emph{strategy}, not the closed form:
+\begin{itemize}
+\item the \textbf{marginal$\to$conditional decomposition} $p(s)$ then
+$p(\theta,\varphi\mid s)$;
+\item \textbf{rejection-free, unit-weight} sampling by inverse-CDF;
+\end{itemize}
+now realized with a \emph{precomputed numerical CDF cascade} built from the
+equilibrium's own $\sg$ grid, in place of an analytic Bernstein mixture. This is the
+algorithm of \S\ref{sec:algorithm}.
+
+%======================================================================
+\section{The algorithm: a rejection-free CDF cascade}
+\label{sec:algorithm}
+
+\subsection{Inputs and construction (once, then \code{const})}
+
+On the DESC flux grid $s_i\ (i=0..N_s-1)$, $\theta_j\ (j=0..N_\theta-1)$,
+$\varphi_k\ (k=0..N_\varphi-1)$ over the \emph{full} torus, the producer supplies the
+samples $g_{ijk}=|\sg(s_i,\theta_j,\varphi_k)|\ge0$, the geometry $R_{ijk},Z_{ijk}$,
+the field direction $\bhat_{ijk}$ (\S\ref{sec:field}), quadrature weights
+$\Delta s_i,\Delta\theta_j,\Delta\varphi_k$, and the emission profile $S(s_i)$. In the
+constructor we form the discretized joint pdf (unnormalized node weights)
+\begin{equation}
+w_{ijk}=S(s_i)\,g_{ijk}\,\Delta s_i\,\Delta\theta_j\,\Delta\varphi_k ,
+\label{eq:wijk}
+\end{equation}
+and three cumulative tables realizing the chain rule
+$p(s,\theta,\varphi)=p(s)\,p(\varphi\mid s)\,p(\theta\mid s,\varphi)$:
+\begin{align}
+&\textbf{Marginal in }s:& W_i&=\sum_{j,k}w_{ijk},&
+&C^{(s)}_i=\frac{\sum_{i'\le i}W_{i'}}{\sum_{i'}W_{i'}} ;\\
+&\textbf{Conditional }\varphi\mid s:& W^{(i)}_k&=\sum_{j}w_{ijk},&
+&C^{(\varphi\mid i)}_k=\frac{\sum_{k'\le k}W^{(i)}_{k'}}{\sum_{k'}W^{(i)}_{k'}} ;\\
+&\textbf{Conditional }\theta\mid(s,\varphi):& &&
+&C^{(\theta\mid i,k)}_j=\frac{\sum_{j'\le j}w_{ij'k}}{\sum_{j'}w_{ij'k}} .
+\end{align}
+Note $\sum_{j,k} g_{ijk}\Delta\theta_j\Delta\varphi_k\approx \dd V/\dd s$, the
+flux-shell volume, so $W_i\propto S(s_i)\,(\dd V/\dd s)|_{s_i}$---the physically
+correct radial emission profile. The order $s\!\to\!\varphi\!\to\!\theta$ is chosen so
+the innermost conditional is over $\theta$, where $\sg$ varies most smoothly; the
+$\varphi\leftrightarrow\theta$ order is otherwise free.
+
+\subsection{Sampling (\code{sample(seed) const}), rejection-free, $\mathrm{wgt}=1$}
+
+\begin{enumerate}
+\item Draw $u_1=\code{prn}$; binary-search $C^{(s)}$ for cell $i^\ast$; interpolate
+$s$ inside $[s_{i^\ast},s_{i^\ast+1}]$ by inverting the local linear CDF ramp.
+\item Draw $u_2$; binary-search $C^{(\varphi\mid i^\ast)}$ $\to$ cell $k^\ast$;
+interpolate $\varphi$.
+\item Draw $u_3$; binary-search $C^{(\theta\mid i^\ast,k^\ast)}$ $\to$ cell $j^\ast$;
+interpolate $\theta$.
+\item Map $(s,\theta,\varphi)\to(R,Z)$ by trilinear interpolation of stored
+$R_{ijk},Z_{ijk}$ (or by evaluating the interior Fourier modes), then
+$x=R\cos\varphi,\ y=R\sin\varphi,\ z=Z$.
+\item Read $\bhat$ at the \emph{same} $(s,\theta,\varphi)$ (\S\ref{sec:field});
+assert $\big||\bhat|-1\big|<10^{-12}$.
+\item Emit the \code{SourceSite} with $\mathrm{wgt}=1$, $\mathrm{particle}=$ neutron.
+\end{enumerate}
+Each sample costs $O(\log N_s+\log N_\varphi+\log N_\theta)$.
+
+\subsection{Unit-birth-weight and unbiasedness --- proof}
+\label{sec:unitweight}
+
+\begin{quote}
+\textbf{Claim.} Every emitted site has $\mathrm{wgt}=1$ exactly, and the ensemble of
+sampled cells $(i^\ast,j^\ast,k^\ast)$ is an unbiased draw from the discrete target
+$p_{ijk}=w_{ijk}/\sum w$.
+\end{quote}
+\emph{Proof.} The cascade draws the cell with probability
+\begin{equation}
+\underbrace{\frac{W_{i^\ast}}{\sum_i W_i}}_{p(i^\ast)}\cdot
+\underbrace{\frac{W^{(i^\ast)}_{k^\ast}}{\sum_k W^{(i^\ast)}_k}}_{p(k^\ast\mid
+i^\ast)}\cdot
+\underbrace{\frac{w_{i^\ast j^\ast k^\ast}}{\sum_j w_{i^\ast j k^\ast}}}_{p(j^\ast\mid
+i^\ast,k^\ast)} .
+\end{equation}
+Substituting $W_{i}=\sum_{jk}w_{ijk}$ and $W^{(i)}_k=\sum_j w_{ijk}$, the
+denominators telescope: $\sum_k W^{(i^\ast)}_k=W_{i^\ast}$ and $\sum_j w_{i^\ast j
+k^\ast}=W^{(i^\ast)}_{k^\ast}$, so the product collapses to
+\begin{equation}
+\frac{w_{i^\ast j^\ast k^\ast}}{\sum_i W_i}=\frac{w_{i^\ast j^\ast
+k^\ast}}{\sum_{ijk} w_{ijk}}=p_{i^\ast j^\ast k^\ast}.
+\end{equation}
+The cell is thus drawn with exactly its target mass. No proposal is ever rejected and
+no importance ratio is applied, so the assigned weight is the constant $1$. The
+within-cell inverse-CDF interpolation refines the continuous $(s,\theta,\varphi)$ while
+preserving each cell's probability mass, leaving the marginal cell probabilities
+exact. Hence $\mathrm{wgt}\equiv1$ and unbiasedness \emph{to the discretized pdf} hold
+\emph{by construction}; the sole approximation is $p_{ijk}$ versus the continuous $p$,
+a deterministic grid error that $\to0$ under refinement. $\qquad\blacksquare$
+
+This matches Peterson's guarantee and the existing sampler's invariant, but---unlike
+\eqref{eq:oldrej}---it is a proof, not a coincidence of accept/reject.
+
+\subsection{Storage and cost}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Quantity & Expression & At $12\times48\times144$\\
+\hline
+Node weights $w_{ijk}$ & $N_s N_\theta N_\varphi$ doubles & $82\,944$ ($\sim$0.66\,MB)\\
+$\theta$-conditional table & $N_s N_\theta N_\varphi$ doubles & $82\,944$\\
+$\varphi$-conditional table & $N_s N_\varphi$ doubles & $1\,728$\\
+$s$-marginal table & $N_s$ doubles & $12$\\
+Build cost & one $O(N_s N_\theta N_\varphi)$ pass & $\sim8\times10^4$ ops\\
+Per-sample cost & $O(\log N_s+\log N_\varphi+\log N_\theta)$ & $\sim16$ comparisons\\
+\hline
+\end{tabular}
+\end{center}
+Storage and build cost are negligible; the CDF cascade adds no measurable overhead to
+transport.
+
+\subsection{Independent oracle: the rejection fallback}
+
+For cross-checking only, a simpler sampler draws $s$ from the same 1D marginal
+$p(s)$, proposes $\theta,\varphi\sim U[0,2\pi)^2$, and accepts with probability
+$\sg(s,\theta,\varphi)/g_{\max}(s)$, $g_{\max}(s)=\max_{\theta,\varphi}\sg$; accepted
+samples carry $\mathrm{wgt}=1$. Its efficiency
+$\langle\sg\rangle(s)/\big((2\pi)^2 g_{\max}(s)\big)$ degrades for peaked $\sg$
+(strong shaping, near-axis), so it is a bring-up/QA oracle, not the target. A
+weighted variant (propose uniformly, $\mathrm{wgt}\propto\sg$) \emph{violates} the
+unit-weight requirement and is explicitly not used. The cascade (a) and rejection (b)
+samplers must produce statistically identical $(s,\theta,\varphi)$ distributions
+(KS/$\chi^2$)---the inverse-CDF-vs-rejection cross-check already trusted in tier 1.
+
+%======================================================================
+\section{The spin-polarized direction sampler, layered on top}
+\label{sec:spf}
+
+\subsection{Field from the same equilibrium}
+\label{sec:field}
+
+Position and field must be self-consistent. DESC computes $B$ on \emph{exactly} the
+$(\rho,\theta,\zeta)$ grid used for $\sg$ (\code{eq.compute(["R","phi","Z","B"],\dots)}),
+so we store $\bhat_{ijk}=(B/|B|)_{ijk}$ as a Cartesian unit vector (via the existing
+$B_{\mathrm{cyl}}\!\to\!$Cartesian rotation in the producer) in the flux map alongside
+$\sg,R,Z$. In \code{sample()}, after drawing $(s,\theta,\varphi)$, we read $\bhat$ at
+the \emph{same} flux node (trilinear interpolation on $(s,\theta,\varphi)$,
+renormalized): no KDTree, no circular-vs-DESC mismatch. This is the concrete fix for
+deficiency (3) of \S\ref{sec:problem}.
+
+\subsection{The polarized emission kernel and its separation}
+
+The Schwartz $P_2$ kernel gives the neutron differential cross section as a
+quadrupolar (rank-2) anisotropy about $\bhat$,
+\begin{equation}
+\frac{\dd\sigma}{\dd\Omega}=\frac{\sigma_0}{2\pi}\left[
+\tfrac34\,a\,\sin^2\theta+\Big(\tfrac23 b+\tfrac13 c\Big)\Big(\tfrac14+\tfrac34\cos^2\theta\Big)\right],
+\qquad\theta=\angle(\uhat,\bhat).
+\label{eq:kernel}
+\end{equation}
+Its two angular shapes share only two effective weights,
+\begin{equation}
+w_\perp=\tfrac34 a\quad(\sin^2\theta\text{ shape}),\qquad
+w_\parallel=\tfrac23 b+\tfrac13 c\quad(\tfrac14+\tfrac34\cos^2\theta\text{ shape}),
+\end{equation}
+and, using $\int\sin^2\theta\dd\Omega=8\pi/3$ and
+$\int(\tfrac14+\tfrac34\cos^2\theta)\dd\Omega=2\pi$, the stratified selection
+probability of the perpendicular shape is
+\begin{equation}
+P_\perp=\frac{W_\perp}{W_\perp+W_\parallel}=\frac{a}{\eta},\qquad
+\eta=a+\tfrac23 b+\tfrac13 c=\frac{\sigma_{\mathrm{tot}}}{\sigma_0}.
+\label{eq:eta}
+\end{equation}
+\textbf{The direction and the rate are separate concerns.} The two weights
+$(w_\perp,w_\parallel)$ fully determine the \emph{birth direction} for any $(a,b,c)$;
+the scalar rate factor $\eta$ scales source \emph{strength} independently. In
+particular $B$ and $C$ share the same angular shape and differ only in $\eta$
+(corners: $\eta=\tfrac23,1,\tfrac23,\tfrac13$ for non-pol, $A$, $B$, $C$), so
+isotropic and pure-$C$ have identical \emph{normalized} directionality. This
+separation is unchanged from the tier-1--validated sampler; the conformal position
+sampler simply feeds it a self-consistent $\bhat$.
+
+\subsection{Sampling and rotation}
+
+$\cos\theta$ about $\bhat$ is drawn by stratified selection of the two shapes, each by
+a closed-form inverse-CDF (the depressed-cubic roots of $x^3-3x+(4u-2)=0$ for
+$\sin^2\theta$ and $x^3+x+(2-4u)=0$ for $\tfrac14+\tfrac34\cos^2\theta$), with a
+rejection cross-check; $\varphi\sim U[0,2\pi)$. The local direction is rotated to
+global with a Gram--Schmidt frame built from the \emph{least-aligned} reference axis
+(\code{argmin}$_e|\bhat\cdot\hat e|$), which avoids the $\bhat\parallel\zhat$
+degeneracy. All of this is the existing \code{spf::sample\_global\_direction}; the
+only new coupling is that $\bhat$ now comes from the same equilibrium grid as the
+position, closing the position/field loop.
+
+%======================================================================
+\section{Computational evaluation}
+\label{sec:compute}
+
+\subsection{DESC solve cost and the separate-venv dependency}
+
+The equilibrium is produced \emph{offline}. \code{quasr\_equilibrium\_field.py} builds
+a fixed-boundary DESC \code{Equilibrium} from a QUASR device boundary
+(\code{FourierRZToroidalSurface}, resolution $L{=}M{=}N{=}6$) and solves it
+(\code{eq.solve(ftol=1e-2, maxiter=50)}). The dominant cost is this JAX-accelerated
+pseudospectral Newton solve; it is a \emph{one-time} cost per device, amortized over
+every Monte Carlo history, and does not touch the transport hot loop. The
+\code{StellaratorSource} evaluation \emph{extends} this producer minimally: add
+\code{"sqrt(g)"} to the existing \code{eq.compute([...])} list (it is returned on the
+same \code{LinearGrid} for free) and write a new portable map \code{spf\_fluxmap\_v1}
+carrying $\sg,R,Z,\bhat$ on the $(s,\theta,\varphi)$ grid plus the axes, $\Nfp$, and
+the $S(s)$ profile spec.
+
+\textbf{Dependency boundary.} DESC's jax/numpy pins conflict with OpenMC and DESC is
+unavailable on the aarch64/osx development box, so the map is produced in an isolated
+\code{desc\_venv} on a login node; the transport/C++ consumer stays DESC-free and reads
+only the portable map. This is the same producer/consumer split already used for
+\code{spf\_fieldmap\_v1}.
+
+\subsection{Grid resolution versus sampling bias}
+
+The \emph{only} approximation in the cascade (\S\ref{sec:unitweight}) is the finite
+resolution of $\sg$ on the grid. This bias is \textbf{deterministic and diagnosable by
+refinement}, not stochastic: it does not appear as variance and cannot be hidden by
+running more histories. Under-resolution distorts the birth profile where $\sg$ is
+peaked---strongly shaped surfaces and near-axis regions. Mitigation is to refine
+$N_s,N_\theta,N_\varphi$ (storage is cheap, \S\ref{sec:algorithm}) or to store a
+spline / higher-order representation of $\sg$. The recommended default follows the
+producer's $12\times48\times144$ grid with $N_s\gtrsim32$ for the marginal;
+convergence is confirmed by gates V1 and V4 under refinement.
+
+\subsection{Near-axis handling}
+
+As $s\to0$ the coordinates collapse to the magnetic axis curve and $\sg\to0$. The
+$s$-marginal is well-behaved because $\sg\to0$ kills the weight, but (i) the
+$(\theta,\varphi)$ conditional is ill-defined at $s=0$ (all $\theta$ map to one point)
+and (ii) $R,Z,\bhat$ interpolation is singular there. The producer already starts the
+grid at $s_{\min}=0.05$; the innermost shell is treated as a line source or via a
+near-axis expansion, and the vanishing weight there means the excluded core
+contributes negligibly to $N$. Gate V2 (single-signed $\sg$ for $s>0$) is stated for
+$s>0$ precisely to exclude the axis.
+
+%======================================================================
+\section{Validation plan and acceptance gates}
+\label{sec:validation}
+
+The gates below are ordered; per the repository's tiered discipline, gate $k{+}1$ is
+not attempted until gate $k$ is green. None has yet been run on a real DESC map (see
+\S\ref{sec:status}); the thresholds are the acceptance criteria to be met when the
+producer is exercised on a login node.
+
+\begin{center}
+\begin{tabular}{p{0.06\textwidth}p{0.40\textwidth}p{0.46\textwidth}}
+\hline
+Gate & What is checked & Acceptance criterion\\
+\hline
+V1 & $\sg$ quadrature integral vs.\ DESC volume &
+$\big|\sum_{ijk} g_{ijk}\Delta s\Delta\theta\Delta\varphi -
+\code{eq.compute('V')}\big|/V<10^{-3}$\\[2pt]
+V2 & Sign of $\sg$ on the interior &
+$\sg$ single-signed for all $s>s_{\min}$ (\code{[C5]}); a sign flip would invert the
+density\\[2pt]
+V3 & Axisymmetric-limit reduction &
+$n{=}0$ boundary modes $\Rightarrow$ $\sg$ $\varphi$-independent: $\chi^2$ on
+$\varphi$ uniformity passes; sampled $(s,\theta)$ match Peterson's
+\code{TokamakSource} (KS on $p(\tilde r)$, $\chi^2$ on the 2D $(R,Z)$ histogram);
+pure-metric subcheck $\sg\!=\!R\Jpol$ node-by-node vs.\ closed-form Miller\\[2pt]
+V4 & Total-emission conservation \& periodicity &
+$\sum w_{ijk}\to\int_V S\dd V$ under refinement; births per field period equal across
+the $\Nfp$ periods ($\chi^2$ across periods flat)\\[2pt]
+V5 & Birth-weight unity \& unbiasedness &
+every \code{SourceSite.wgt}$=1.0$; per-bin residual
+$(N_{\mathrm{bin}}-E_{\mathrm{bin}})/\sqrt{E_{\mathrm{bin}}}\sim\mathcal N(0,1)$\\[2pt]
+X & Cascade (a) vs.\ rejection (b) cross-check &
+identical $(s,\theta,\varphi)$ distributions (KS/$\chi^2$)\\
+\hline
+\end{tabular}
+\end{center}
+
+\paragraph{V3 is the headline gate.} Restricting the boundary to $n=0$ modes yields a
+tokamak; the source must then (a) sample $\varphi$ uniformly (by
+\eqref{eq:tokamakfactor}) and (b) reproduce Peterson's \code{TokamakSource}
+$(R,Z)$ birth distribution for matched $R_0,a,\kappa,\delta,\Delta,S$. The
+pure-metric subcheck validates the \emph{metric extraction} independently of the
+sampler: for the analytic Miller surfaces \eqref{eq:miller}, $\sg=R\,\Jpol$ has a
+closed form that the DESC-grid $\sg$ must reproduce node-by-node. This directly tests
+the identity \eqref{eq:metric}.
+
+\paragraph{V4} is a cheap, strong invariant: $N$ must converge to the analytically
+integrated plasma emission, and the $\Nfp$-fold field-period symmetry forces equal
+births per period---a $\chi^2$ across periods that must be flat catches any
+symmetry-breaking bug in the grid or the cascade.
+
+%======================================================================
+\section{Status: proven vs.\ to-be-confirmed}
+\label{sec:status}
+
+\begin{center}
+\begin{tabular}{p{0.55\textwidth}p{0.40\textwidth}}
+\hline
+Proven analytically (this memo) & Remaining to confirm numerically\\
+\hline
+Metric identity \eqref{eq:metric}, $\sg=R|\Rs\Zt-\Rt\Zs|$, incl.\ the
+$\varphi$-derivative cancellation (symbolic) & That the DESC-grid $\sg$ reproduces
+$R\Jpol$ node-by-node (V3 subcheck) on a real solve\\[2pt]
+$\dd V=\sg\dd s\dd\theta\dd\varphi$ and the birth pdf \eqref{eq:pdf} & $\sg$ is
+single-signed on the interior for the target devices (V2, \code{[C5]})\\[2pt]
+Axisymmetric factorization \eqref{eq:tokamakfactor} $\Rightarrow$ uniform $\varphi$
+$+$ Peterson $(s,\theta)$ & Numerical recovery of \code{TokamakSource} in the $n{=}0$
+limit (V3, KS/$\chi^2$)\\[2pt]
+Non-existence of a finite Bernstein mixture for a non-separable 2D Fourier $\sg$
+(\S\ref{sec:bernstein}) & Grid-resolution bias magnitude for strongly shaped devices
+(refinement study)\\[2pt]
+Unit birth weight and unbiasedness of the CDF cascade (\S\ref{sec:unitweight}) &
+$\sum w\to\int_V S\dd V$ and per-period equality on a real map (V4)\\[2pt]
+$O(\log N)$ per sample; $O(N_sN_\theta N_\varphi)$ storage/build & Cascade vs.\
+rejection statistical agreement on a real map (gate X)\\[2pt]
+Direction/rate separation and $P_\perp=a/\eta$ (tier-1 validated) & QUASR-boundary
+DESC solve convergence for high-iota QH configs (\code{[C2]})\\
+\hline
+\end{tabular}
+\end{center}
+
+In short: the \emph{measure} and the \emph{sampler's exactness} are proven on paper;
+the \emph{equilibrium-specific numbers} (volume match, sign, axisymmetric recovery,
+conservation) await a DESC run, which cannot be done on the current machine and must
+be performed in \code{desc\_venv} on a login node.
+
+%======================================================================
+\section{Relation to prior issues, and scope}
+\label{sec:scope}
+
+\subsection{Issues this design fixes}
+
+\begin{center}
+\begin{tabular}{p{0.34\textwidth}p{0.60\textwidth}}
+\hline
+Prior issue & How \code{StellaratorSource} resolves it\\
+\hline
+Circular-torus ``fake'' plasma \eqref{eq:oldrej} & Births are conformal on the real
+3D flux surfaces via $p\propto S(s)\sg$; shaping and $\varphi$-breathing are exact to
+grid resolution\\[2pt]
+Rejection with only coincidental unit weight & Rejection-free CDF cascade with unit
+weight \emph{proven} (\S\ref{sec:unitweight})\\[2pt]
+Position/field geometry mismatch & $\bhat$ read from the \emph{same}
+equilibrium/grid/node as the position (\S\ref{sec:field}); one parametrization, one
+equilibrium\\[2pt]
+Non-periodic Cartesian $B$ workaround (full-torus storage to avoid a rotated
+$\bhat$ in \code{desc\_to\_fieldmap.py}) & Indexing by $(s,\theta,\varphi)$ recovers
+the cylindrical $\varphi$ at each node; no per-period rotation is ever needed\\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Honest scope and limitations}
+
+\begin{itemize}
+\item \textbf{$S=S(s)$ flux-function assumption.} $p\propto S(s)\sg$ assumes emission
+depends on $s$ only. Real in-surface $T_i/n_i$ asymmetries would break it (out of
+scope; noted). The \emph{angular} physics is unaffected---position and direction
+remain exactly separable, and $\eta(a,b,c)$ still scales strength independently.
+\item \textbf{Producer-side DESC dependency.} The map is offline-only; convention
+hazards \code{[C1]--[C3]} (boundary$\to$DESC mode signs/$\Nfp$, solve convergence,
+$B\!\cdot\!\hat n\!\approx\!0$ on the LCFS) plus the new \code{[C4]} (flux-label
+definition matching $S(s)$) and \code{[C5]} ($\sg$ sign) must be checked on the DESC
+machine.
+\item \textbf{Interpolation fidelity.} Trilinear interpolation of stored $R,Z$
+(matching the fieldmap approach) is the recommended default; evaluating interior
+Fourier modes in-consumer is higher fidelity but re-introduces a mode-convention
+surface---a documented upgrade, not the first step.
+\item \textbf{Deterministic grid bias.} Not a variance; refine to remove (V1, V4).
+\item \textbf{Angular physics is birth-only.} No depolarization in transport, energy
+stays decoupled (monoenergetic / Ballabio), no alpha channel, convex-wall /
+free-stream NWL validation only---matching the prototype's and Schwartz's own
+caveats.
+\end{itemize}
+
+%======================================================================
+\section{Summary}
+\label{sec:summary}
+
+The tokamak result $p\propto S\,R\,\mathcal{J}$ is the axisymmetric shadow of the
+general $p\propto S\,\sg$; the stellarator merely refuses to let $\sg$---and therefore
+$\varphi$---be uniform. We derived the metric identity
+$\sg=R\,|\Rs\Zt-\Rt\Zs|$ and its $\varphi$-derivative cancellation, showed why
+Peterson's Bernstein closed form does not survive (a device-specific, non-separable 2D
+Fourier density is not a finite polynomial), and established that the surviving
+strategy---a rejection-free marginal$\to$conditional CDF cascade over the
+equilibrium's own $\sg$ grid---samples the exact discretized density with proven unit
+birth weight in $O(\log N)$. Layering the tier-1--validated $P_2$ direction sampler on
+top, with $\bhat$ read from the \emph{same} grid, yields a single, self-consistent,
+equilibrium-conformal, spin-polarized source that fixes the circular-torus fake, the
+rejection weight, the position/field mismatch, and the non-periodic Cartesian
+workaround at once. What is proven here is the measure and the sampler's exactness;
+what remains is to run the DESC producer and clear gates V1--V5 on a real equilibrium.
+
+% Guarded figure include: compiles clean even with no image present.
+\IfFileExists{stellarator_source_schematic.pdf}{%
+  \begin{figure}[t]\centering
+  \includegraphics[width=0.7\textwidth]{stellarator_source_schematic.pdf}
+  \caption{Optional schematic (included only if present).}
+  \end{figure}%
+}{}
+
+\end{document}
