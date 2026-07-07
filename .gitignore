@@ -69,6 +69,9 @@ scripts/G4EMLOW*/
 *.ppm
 *.voxel
 *.vti
+# ...but DO track the SPF prototype result figures (plots) despite the global *.png ignore
+!spf_prototype/figs/*.png
+!spf_prototype/figs/**/*.png
 
 # PyCharm project configuration files
 .idea
