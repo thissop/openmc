@@ -1,0 +1,185 @@
+% Spin-Polarized Fusion neutron steering in QUASR stellarators -- condensed check-in.
+% Compile:  cd spf_prototype/docs/decks && pdflatex checkin_2026-07-06.tex  (run twice)
+\documentclass[11pt,aspectratio=169]{beamer}
+
+\usetheme{default}
+\usecolortheme{dolphin}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}            % no page numbers
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{frametitle}[default][left]
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\graphicspath{{figs/}}
+
+\newcommand{\figorbox}[2]{%
+  \IfFileExists{figs/#1}{\includegraphics[#2]{#1}}{%
+    \fbox{\parbox[c][0.40\textheight][c]{0.78\textwidth}{\centering
+      figure pending:\\[2pt]\texttt{\detokenize{#1}}}}}}
+
+\title{Spin Polarized Fusion Neutron Steering in Quasisymmetric Stellarators}
+\author{Thaddaeus Kiker}
+\date{2026-07-06}
+
+\begin{document}
+
+% ===== Title =====
+\begin{frame}[plain,noframenumbering]\titlepage\end{frame}
+
+% ===== Source =====
+\begin{frame}{The Spin-Polarized DT Source in OpenMC}
+  \begin{itemize}
+    \item Aligning the deuteron and triton spins makes DT neutrons emit anisotropically about
+      the local field direction.
+    \item The bias is quadrupolar, with its sign set by the polarization state:
+  \end{itemize}
+  \vspace{2pt}
+  \begin{center}\large $w(\theta_B)\ \propto\ 1 + a_2\,P_2(\cos\theta_B)$\end{center}
+  \vspace{2pt}
+  \begin{itemize}
+    \item I built it as a compiled OpenMC source and verified it against the analytic limit.
+  \end{itemize}
+\end{frame}
+
+% ===== Ginsburg: no pymoab / no simsopt =====
+\begin{frame}{Building the Stack on Ginsburg}
+  \begin{itemize}
+    \item I parse the QUASR coils straight from JSON, without importing simsopt.
+    \item I write the DAGMC geometry with only numpy and h5py, without pymoab.
+    \item Removing both brittle dependencies is what let the stack build and run on the cluster.
+  \end{itemize}
+\end{frame}
+
+% ===== Goals =====
+\begin{frame}{Scientific Goals}
+  \begin{itemize}
+    \item Determine whether the polarized-neutron steering benefit survives the
+      three-dimensional stellarator field.
+    \item Predict how much survives from a field-only statistic, so designs can be screened
+      without running transport.
+  \end{itemize}
+\end{frame}
+
+% ===== Two forms =====
+\begin{frame}{Two Quasisymmetric Forms from QUASR}
+  \begin{columns}[c]
+    \begin{column}{0.5\textwidth}\centering \figorbox{qform_a.png}{width=0.96\linewidth}\end{column}
+    \begin{column}{0.5\textwidth}\centering \figorbox{qform_b.png}{width=0.96\linewidth}\end{column}
+  \end{columns}
+  \vspace{2pt}
+  \centering {\small Coil filaments and plasma boundary for two QUASR configurations.}
+\end{frame}
+
+% ===== Showcase 803097 =====
+\begin{frame}{A Quasi-Axisymmetric Form: 803097}
+  \begin{columns}[c]
+    \begin{column}{0.5\textwidth}\centering
+      \figorbox{wire_803097.png}{width=0.95\linewidth}\\{\small coils and boundary}
+    \end{column}
+    \begin{column}{0.5\textwidth}\centering
+      \figorbox{xsec_803097.png}{height=0.64\textheight}\\{\small cross-section at three toroidal angles}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ===== Showcase 923602 =====
+\begin{frame}{A Quasi-Axisymmetric Form: 923602}
+  \begin{columns}[c]
+    \begin{column}{0.5\textwidth}\centering
+      \figorbox{wire_923602.png}{width=0.95\linewidth}\\{\small coils and boundary}
+    \end{column}
+    \begin{column}{0.5\textwidth}\centering
+      \figorbox{xsec_923602.png}{height=0.64\textheight}\\{\small cross-section at three toroidal angles}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ===== Showcase 59509 =====
+\begin{frame}{A Quasi-Axisymmetric Form: 59509}
+  \begin{columns}[c]
+    \begin{column}{0.5\textwidth}\centering
+      \figorbox{wire_59509.png}{width=0.95\linewidth}\\{\small coils and boundary}
+    \end{column}
+    \begin{column}{0.5\textwidth}\centering
+      \figorbox{xsec_59509.png}{height=0.64\textheight}\\{\small cross-section at three toroidal angles}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ===== Coherence (big equation + one bullet) =====
+\begin{frame}{Coherence: The Mean Resultant Length}
+  \vfill
+  \begin{center}\Large
+    $C = \bigl|\langle\hat b\rangle\bigr|
+       = \dfrac{\bigl|\int s(\mathbf{x})\,\hat b(\mathbf{x})\,dV\bigr|}{\int s(\mathbf{x})\,dV}$
+  \end{center}
+  \vfill
+  \begin{itemize}
+    \item The first moment of the field-direction distribution: one for a tokamak, falling
+      toward zero as the directions disperse.
+  \end{itemize}
+\end{frame}
+
+% ===== Kernel is second order (equation + one bullet) =====
+\begin{frame}{The Emission Kernel Is Second Order}
+  \vfill
+  \begin{center}\Large
+    $P_2(\hat n\!\cdot\!\hat b) = \tfrac{3}{2}\,\hat n^{\!\top}\!(\hat b\,\hat b^{\!\top})\,\hat n - \tfrac{1}{2}$
+  \end{center}
+  \vfill
+  \begin{itemize}
+    \item So the wall load depends only on the second moment of the field direction, not the
+      first.
+  \end{itemize}
+\end{frame}
+
+% ===== Nematic order (equation + one bullet, no plot) =====
+\begin{frame}{The Nematic Order Parameter}
+  \vfill
+  \begin{center}\Large
+    $S_\phi = \dfrac{3\lambda_\phi - 1}{2}, \qquad \lambda_\phi = \langle b_\phi^{2}\rangle$
+  \end{center}
+  \vfill
+  \begin{itemize}
+    \item The matched predictor: the second-moment order parameter along the toroidal axis.
+  \end{itemize}
+\end{frame}
+
+% ===== Fractionalizing eta =====
+\begin{frame}{Fractionalizing the Directional Efficiency}
+  \vfill
+  \begin{center}\Large
+    $\eta(C,\ \text{blanket})\ \approx\ \eta_{\text{source}}(C)\ \cdot\ A(\tau)$
+  \end{center}
+  \vfill
+  \begin{itemize}
+    \item $\eta_{\text{source}}$ is the field-geometry factor, set in vacuum.
+    \item $A(\tau)$ is the blanket factor, set by the scattering optical depth.
+  \end{itemize}
+\end{frame}
+
+% ===== Steering Erosion (two bullets, no synthesis) =====
+\begin{frame}{Steering Erosion}
+  \begin{itemize}
+    \item In vacuum, dispersion of the field direction makes the biased emissions partially
+      cancel.
+    \item In the blanket, scattering randomizes neutron directions and washes out the residual
+      bias.
+  \end{itemize}
+\end{frame}
+
+% ===== Status and next steps =====
+\begin{frame}{Status and Next Steps}
+  \begin{itemize}
+    \item I validated the full pipeline end to end on Ginsburg, with the field-coherence
+      predictors computed on the real QUASR coils.
+    \item I implemented the directional-efficiency measurement; the next run compares $\eta$
+      against $S_\phi$, validated against the analytic result of Schwartz.
+    \item I then add the scattering factor $A(\tau)$ and test the factorization, and extend to
+      the strongly shaped, low-coherence devices.
+  \end{itemize}
+\end{frame}
+
+\end{document}
