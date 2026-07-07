@@ -19,6 +19,20 @@ inside, |b̂|=1, chi²/dof 0.39). **Real per-device √g is delivered** → `dat
 Setup: `$HOME/vmec_venv` (`pip install vmecpp` pulls simsopt); mpi4py NOT needed (call vmecpp directly,
 not `simsopt.mhd.Vmec` which wants Fortran VMEC2000). The DESC debugging record stands below.
 
+**Batch + real-device transport (2026-07-07).** `ginsburg_jobs/vmec_batch.sbatch` (SLURM array) solved
+10 devices: **5/10 converged** (803097, 886079, 932746, 59509 [nfp 2-3] + 1960314 [nfp 5]; all gates
+pass). The 5 failures are highly-shaped QH boundaries VMEC itself reports as self-intersecting
+(`JACOBIAN_75_TIMES_BAD`, "boundary too shaped for VMEC to resolve") — fixable with higher mpol/ntor,
+but 5 is a solid demo set. Per-device figures (`python/plot_vmec_devices.py` → `figs/vmec_devices/`):
+3D coils + plasma-boundary surface + three nested-flux-surface cross-sections across a half field period
+(clean nfp shaping visible). **Real-device transport** (`python/realdev_transport.py`: native
+StellaratorSource on 803097's VMEC √g + b̂, free-streaming to a cylindrical wall, MeshSurfaceFilter
+current, surface 0=inboard/2=outboard like the capstone): perp steers **+23.4% inboard / −16.6%
+outboard** at the midplane (par the mirror) — real steering on a real device, but *reduced* from the
+idealized ±40.6%/−21.2% capstone because 803097's real 3D field is not purely toroidal (so the perp
+lobe is partly off the inboard/outboard axis). Directly consistent with the geometry-dominance finding.
+Figure: `figs/stellarator_source/realdev_803097_wallsteering.png`.
+
 **Diagnosis (2026-07-07, `ginsburg_jobs/c1_diag.sbatch`).** The QUASR boundaries are NOT degenerate
 (803097 axisym cross-section area 2.07; 886079 area 20.7; sensible R/Z). The failure is a **θ-winding
 convention**: QUASR's LCFS parameterization winds θ *clockwise* (the m=1 R mode is negative, e.g.
