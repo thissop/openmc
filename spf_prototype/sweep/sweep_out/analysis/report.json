@@ -1,0 +1,94 @@
+{
+  "n_configs": 6,
+  "n_transported": 6,
+  "anchor_id": 803097,
+  "eta_source_of_C": {
+    "n": 6,
+    "linear": {
+      "slope": 1.1152446369698452,
+      "intercept": -0.416490924224869,
+      "R2": 0.09010401777681176,
+      "rms_resid": 0.3093921599702099
+    },
+    "power": {
+      "exponent": 3.460850347588819,
+      "R2": -0.5273201679898187
+    }
+  },
+  "eta_source_of_S_phi": {
+    "n": 6,
+    "linear": {
+      "slope": 0.43896544321045305,
+      "intercept": 0.26287140564755995,
+      "R2": 0.09741941073594262,
+      "rms_resid": 0.308145922581444
+    },
+    "parameter_free": {
+      "model": "eta_source = S_phi / S_phi(anchor)",
+      "S_phi_anchor": 0.9956872134508428,
+      "rms_resid": 0.4076866946641259
+    }
+  },
+  "predictor_comparison": {
+    "R2_C_linear": 0.09010401777681176,
+    "R2_C_power": -0.5273201679898187,
+    "R2_S_phi_linear": 0.09741941073594262,
+    "best_predictor": "S_phi_linear",
+    "parameter_free_S_phi": {
+      "model": "eta_source = S_phi / S_phi(anchor)",
+      "S_phi_anchor": 0.9956872134508428,
+      "rms_resid": 0.4076866946641259
+    },
+    "note": "S_phi is the parity-correct predictor; C ties it only on a co-toroidal cap (lambda_phi ~ C^2). A C-vs-S_phi R^2 gap, or any reversal_frac>0 device, favors S_phi -- see docs/THEORY.md."
+  },
+  "multivariate": {
+    "n": 6,
+    "R2_C_only": 0.09010401777681165,
+    "R2_C_nfp_iota": 0.8095795376757721,
+    "delta_R2": 0.7194755198989604,
+    "std_coeffs": {
+      "C": 13.25496920346663,
+      "nfp": 4.378476481541716,
+      "iota": 9.552559428642638
+    },
+    "verdict": "nfp/iota add signal -> scalar C incomplete"
+  },
+  "universality": {
+    "by_C": {
+      "per_class": {
+        "QH": {
+          "n": 1,
+          "mean_resid": 0.06075981549624754,
+          "std_resid": 0.0
+        },
+        "QA": {
+          "n": 5,
+          "mean_resid": -0.01215196309924953,
+          "std_resid": 0.3376124836824687
+        }
+      },
+      "class_mean_spread": 0.07291177859549706
+    },
+    "by_S_phi": {
+      "per_class": {
+        "QH": {
+          "n": 1,
+          "mean_resid": 0.06902391202671987,
+          "std_resid": 0.0
+        },
+        "QA": {
+          "n": 5,
+          "mean_resid": -0.013804782405343751,
+          "std_resid": 0.33585898740502657
+        }
+      },
+      "class_mean_spread": 0.08282869443206362
+    },
+    "verdict": "classes collapse under C (universal)",
+    "class_alias_warning": "class is aliased with C on this family; confirm with de-aliased configs (G2) before over-reading"
+  },
+  "separability": {
+    "n_A": 0,
+    "note_energy_coupling": "energy-coupling failure needs per-config spectra; not stored in these records (diagnostic pending)"
+  }
+}
