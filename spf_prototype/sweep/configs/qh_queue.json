@@ -1,0 +1,13 @@
+{
+  "_comment": "QH QUEUE (future run). The aggressive high-nfp QH devices geometry_folded in the C-scan -- the conformal offset-wall self-intersection flagged in docs/archive/legacy_precise_qa/GINSBURG_CLAUDE_HANDOFF.md ('most likely to bite'). These are the LOW-C end that actually shows the eta_source(S_phi) collapse (QA is inherently high-C). To run them, the offset mesher needs a much thinner build (below) or ParaStell (docs/reference/DEFERRED.md). IMPORTANT: for eta_source comparability the QA anchor must be re-run with the SAME build, so treat this as a full thin-build C-scan when revisited, not a QH-only patch.",
+  "defaults": {
+    "particles": 200000, "batches": 20, "streams": "free", "blanket": "thin",
+    "nR": 48, "nphi": 96, "nZ": 48, "scale_retries": 6, "lost_particle_max": 50,
+    "vr": false, "field_source": "coil"
+  },
+  "configs": [
+    {"id": 2630694, "symmetry_class": "QH", "nfp": 7, "C_predicted": 0.653, "S_phi_predicted": 0.167, "scale": 40, "_note": "folded at baseline; thin+scale40 attempt"},
+    {"id": 2632243, "symmetry_class": "QH", "nfp": 8, "C_predicted": 0.724, "S_phi_predicted": 0.302, "scale": 40, "_note": "folded; nfp=8 is the hardest shape"},
+    {"id": 2588494, "symmetry_class": "QH", "nfp": 6, "C_predicted": 0.783, "S_phi_predicted": 0.433, "scale": 40, "_note": "folded at baseline; thin+scale40 attempt"}
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "_comment": "QA-focus FAST pass. Coarse field-map grid (20x40x20 vs the production 48x96x48 that stalled >18 min in Biot-Savart on many-coil devices) + fewer coil segments (128) -- b_hat is smooth so this is safe, and it is consistent across configs so eta_source stays comparable. Batches halved (2M histories, ~0.3% error, plenty for the +-10% coil signal). QH devices are queued separately in qh_queue.json (they geometry_fold and need a thinner build / ParaStell).",
+  "defaults": {
+    "particles": 200000, "batches": 10, "streams": "free", "blanket": "baseline",
+    "nR": 20, "nphi": 40, "nZ": 20, "scale_retries": 3, "lost_particle_max": 50,
+    "vr": false, "field_source": "coil"
+  },
+  "configs": [
+    {"id": 803097, "symmetry_class": "QA", "C_predicted": 0.999, "coil_samples": 128},
+    {"id": 886079, "symmetry_class": "QA", "C_predicted": 0.974, "coil_samples": 128},
+    {"id": 923602, "symmetry_class": "QA", "C_predicted": 0.999, "coil_samples": 128},
+    {"id": 932746, "symmetry_class": "QA", "C_predicted": 0.998, "coil_samples": 128},
+    {"id": 59509,  "symmetry_class": "QA", "C_predicted": 0.997, "coil_samples": 128},
+    {"id": 1960314, "symmetry_class": "QH", "C_predicted": 0.760, "coil_samples": 128}
+  ]
+}
