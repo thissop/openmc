@@ -1,0 +1,6 @@
+# Tier 7: absolute quantities at fixed fuel density, relative to unpolarized=1. Source: docs/notes/results/RESULTS_tier7.md
+mode,eta,fusion_rate,tritium_abs,center_stack_load,outboard_load,tbr_per_neutron
+nonpol,0.667,1.00,1.00,1.00,1.00,1.149
+A,1.000,1.50,1.49,1.70,1.36,1.144
+B,0.667,1.00,1.01,0.85,1.09,1.155
+C,0.333,0.50,0.50,0.42,0.55,1.155

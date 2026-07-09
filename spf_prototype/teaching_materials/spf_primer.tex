@@ -1,0 +1,538 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+% Deliberately simple: default theme, no Metropolis.
+\usetheme{default}
+\usecolortheme{dove}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{itemize items}[circle]
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\definecolor{key}{rgb}{0.10,0.35,0.65}
+\newcommand{\key}[1]{\textcolor{key}{\textbf{#1}}}
+\newcommand{\bhat}{\hat{\mathbf{B}}}
+\setbeamercolor{frametitle}{fg=key}
+\newcommand{\qq}[1]{\begin{center}\emph{#1}\end{center}}
+
+\title{Spin-Polarized Fusion Neutronics}
+\subtitle{A from-scratch primer on everything we discussed\\{\small (assumes: multivariable calculus, linear algebra, intro upper-division physics)}}
+\author{built for the train ride home}
+\date{\today}
+
+\begin{document}
+\frame{\titlepage}
+
+\begin{frame}{How to read this}
+\begin{itemize}
+\item Each part starts from something you already know and builds one step at a time.
+\item \key{Blue} words are the terms worth remembering.
+\item Formulas are here, but every one comes with a plain-English sentence. If you skip the
+algebra, read the sentence.
+\item Goal: by the end you can explain the whole project to a friend --- the physics, the
+engineering, the computation, and why any of it matters.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The one-sentence version}
+\qq{If you line up the spins of fusion fuel, the neutrons come out in a preferred
+direction --- and we built the first tool inside a standard reactor-physics code to simulate
+that, then figured out when it actually helps.}
+\vfill
+Three worlds meet here:
+\begin{itemize}
+\item \key{Physics}: why aligned spins make neutrons directional.
+\item \key{Engineering}: why a reactor designer cares where neutrons land.
+\item \key{Computation}: how you simulate it honestly, and where cheap shortcuts lie to you.
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{Part 1: Physics you need first}
+\begin{frame}{Part 1}\Large Physics refreshers: fusion, spin, and magnetic confinement.\end{frame}
+
+\begin{frame}{Fusion, and the neutron we care about}
+The reaction in a D--T reactor:
+\[ \underbrace{{}^2\mathrm{D}}_{\text{deuteron}} + \underbrace{{}^3\mathrm{T}}_{\text{triton}}
+\;\rightarrow\; \underbrace{{}^4\mathrm{He}}_{3.5\,\text{MeV}} +
+\underbrace{n}_{\key{14.1\,\text{MeV}}} \]
+\begin{itemize}
+\item The \key{neutron} carries 14.1 MeV (\,$1\,\text{MeV}=1.6\times10^{-13}$ J\,). It is
+\key{uncharged}, so magnetic fields do \emph{not} bend it --- once born it flies straight
+until it hits something.
+\item That neutron is the entire product we track: it breeds tritium, heats the blanket, and
+damages the walls. Everything downstream is ``where do the neutrons go?''
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Spin, in one slide (quantum refresher)}
+\key{Spin} is an intrinsic angular momentum of a particle --- think of it as a tiny built-in
+arrow that, in a magnetic field, can only point in a few discrete directions.
+\begin{itemize}
+\item The \key{deuteron} has spin 1: its projection on $\bhat$ can be $+1,\,0,\,-1$
+(call the fractions $d_+,d_0,d_-$).
+\item The \key{triton} has spin $\tfrac12$: projection $+\tfrac12$ or $-\tfrac12$
+(fractions $t_+,t_-$).
+\end{itemize}
+Normally the fuel is \key{unpolarized}: all projections equally likely, arrows point every
+which way. \key{Polarizing} the fuel means preparing the spins so specific projections
+dominate. That is a knob a reactor designer could, in principle, turn.
+\end{frame}
+
+\begin{frame}{Magnetic confinement (E\&M refresher)}
+A hot fusion plasma is charged (ions + electrons). From the Lorentz force
+$\mathbf{F}=q\,\mathbf{v}\times\mathbf{B}$, a charged particle \key{spirals around magnetic
+field lines} --- free to move along $\bhat$, tightly bound across it.
+\begin{itemize}
+\item So if you can make field lines that close on themselves inside a donut (torus), you
+trap the plasma. That is a magnetic confinement device.
+\item The field lines wrap around on nested \key{flux surfaces} --- like the layers of an
+onion. Each surface has (roughly) constant temperature and density.
+\item Key point for us: \key{at every point there is a well-defined field direction $\bhat$}.
+The polarized neutrons are emitted relative to \emph{that local $\bhat$}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Two ways to build the donut}
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\key{Tokamak}
+\begin{itemize}\footnotesize
+\item Axisymmetric: looks the same at every toroidal angle $\phi$.
+\item Needs a big electric current in the plasma to twist the field.
+\item Simple shape; the current can cause disruptions.
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\key{Stellarator}
+\begin{itemize}\footnotesize
+\item Fully 3D: the cross-section twists and changes as you go around.
+\item The twist is built into fancy 3D coils --- no plasma current needed, so it is steadier.
+\item Much harder to design and build; the geometry is genuinely three-dimensional.
+\end{itemize}
+\end{column}
+\end{columns}
+\vfill
+\key{Axisymmetry} (``same at every $\phi$'') is the single most important distinction for us:
+it is what makes a tokamak easy to compute and a stellarator hard.
+\end{frame}
+
+% ============================================================
+\section{Part 2: Spin-polarized fusion}
+\begin{frame}{Part 2}\Large Why aligned spins make neutrons come out sideways.\end{frame}
+
+\begin{frame}{The cross section: how likely, and in what direction}
+A \key{cross section} $\sigma$ measures how likely a reaction is (units of area --- a bigger
+``target''). The \key{differential cross section} $\dfrac{d\sigma}{d\Omega}$ adds
+\emph{direction}: how likely to emit into a small solid angle $d\Omega$ around some
+direction.
+\begin{itemize}
+\item \key{Solid angle} $\Omega$ = the 3D version of an angle; the full sphere is $4\pi$.
+\item For unpolarized fuel, emission is \key{isotropic}: same in every direction,
+$\frac{d\sigma}{d\Omega}=\frac{\sigma}{4\pi}$.
+\item For \emph{polarized} fuel, it is not --- and that is the whole point.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The master formula (Schwartz 2025)}
+With $\theta_B$ = angle between the emitted neutron and the local field $\bhat$:
+\[ \frac{d\sigma}{d\Omega} = \frac{\sigma_0}{2\pi}\Big[\tfrac34\,a\,\sin^2\theta_B
++ \big(\tfrac23 b + \tfrac13 c\big)\big(\tfrac14+\tfrac34\cos^2\theta_B\big)\Big] \]
+The three numbers $\key{(a,b,c)}$ are set by how you polarized the fuel, and $a+b+c=1$:
+\[ a = d_+t_+ + d_-t_-,\qquad b = d_0,\qquad c = d_+t_- + d_-t_+ .\]
+Unpolarized fuel is $(\tfrac13,\tfrac13,\tfrac13)$. Read the formula as: \key{a bit of
+``$\sin^2$'' shape plus a bit of ``$\cos^2$'' shape}, weighted by how you prepared the spins.
+\end{frame}
+
+\begin{frame}{What $\sin^2\theta_B$ and $\cos^2\theta_B$ look like}
+\begin{itemize}
+\item $\sin^2\theta_B$: \key{zero along $\bhat$, maximum perpendicular} to it. Neutrons
+squirt out sideways, in the plane perpendicular to the field. Call this the \key{A / ``perp''}
+shape.
+\item $\tfrac14+\tfrac34\cos^2\theta_B$: \key{maximum along $\bhat$}, minimum sideways.
+Neutrons prefer to go along the field. Call this the \key{B/C / ``par''} shape.
+\end{itemize}
+\key{Legendre reminder:} $\cos^2\theta = \tfrac13(1+2P_2(\cos\theta))$ where
+$P_2(x)=\tfrac12(3x^2-1)$ is the 2nd Legendre polynomial. So both shapes are ``isotropic plus
+a $P_2$ wobble.''
+\end{frame}
+
+\begin{frame}{Two knobs, not one --- keep them separate}
+The formula secretly contains \key{two independent things}:
+\begin{enumerate}
+\item \key{Direction (shape).} Which way the neutrons prefer to go. Controlled by one number
+\[ w(\theta_B)\propto 1 + a_2\,P_2(\cos\theta_B),\qquad a_2\in[-1,+1].\]
+$a_2=-1$: pure perp. $a_2=+1$: pure par. $a_2=0$: isotropic.
+\item \key{Rate (how many).} The total number of neutrons, via
+$\eta = a + \tfrac23 b + \tfrac13 c$.
+\end{enumerate}
+\key{Design lesson:} in code, sample the \emph{direction} from the pdf and multiply the
+\emph{count} by $\eta$ separately. Mixing them is the classic bug.
+\end{frame}
+
+\begin{frame}{The three modes, in plain words}
+\begin{tabular}{lll}
+\key{Mode} & \key{Rate $\eta$} & \key{What it does}\\\hline
+Unpolarized & $2/3$ & baseline, neutrons everywhere\\
+A (perp)    & $1$ (\,$+50\%$\,) & most power; neutrons sideways to $\bhat$\\
+B (par)     & $2/3$ (same) & same power; neutrons along $\bhat$\\
+C (par)     & $1/3$ (\,$-50\%$\,) & half the power; same direction as B\\
+\end{tabular}
+\vfill
+\key{Surprise (and a correction to common lore):} B and C point the \emph{same} way ---
+they differ only in \emph{how many}. C is \emph{not} isotropic. The $+50\%$ reactivity boost
+(Kulsrud 1982) lives in mode A.
+\end{frame}
+
+% ============================================================
+\section{Part 3: The geometry problem}
+\begin{frame}{Part 3}\Large Flux surfaces, VMEC, and why stellarators are hard.\end{frame}
+
+\begin{frame}{Describing the plasma shape: flux coordinates}
+Instead of $(x,y,z)$ we use \key{flux coordinates} $(\rho,\theta,\zeta)$:
+\begin{itemize}
+\item $\rho$: which onion layer (0 = center, 1 = edge / \key{last closed flux surface}).
+\item $\theta$: the short way around the donut (poloidal angle).
+\item $\zeta$: the long way around the donut (toroidal angle).
+\end{itemize}
+A computer code called \key{VMEC} solves the plasma equilibrium and hands you, for every
+$(\rho,\theta,\zeta)$: the real position $(R,Z,\phi)$, the field direction $\bhat$, and the
+\key{Jacobian} $\sqrt{g}$.
+\end{frame}
+
+\begin{frame}{What $\sqrt{g}$ is, and why it matters (multivar calc)}
+When you change variables in an integral you multiply by the Jacobian determinant:
+\[ \int f\,dx\,dy\,dz = \int f\,\underbrace{\sqrt{g}}_{\text{Jacobian}}\,d\rho\,d\theta\,d\zeta.\]
+\begin{itemize}
+\item $\sqrt{g}$ tells you how much \emph{real volume} sits in each little
+$(\rho,\theta,\zeta)$ cell. On a distorted 3D flux surface some cells are fat, some thin.
+\item To place fusion births correctly you must weight by \key{reactivity $\times \sqrt{g}$}
+--- otherwise you put too many neutrons where the coordinate grid is dense but the real
+volume is small. Getting this right is a big part of ``rigorous.''
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Quasi-symmetry: QA and QH}
+Stellarators are 3D, but a clever subclass \key{hides a hidden symmetry in the field
+strength} $|\mathbf{B}|$ (not in the shape). Particles then confine almost as well as in a
+tokamak.
+\begin{itemize}
+\item \key{QA} (quasi-axisymmetric): $|\mathbf{B}|$ looks tokamak-like.
+\item \key{QH} (quasi-helical): $|\mathbf{B}|$ has a helical symmetry.
+\item \key{nfp} = number of field periods (the shape repeats nfp times around).
+\item \key{$\iota$} (iota) = rotational transform = how much a field line twists poloidally
+per toroidal lap.
+\end{itemize}
+Database used: \key{QUASR}, a public catalogue of $\sim\!370{,}000$ optimized stellarators.
+\end{frame}
+
+\begin{frame}{The killer subtlety: symmetry $\neq$ gentle shape}
+\qq{Good quasi-symmetry is \emph{bought} with strong 3D boundary shaping.}
+So the devices with the best physics ($|\mathbf{B}|$ symmetry) are often the most
+geometrically distorted. This anti-correlation is why ``the plasma looks almost
+axisymmetric'' is a bad predictor of anything --- and it foreshadows why cheap analytic
+methods struggle exactly on the good devices.
+\vfill
+We measure geometric distortion with \key{$\varepsilon_{\rm eff}$}:
+\[ \varepsilon_{\rm eff} = \frac{\text{helical excursion of the source}}{\text{source-to-wall standoff}}.\]
+Small = gentle, large = strongly shaped. Real optimized QAs sit at
+$\varepsilon_{\rm eff}\approx 1$--$2.6$.
+\end{frame}
+
+% ============================================================
+\section{Part 4: The engineering problem}
+\begin{frame}{Part 4}\Large Neutron wall loading, breeding, and why anyone cares.\end{frame}
+
+\begin{frame}{Where the neutrons land: the first wall}
+\begin{itemize}
+\item The \key{first wall} is the innermost solid surface facing the plasma. Behind it sits
+the \key{blanket}.
+\item \key{Neutron wall loading (NWL)} = neutron power hitting the wall per unit area
+(MW/m$^2$). Too much $\Rightarrow$ the wall erodes, the magnets behind it get damaged.
+\item \key{Peaking factor} $\mathrm{PF} = \dfrac{\max \mathrm{NWL}}{\text{average }\mathrm{NWL}}$.
+PF $=1$ is perfectly uniform; big PF means a nasty hot spot. Designers want PF low.
+\item \key{Inboard} = the inner (small-radius, ``center-stack'') wall, usually the tightest,
+most shielding-starved real estate. \key{Outboard} = outer wall, roomier.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Breeding: the reactor must make its own fuel}
+Tritium is rare, so the reactor breeds it in the blanket:
+\[ n + {}^6\mathrm{Li} \rightarrow {}^4\mathrm{He} + \mathrm{T} + 4.8\,\text{MeV}.\]
+\begin{itemize}
+\item \key{TBR} (tritium breeding ratio) = tritium atoms bred per fusion neutron. You need
+\key{TBR $> 1$} (about 1.15 with margin) or the reactor starves.
+\item \key{FLiBe} = a molten salt (Li, Be, F) used as breeder+coolant; \key{Be} multiplies
+neutrons via $(n,2n)$.
+\item Our finding: TBR \emph{per neutron} barely changes with polarization, so steering the
+neutrons around does \emph{not} break breeding self-sufficiency. Good news.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The dream: steer neutrons with spin}
+\qq{If polarization aims neutrons, maybe we can aim them \emph{away} from the fragile
+inboard wall and lightly-shielded magnets --- buying component lifetime for free.}
+This is the motivating hope, and it is exactly what SPF does in spherical tokamaks (Bae 2025:
+$+68\%$ magnet lifetime). The scientific question of this project:
+\key{does it also work for stellarators, and how much of the promised benefit is real once
+you account for everything?}
+\end{frame}
+
+% ============================================================
+\section{Part 5: Monte Carlo and the source}
+\begin{frame}{Part 5}\Large Simulating neutrons honestly.\end{frame}
+
+\begin{frame}{Monte Carlo transport in 90 seconds}
+\key{Monte Carlo} = simulate millions of individual neutrons with random numbers, then
+average. \key{OpenMC} is the open-source code we use.
+\begin{itemize}
+\item Each neutron is \key{born} (the ``source''), then flies, maybe \key{scatters},
+maybe gets absorbed, until it dies. Tally what hits the wall.
+\item \key{Free-streaming / first-flight}: pretend neutrons never scatter --- they fly
+straight from birth to wall. A useful idealization that isolates the source geometry.
+\item \key{Statistical error} shrinks like $1/\sqrt{N}$: to resolve a $1\%$ effect you need
+$\sim\!10^4$ counts \emph{per bin}. This is why small effects are expensive in MC.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The ``source'' is the thing we built}
+The \key{source} decides where each neutron is born and which way it points. Ours must:
+\begin{enumerate}
+\item pick a birth position (weighted by reactivity $\times\sqrt{g}$);
+\item look up the local field $\bhat$ there;
+\item sample a direction from $w(\theta_B)\propto 1+a_2 P_2(\cos\theta_B)$ \emph{about that
+$\bhat$};
+\item rotate that direction into lab coordinates.
+\end{enumerate}
+Doing step 2--3 \key{on the fly, per neutron, in the local field frame} is what makes it
+``native'' and general --- and is why it works for a twisting stellarator field where $\bhat$
+changes everywhere.
+\end{frame}
+
+\begin{frame}{How you sample a direction (the computation)}
+\begin{itemize}
+\item \key{Inverse-CDF sampling}: to draw from a pdf $p(x)$, invert its cumulative
+$u=\int_{-\infty}^x p$; feed a uniform random $u\in[0,1)$, get $x$. Exact and fast.
+\item \key{Rejection sampling}: throw darts under an easy envelope, keep those under $p$.
+Slower but foolproof --- we use it to \emph{cross-check} the inverse-CDF.
+\item \key{Stratified sampling}: split the mixture (perp vs par) and sample each exactly ---
+gives exact draws and makes per-mode testing trivial.
+\item \key{Thread safety}: OpenMC runs many neutrons in parallel threads. If the source
+stored mutable state it would corrupt. Rule: set everything at construction, then
+\key{never write} --- ``\texttt{const}.''
+\end{itemize}
+\end{frame}
+
+\begin{frame}{A verification trick worth stealing: linearity in $a_2$}
+Because $P_2$ enters \emph{linearly}, the wall load is exactly linear in $a_2$:
+\[ \mathrm{NWL}(a_2) = \mathrm{NWL}_{\text{unpol}} + a_2\big(\mathrm{NWL}_{\text{par}}-\mathrm{NWL}_{\text{unpol}}\big).\]
+Set $a_2=+1$ and $a_2=-1$ and add:
+\[ \boxed{\;\mathrm{NWL}_{\text{perp}} + \mathrm{NWL}_{\text{par}} = 2\,\mathrm{NWL}_{\text{unpol}}\;}\]
+This must hold \key{bin by bin}, with \emph{no analytic reference needed}. If it fails, the
+sampler is wrong. Cheap, exact, self-checking --- the kind of test reviewers trust.
+\end{frame}
+
+% ============================================================
+\section{Part 6: What we actually found}
+\begin{frame}{Part 6}\Large The results --- and the honest caveats.\end{frame}
+
+\begin{frame}{Finding 1: where the cheap analytic method lies}
+The competing cheap method treats each source filament and computes flux to a wall patch by a
+\key{point-patch} formula. On a real QA it agrees with MC to $\le 1.8\%$ \emph{except} on the
+sharply curved inboard wall ($4$--$6\%$ off).
+\begin{itemize}
+\item A controlled test shows the analytic error grows like \key{(shaping)$^2$} and is
+$\sim\!3\times$ worse on the convex inboard wall.
+\item At realistic shaping ($\varepsilon_{\rm eff}\approx 2.3$) the analytic \emph{quadrature
+itself} breaks (34\% error, negative loads). \key{This regime is Monte-Carlo-only.}
+\end{itemize}
+That is the intellectual justification for using a transport code at all.
+\end{frame}
+
+\begin{frame}{Finding 2: scattering dilutes the steering $\sim 3\times$}
+\qq{The single most important honesty result.}
+\begin{itemize}
+\item Free-streaming says polarization shifts the inboard load by $\pm 40\%$.
+\item Put in a \emph{real blanket} with scattering on, and it is only $\pm 13$--$15\%$.
+\item Why: neutrons that enter the wall \key{scatter back} into the cavity as a
+direction-blind diffuse fog, washing out the aim.
+\end{itemize}
+Geometric and analytic steering numbers are \key{optimistic by $\sim\!3\times$}, and
+\emph{only a full transport calc reveals it}. The analytic theory structurally cannot.
+\end{frame}
+
+\begin{frame}{Finding 3: rate vs steering --- ``B is the sweet spot''}
+Restoring the true neutron count $\eta$ per mode (vs unpolarized $=1$):
+\begin{center}\small
+\begin{tabular}{lcccc}
+& fusion rate & center-stack load & outboard & TBR/neutron\\\hline
+A & 1.50 & \key{1.70} & 1.36 & 1.14\\
+B & 1.00 & \key{0.85} & 1.09 & 1.16\\
+C & 0.50 & 0.42 & 0.55 & 1.16\\
+\end{tabular}
+\end{center}
+\begin{itemize}
+\item A: more power, but aims \emph{into} the center stack $\Rightarrow$ load compounds to
+$1.70\times$.
+\item \key{B: relieves the center stack ($0.85\times$) at no power or breeding cost} --- the
+free lunch.
+\item C: relieves the most, but you paid half your power for it.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Finding 4: strong local actuator, weak global flattener}
+\qq{Polarization moves a lot of load \emph{locally} (40--70\% control at a point) but barely
+lowers the overall \emph{peaking factor}.}
+Why: the peaking is set by a narrow \key{near-field hot spot} (the wall's closest approach to
+the plasma). Angular redistribution reshapes the broad load but \key{cannot move that spike}.
+\begin{itemize}
+\item Example device: optimal polarization drops PF only $1.78\to1.49$.
+\item \key{Two independent methods agree} (our MC \emph{and} the analytic companion): SPF is a
+scalpel, not a flattening iron.
+\end{itemize}
+This reframes what SPF is \emph{for}: local fluence tailoring on critical parts, not global
+peaking reduction.
+\end{frame}
+
+% ============================================================
+\section{Part 7: The analytic companion}
+\begin{frame}{Part 7}\Large anarrima: doing it with calculus instead of dice.\end{frame}
+
+\begin{frame}{Why an analytic method at all}
+Monte Carlo is noisy and slow for small effects and gives no exact derivatives. An analytic
+formula is instant, noise-free, and \key{differentiable} (you can optimize with it). The
+catch: it only works where the geometry is gentle. anarrima is that analytic method for
+polarized NWL.
+\end{frame}
+
+\begin{frame}{Near-singular integrals and ``singularity subtraction''}
+The wall-load integral looks like $\displaystyle\int \frac{f(\phi)}{D(\phi)^{3/2}}\,d\phi$,
+where $D$ = squared distance from source to wall. When the wall nearly grazes the source,
+$D\to 0$ and the integrand spikes --- ordinary numerical integration
+(\key{Gauss--Legendre quadrature}) needs thousands of points and still fails.
+\begin{itemize}
+\item \key{Trick}: because $D(\phi)$ is a trig polynomial, you can find the spike's location,
+depth, and curvature \key{in closed form}, subtract an exactly-integrable model of it, and
+integrate the smooth leftover with \key{12 points} instead of 6000.
+\item Kept \key{differentiable}, so you still get exact gradients. This is the freshest
+numerical-methods contribution.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Autodiff, elliptic integrals, and the two thresholds}
+\begin{itemize}
+\item \key{Automatic differentiation (autodiff / JAX)}: the computer differentiates your code
+exactly, for free --- gold for optimization. anarrima is built to be autodiff-clean.
+\item \key{Carlson elliptic integrals}: the special functions the toroidal geometry produces;
+we implement them with exact hand-coded derivatives.
+\item \key{Two $\varepsilon_{\rm eff}$ thresholds}: the \emph{series} converges only for
+$\varepsilon_{\rm eff}\lesssim \tfrac12$; the \emph{quadrature} survives to $\sim\!2$. They
+are different numbers --- a genuine, citable clarification.
+\item \key{gc$_2$ correction}: to compute emission about the \emph{unit} field $\bhat=\mathbf
+B/|\mathbf B|$, you must differentiate the normalization $|\mathbf B|$ too; the original
+derivation dropped a 2nd-order piece. Restoring it pushes the polarized series from 2nd to
+3rd order accuracy. (That was your ``gc2 improvement.'')
+\end{itemize}
+\end{frame}
+
+\begin{frame}{A clean side result: the wall is a low-pass filter}
+Question: does tokamak \key{field ripple} (the field wobble from having a finite number
+$N$ of coils) show up on the wall?
+\[ \text{transmission of harmonic }N \;\sim\; e^{-N\,a/R_0}. \]
+\begin{itemize}
+\item The line-of-sight integration \key{blurs out} high-frequency source structure. For a
+real tokamak $N a/R_0\approx 6$, so the ripple is suppressed $\sim\!100\times$ --- the wall
+signal is $\sim\!50$ parts per million. Negligible.
+\item \key{Bonus insight}: this same blurring is \emph{why} ``plasma shape'' metrics failed
+to predict wall behavior --- the wall literally cannot see high-harmonic shape. One mechanism
+explains several dead ends.
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{Part 8: Predictors and statistics}
+\begin{frame}{Part 8}\Large What we tried to predict, and what honesty demands.\end{frame}
+
+\begin{frame}{The hunt for a cheap predictor}
+Dream: a single number from the plasma shape that predicts SPF benefit, so you skip the
+expensive transport. Attempts:
+\begin{itemize}
+\item \key{Nematic order parameter} $Q$ (borrowed from liquid-crystal physics: how aligned a
+set of direction vectors are) --- \key{did not predict}.
+\item A ``C-term'' shape metric --- wrong order, \key{did not predict}.
+\item \key{Field-direction coherence} (mean resultant length of $\bhat$ in the right frame):
+sharper --- it cleanly separates QA from QH, but the scalar alone is weak.
+\end{itemize}
+Best current predictor is unglamorous: \key{available headroom} --- devices with a big hot
+spot have more to gain. And the low-pass slide explains \emph{why} shape metrics can't work.
+\end{frame}
+
+\begin{frame}{Statistics honesty (why $n$ matters)}
+\begin{itemize}
+\item \key{Spearman correlation} $\rho$: rank-based measure of ``do these two move together.''
+\item With only \key{$n=5$} devices, $\rho=\pm 0.6$ is \emph{within noise} --- you cannot
+conclude anything. We said so, and launched a bigger batch ($n\approx 25$) to actually decide.
+\item \key{Statistical power}: the ability to detect a real effect. Small $n$ = low power =
+easy to fool yourself. Reporting the null honestly (``we could not tell'') is a result, not a
+failure.
+\end{itemize}
+This honesty --- reporting the $\sim\!3\times$ dilution, the failed predictors, the
+$n$-too-small caveats --- is what makes the work trustworthy.
+\end{frame}
+
+% ============================================================
+\section{Part 9: The paper}
+\begin{frame}{Part 9}\Large How it all becomes one story.\end{frame}
+
+\begin{frame}{What is genuinely new (and what is not)}
+\begin{itemize}
+\item \key{New}: first \emph{native, on-the-fly, general} polarized fusion source in a
+production MC code; first \emph{polarized stellarator} source; first stellarator source
+\emph{in OpenMC}.
+\item \key{Not first}: ``a polarized source in OpenMC'' (Bae 2025, but precomputed, one
+tokamak); ``a VMEC stellarator source'' (Lyytinen 2024, but Serpent2, isotropic, geometry-
+focused). We cite these up front and differentiate.
+\item \key{Precedent}: Peterson's tokamak-source paper shows a native+validated tool is
+publishable even as an increment --- and we clear that bar more easily (no prior stellarator
+source in OpenMC; we add polarization).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The paper's spine}
+\qq{A native spin-polarized source for OpenMC --- and where/why Monte Carlo is necessary for
+polarized stellarator wall loading.}
+\begin{enumerate}\small
+\item Physics + the native sampler.
+\item StellaratorSource from a verified equilibrium.
+\item Verification (incl.\ the linearity identity).
+\item Where MC is necessary: analytic breakdown; the $3\times$ scattering dilution; rate-vs-
+steering; the weak-global/strong-local finding.
+\item Analytic companion (anarrima): singularity subtraction, differentiable quadrature,
+$\varepsilon_{\rm eff}$ thresholds --- and it independently confirms the main finding.
+\end{enumerate}
+Genre: a \key{methods + honest-findings} paper. It does not need a blockbuster discovery; it
+needs a correct, validated, useful capability, characterized honestly.
+\end{frame}
+
+\begin{frame}{The five things to remember}
+\begin{enumerate}
+\item Aligned spins $\Rightarrow$ directional neutrons: one knob for \key{direction} ($a_2$),
+one for \key{rate} ($\eta$).
+\item You need the \key{real local field $\bhat$} from a \key{real equilibrium} --- that is
+what makes the stellarator source rigorous and the polarization well-posed.
+\item \key{Scattering dilutes steering $\sim\!3\times$}; only transport shows it.
+\item SPF is a \key{local scalpel, not a global flattener} --- two methods agree.
+\item Cheap analytic methods \key{break where the geometry is strong}; that boundary is the
+paper's thesis.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{}
+\begin{center}\Large Enjoy the train ride.\\[1em]
+\normalsize Questions this deck should now let you answer:\\
+\emph{Why do polarized neutrons care about $\bhat$? Why is a stellarator harder than a
+tokamak? Why is free-streaming optimistic? What is a peaking factor, and why can't
+polarization fix it? What does ``singularity subtraction'' buy you?}
+\end{center}
+\end{frame}
+
+\end{document}
