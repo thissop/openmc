@@ -1,0 +1,5 @@
+# Bare-cylinder point-patch analytic error vs shaping amplitude s. Source: RESULTS_quasr.md / bare_cylinder_demo.py
+s,inner_A_iso_ana,inner_A_iso_ray,inner_absdiff,outer_absdiff
+0.0,1.259,1.261,0.002,0.003
+0.4,1.281,1.253,0.029,0.023
+1.0,1.315,1.216,0.098,0.029

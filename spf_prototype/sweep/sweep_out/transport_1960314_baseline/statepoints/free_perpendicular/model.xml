@@ -1,0 +1,127 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" name="W">
+      <density value="0.00193" units="g/cm3"/>
+      <nuclide name="W180" ao="0.0012"/>
+      <nuclide name="W182" ao="0.265"/>
+      <nuclide name="W183" ao="0.1431"/>
+      <nuclide name="W184" ao="0.3064"/>
+      <nuclide name="W186" ao="0.2843"/>
+    </material>
+    <material id="2" name="steel">
+      <density value="0.00078" units="g/cm3"/>
+      <nuclide name="Fe54" wo="0.051374579826632384"/>
+      <nuclide name="Fe56" wo="0.8363039118940184"/>
+      <nuclide name="Fe57" wo="0.019659354384439193"/>
+      <nuclide name="Fe58" wo="0.0026621538949101356"/>
+      <nuclide name="Cr50" wo="0.003756317960446482"/>
+      <nuclide name="Cr52" wo="0.07532942611621131"/>
+      <nuclide name="Cr53" wo="0.008706228136807666"/>
+      <nuclide name="Cr54" wo="0.0022080277865345528"/>
+    </material>
+    <material id="3" name="Be">
+      <density value="0.00018500000000000002" units="g/cm3"/>
+      <nuclide name="Be9" ao="1.0"/>
+    </material>
+    <material id="4" name="FLiBe">
+      <density value="0.000194" units="g/cm3"/>
+      <nuclide name="Li6" ao="1.3"/>
+      <nuclide name="Li7" ao="0.7"/>
+      <nuclide name="Be9" ao="1.0"/>
+      <nuclide name="F19" ao="4.0"/>
+    </material>
+    <material id="5" name="shield">
+      <density value="0.00156" units="g/cm3"/>
+      <nuclide name="W180" ao="0.0012"/>
+      <nuclide name="W182" ao="0.265"/>
+      <nuclide name="W183" ao="0.1431"/>
+      <nuclide name="W184" ao="0.3064"/>
+      <nuclide name="W186" ao="0.2843"/>
+      <nuclide name="C12" ao="0.988922"/>
+      <nuclide name="C13" ao="0.011078"/>
+    </material>
+    <material id="6" name="coil">
+      <density value="0.0008" units="g/cm3"/>
+      <nuclide name="Fe54" wo="0.039518907558947984"/>
+      <nuclide name="Fe56" wo="0.6433107014569371"/>
+      <nuclide name="Fe57" wo="0.015122580295722454"/>
+      <nuclide name="Fe58" wo="0.002047810688392412"/>
+      <nuclide name="Cr50" wo="0.007512635920892964"/>
+      <nuclide name="Cr52" wo="0.15065885223242262"/>
+      <nuclide name="Cr53" wo="0.01741245627361533"/>
+      <nuclide name="Cr54" wo="0.0044160555730691055"/>
+      <nuclide name="Ni58" wo="0.08063724635590787"/>
+      <nuclide name="Ni60" wo="0.03213115547907547"/>
+      <nuclide name="Ni61" wo="0.0014200309023560522"/>
+      <nuclide name="Ni62" wo="0.004601786764184604"/>
+      <nuclide name="Ni64" wo="0.0012097804984760039"/>
+    </material>
+    <material id="7" name="vacuum">
+      <density value="1e-16" units="g/cm3"/>
+      <nuclide name="H1" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="10000" fill="1" region="10000 -10001 10002 -10003 10004 -10005" universe="2"/>
+    <dagmc_universe id="1" filename="/ginsburg/astro/users/tjk2147/spf_work/openmc/spf_prototype/data/quasr1960314_baseline_geom/quasr1960314.h5m"/>
+    <surface id="10000" type="x-plane" boundary="vacuum" coeffs="-1295.6837158203125"/>
+    <surface id="10001" type="x-plane" boundary="vacuum" coeffs="1103.613037109375"/>
+    <surface id="10002" type="y-plane" boundary="vacuum" coeffs="-1248.9771728515625"/>
+    <surface id="10003" type="y-plane" boundary="vacuum" coeffs="1248.9771728515625"/>
+    <surface id="10004" type="z-plane" boundary="vacuum" coeffs="-472.1427917480469"/>
+    <surface id="10005" type="z-plane" boundary="vacuum" coeffs="472.1427917480469"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>200000</particles>
+    <batches>10</batches>
+    <inactive>0</inactive>
+    <source type="compiled" strength="1.0" library="/ginsburg/astro/users/tjk2147/spf_work/openmc/spf_prototype/src/build/libpolarized_fusion_source.so" parameters="a=1.0,b=0.0,c=0.0,bmode=fieldmap,fieldmap=/ginsburg/astro/users/tjk2147/spf_work/openmc/spf_prototype/data/quasr1960314_s8,shape=plasma,R0=934.6774070462623,aminor=212.50000000000003"/>
+  </settings>
+  <tallies>
+    <mesh id="1" type="cylindrical">
+      <r_grid>280.40322211387866 315.8954353874091 351.3876486609396 386.87986193447006 422.3720752080005 457.864288481531 493.35650175506146 528.8487150285919 564.3409283021224 599.8331415756529 635.3253548491833 670.8175681227137 706.3097813962443 741.8019946697748 777.2942079433052 812.7864212168356 848.2786344903661 883.7708477638967 919.2630610374271 954.7552743109575 990.247487584488 1025.7397008580185 1061.2319141315488 1096.7241274050793 1132.2163406786099 1167.7085539521404 1203.200767225671 1238.6929804992012 1274.1851937727317 1309.6774070462623</r_grid>
+      <phi_grid>0.0 0.19634954084936207 0.39269908169872414 0.5890486225480862 0.7853981633974483 0.9817477042468103 1.1780972450961724 1.3744467859455345 1.5707963267948966 1.7671458676442586 1.9634954084936207 2.1598449493429825 2.356194490192345 2.552544031041707 2.748893571891069 2.945243112740431 3.141592653589793 3.3379421944391554 3.5342917352885173 3.730641276137879 3.9269908169872414 4.123340357836604 4.319689898685965 4.516039439535327 4.71238898038469 4.908738521234052 5.105088062083414 5.301437602932776 5.497787143782138 5.6941366846315 5.890486225480862 6.086835766330224 6.283185307179586</phi_grid>
+      <z_grid>-375.00000000000006 -349.1379310344828 -323.2758620689656 -297.4137931034483 -271.55172413793105 -245.68965517241384 -219.82758620689657 -193.96551724137933 -168.1034482758621 -142.24137931034485 -116.37931034482762 -90.51724137931035 -64.65517241379308 -38.79310344827587 -12.931034482758605 12.931034482758605 38.79310344827587 64.65517241379314 90.51724137931035 116.37931034482762 142.24137931034483 168.10344827586215 193.96551724137936 219.82758620689657 245.6896551724139 271.5517241379311 297.4137931034483 323.2758620689655 349.13793103448285 375.00000000000006</z_grid>
+      <origin>0.0 0.0 0.0</origin>
+    </mesh>
+    <mesh id="2" type="cylindrical">
+      <r_grid>559.6774070462623 592.2861026984361 624.8947983506101 657.503494002784 690.1121896549579 722.7208853071318 755.3295809593058 787.9382766114796 820.5469722636535 853.1556679158275 885.7643635680014 918.3730592201753 950.9817548723493 983.5904505245231 1016.199146176697 1048.807841828871 1081.416537481045 1114.0252331332188 1146.6339287853928 1179.2426244375665 1211.8513200897405 1244.4600157419145 1277.0687113940885 1309.6774070462623</r_grid>
+      <phi_grid>0.0 0.39269908169872414 0.7853981633974483 1.1780972450961724 1.5707963267948966 1.9634954084936207 2.356194490192345 2.748893571891069 3.141592653589793 3.5342917352885173 3.9269908169872414 4.319689898685965 4.71238898038469 5.105088062083414 5.497787143782138 5.890486225480862 6.283185307179586</phi_grid>
+      <z_grid>-375.00000000000006 -342.3913043478261 -309.78260869565224 -277.1739130434783 -244.56521739130437 -211.95652173913044 -179.34782608695653 -146.73913043478262 -114.13043478260869 -81.52173913043475 -48.91304347826082 -16.30434782608694 16.304347826086996 48.91304347826093 81.52173913043481 114.13043478260875 146.73913043478268 179.34782608695656 211.95652173913055 244.56521739130443 277.1739130434784 309.7826086956523 342.3913043478262 375.00000000000006</z_grid>
+      <origin>0.0 0.0 0.0</origin>
+    </mesh>
+    <filter id="1" type="meshsurface">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="material">
+      <bins>1 2 3 4 5 6</bins>
+    </filter>
+    <filter id="3" type="material">
+      <bins>6</bins>
+    </filter>
+    <filter id="4" type="energy">
+      <bins>100000.0 20000000.0</bins>
+    </filter>
+    <filter id="5" type="mesh">
+      <bins>2</bins>
+    </filter>
+    <tally id="1" name="wall_current_phi">
+      <filters>1</filters>
+      <scores>current</scores>
+    </tally>
+    <tally id="2" name="cell_response">
+      <filters>2</filters>
+      <scores>heating damage-energy H3-production</scores>
+    </tally>
+    <tally id="3" name="coil_fast">
+      <filters>3 4</filters>
+      <scores>flux</scores>
+    </tally>
+    <tally id="4" name="firstwall_dir">
+      <filters>5 4</filters>
+      <scores>flux</scores>
+    </tally>
+  </tallies>
+</model>

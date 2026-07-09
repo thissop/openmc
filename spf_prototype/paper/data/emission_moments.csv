@@ -1,0 +1,5 @@
+# Tier 8b Anchor B: <(u.Bhat_local)^2> about the spatially-varying 3D field. Source: RESULTS_tier8_3d.md
+mode,measured,analytic
+unpolarized,0.3328,0.3333
+perpendicular,0.2007,0.2000
+parallel,0.4668,0.4667

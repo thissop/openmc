@@ -1,0 +1,6 @@
+# QUASR QA 59509 free-streaming analytic vs OpenMC, per wall. Source: RESULTS_quasr.md (eps_eff~0.43)
+wall,A_iso_MC,A_iso_ana,rel_pct,B_iso_MC,B_iso_ana,corrA
+outboard,0.833,0.848,1.8,1.165,1.152,0.72
+floor,1.048,1.057,0.8,0.955,0.943,0.99
+ceiling,1.043,1.057,1.3,0.954,0.943,0.97
+inboard,1.248,1.199,4.1,0.755,0.801,0.47
