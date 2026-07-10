@@ -26,3 +26,10 @@ run_*/
 data/*_s[0-9]*.meta
 data/*_s[0-9]*.bin
 data/*_geom/
+
+# ...track the capstone paper package + teaching deck despite the *.pdf/*.png ignores above
+!paper/figures/*.pdf
+!paper/figures/*.png
+!paper/manuscript/*.pdf
+!paper/data/**
+!teaching_materials/*.pdf

@@ -16,7 +16,7 @@ import stellarator_geometry as sg  # noqa: E402
 
 CM = 100.0
 GAP_FRAC = 0.30
-DEV = [803097, 886079, 932746, 59509, 1960314]
+DEV = [1052272, 1090019, 11357, 1642553, 180790, 1854549, 1960314, 24285, 262171, 59509, 66633, 803097, 883496, 886079, 932746]
 DATA = HERE.parent / "data"
 
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     for r in rows:
         print("  ".join(f"{r[k]:>10.4f}" if k != "ID" else f"{r[k]:>10d}" for k in keys))
     Y = np.array([r["Y"] for r in rows])
-    print("\nSpearman rho of predictors vs SPF benefit Y (n=5, suggestive):")
+    print("\nSpearman rho of predictors vs SPF benefit Y (n=15):")
     print(f"  STANDOFF  PF_geo               : {spearman([r['PF_geo'] for r in rows], Y):+.3f}   (expect - : peakier geom => less steerable)")
     print(f"  STANDOFF  standoff_peak_ratio  : {spearman([r['standoff_peak_ratio'] for r in rows], Y):+.3f}   (expect + : more standoff at peak => more steerable)")
     print(f"  STANDOFF  spike_area           : {spearman([r['spike_area'] for r in rows], Y):+.3f}   (expect + : broader hot region => more steerable)")

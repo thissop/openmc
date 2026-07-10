@@ -161,7 +161,10 @@ collision-mode fractions are
 a=d_+t_++d_-t_-,\qquad b=d_0,\qquad c=d_+t_-+d_-t_+,\qquad a+b+c=1,
 \label{eq:abc}
 \end{equation}
-with the unpolarized fuel at $a=b=c=\tfrac13$. The differential cross section, referred to
+with the unpolarized fuel at $a=b=c=\tfrac13$.\footnote{Our $(a,b,c)$ are Schwartz's
+collision-mode fractions~\cite{schwartz2025}; they should not be confused with the
+identically-named vector/tensor polarization parameters used by Bae~\cite{bae2025}, whose
+scheme has no separate ``mode $c$.''} The differential cross section, referred to
 the local field direction $\Bhat$, is
 \begin{equation}
 \frac{\dd\sigma}{\dd\Omega}=\frac{\sigma_0}{2\pi}\left[\tfrac34\,a\,\sin^2\theta
@@ -324,7 +327,12 @@ excursion (correlation $0.94$), and computing the exact $\epseff$ of a shortlist
 VMEC boundary spectra. The gentlest is a $\Nfp=3$ QA of aspect ratio $6.7$, which at the
 validation wall has $\epseff\approx0.43$---four times more shaped than an idealized toy and,
 unlike it, near the edge of the analytic method's convergent band
-(Fig.~\ref{fig:quasrgeom}).
+(Fig.~\ref{fig:quasrgeom}). The published QAs proper sit well beyond that edge: at their
+native $\epseff\approx2.3$ the analytic series diverges and even the fixed-node exact
+quadrature fails, disagreeing with the reference by $\sim\!34\%$ and returning unphysical
+negative loads from the near-singular grazing integrand---so the strongly shaped
+configurations are Monte-Carlo-only, and it is the gentle mined equilibrium that permits a
+cross-check at all.
 
 On this configuration the Monte-Carlo and analytic directionalities agree to $\le1.8\%$ on
 the outboard, floor, and ceiling walls, with the poloidal profiles tracked to correlation
@@ -522,7 +530,7 @@ different spin state than the center-stack steering.}
 
 The steering results above use a box-torus for a clean scattering and rate accounting; we
 now place the polarized source on the conformal first wall of a real stellarator, the
-geometry a reactor would actually build. For each of five quasi-symmetric QUASR
+geometry a reactor would actually build. For each of fifteen quasi-symmetric QUASR
 equilibria we take the VMEC last-closed surface, offset it outward by $0.30\,a$ along its
 poloidal normal, mesh it as a DAGMC first wall~\cite{dagmc}, and free-stream the polarized
 \texttt{StellaratorSource} onto it, capturing wall crossings and binning them into a
@@ -535,9 +543,9 @@ check on the whole equilibrium-to-map pipeline.
 
 Scanning $a_2\in[-1,1]$ for the polarization that minimizes the peaking factor
 $\mathrm{PF}=\max\NWL/\overline{\NWL}$, we find the optimum is device-specific (parallel for
-four of the five devices, perpendicular for one) but the achievable global flattening is
-uniformly modest: peaking-optimal polarization lowers the peaking factor by only
-$1$--$16\%$ across the set (for the most improved device, $1.78\to1.49$;
+most devices, perpendicular for a few) but the achievable global flattening is uniformly
+modest across the fifteen: peaking-optimal polarization lowers the peaking factor by
+$0$--$16\%$, with a median of only $4\%$ (for the most improved device, $1.78\to1.49$;
 Fig.~\ref{fig:map}), even though the same polarization commands $40$--$70\%$ swings in the
 \emph{local} load between the perpendicular and parallel extremes. The reason is
 structural: the peaking factor is set by a narrow near-field spike---the wall's closest
@@ -548,6 +556,22 @@ use of SPF steering is not to reduce global peaking but to tailor the fluence lo
 instance to relieve a lightly shielded port or a maintenance-critical panel; the global
 peaking is a geometry problem that wall shaping, not polarization, must solve.
 
+It is natural to ask whether the modest, device-specific benefit can be predicted from a
+cheap geometric descriptor, so that the transport calculation could be skipped in a design
+scan. Across the fifteen devices it cannot (Fig.~\ref{fig:predictor}). Pure-plasma shape
+metrics---the non-axisymmetric shaping amplitude of the boundary and a nematic order
+parameter of its normals---do not correlate with the steering benefit (Spearman
+$\rho=-0.19$ and $+0.40$ respectively, neither significant at $n=15$), consistent with the
+line-of-sight integration acting as a low-pass filter that removes the high-harmonic shape
+content from the wall signal. The best predictor is a transport-free isotropic
+$1/D^2$ peaking proxy---essentially the available headroom, since a device with a larger
+geometric hot spot has more to gain---but even it is only borderline
+($\rho=+0.53$, $p\approx0.05$), and a spuriously strong correlation seen on the first five
+devices ($\rho=+0.90$) regressed toward this value as the sample grew. The practical
+conclusion reinforces the paper's thesis: the polarization steering benefit is weak, device
+specific, and not forecastable from plasma shape, so it must be evaluated per device by the
+transport calculation the source provides.
+
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.95\linewidth]{fig_conformal_map.pdf}
@@ -557,6 +581,17 @@ device 886079 (real free-streaming \texttt{StellaratorSource} transport): unpola
 only from $1.78$ to $1.49$: the near-field hot spot is not steerable, though the broad load
 is visibly redistributed.}
 \label{fig:map}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.90\linewidth]{fig_predictor.pdf}
+\caption{The polarization steering benefit is weak and not forecastable from plasma shape
+($n=15$ conformal-wall devices). Left: the benefit correlates only weakly with a
+transport-free isotropic peaking (headroom) proxy ($\rho=+0.53$, borderline at $n=15$).
+Right: it does not correlate with a pure-plasma shape metric ($\rho=+0.40$, not
+significant). The steering benefit must be evaluated per device by transport.}
+\label{fig:predictor}
 \end{figure}
 
 \section{The analytic companion and the division of labour}
@@ -609,9 +644,19 @@ Ballabio-broadened source is available and does not affect the angular physics. 
 analytic companion is first-flight and convex-patch, its grazing-robust path is validated
 in the unpolarized channel and holds for the polarized channel by construction rather than
 by test, and its reverse-mode gradients through the special-function engine do not yet
-just-in-time compile. Finally, the conformal-wall predictor study is at present limited to
-five devices, too few to establish a correlation between the steering benefit and any cheap
-geometric descriptor; a larger equilibrium set is required to decide it.
+just-in-time compile. Finally, the conformal-wall study covers fifteen equilibria---enough
+to establish that the steering benefit is weak and not forecastable from plasma shape, but
+the highly shaped quasi-helical configurations that fail to converge in the fixed-boundary
+VMEC solve are under-represented, so the device sample is biased toward the more tractable
+quasi-axisymmetric class.
+
+\paragraph{Data availability.}
+All numbers, tables, and figures in this paper are reproducible from a self-contained
+archive: the frozen transport outputs (the conformal-wall $(\vartheta,\phi)$ load maps, the
+scattering and rate ledgers, the fifteen-device predictor table) are stored with a
+provenance manifest naming the run that produced each, and one figure script per figure
+reads only that archive. The native source, the VMEC producer with its rigor gates, and the
+analysis and figure scripts are released with the archive.
 
 \section{Summary}
 \label{sec:summary}
