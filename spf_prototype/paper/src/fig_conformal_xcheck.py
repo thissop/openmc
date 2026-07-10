@@ -18,8 +18,5 @@ ax.scatter(B_an, B_mc, s=10, marker="s", facecolor="none", edgecolor="0.55", lw=
 ax.set_xlim(lim); ax.set_ylim(lim)
 ax.set_xlabel("analytic  load / isotropic")
 ax.set_ylabel("OpenMC  load / isotropic")
-ax.set_title("Conformal-wall free-streaming check (59509)", fontsize=9.5)
 ax.legend(frameon=False, loc="upper left", fontsize=8)
-ax.text(0.97, 0.06, "per-bin r = 0.91\nregions agree 0.5-2.3%", transform=ax.transAxes,
-        ha="right", va="bottom", fontsize=7.5, color="0.35")
 finish(fig, "fig_conformal_xcheck")

@@ -27,12 +27,10 @@ for ax, m, ttl in [(axes[0], m_un, f"unpolarized  (PF={PF(unpol):.2f})"),
                    (axes[1], m_op, f"optimal a2={opt:+.2f}  (PF={pf.min():.2f})")]:
     im = ax.imshow(m, origin="lower", extent=ext, aspect="auto",
                    cmap="gray_r", vmin=0, vmax=vmax)
-    ax.set_title(ttl, fontsize=9)
     ax.set_xlabel("toroidal phi [deg]")
 axes[0].set_ylabel("poloidal theta [deg]")
 cb = fig.colorbar(im, ax=axes, fraction=0.046, pad=0.02)
 cb.set_label("NWL / mean(NWL)")
-fig.suptitle("Conformal-wall neutron load: QUASR 886079", fontsize=10)
 for ext_ in ("pdf", "png"):
     fig.savefig(f"{DATA.parent}/figures/fig_conformal_map.{ext_}", bbox_inches="tight")
 plt.close(fig)

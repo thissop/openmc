@@ -22,6 +22,5 @@ for w, a, m in zip(walls, A_an, A_mc):
 ax.set_xlim(lim); ax.set_ylim(lim)
 ax.set_xlabel("analytic  load / isotropic")
 ax.set_ylabel("OpenMC  load / isotropic")
-ax.set_title("Analytic vs Monte Carlo: QUASR QA 59509")
 ax.legend(frameon=False, loc="upper left", fontsize=8)
 finish(fig, "fig_quasr_validation")

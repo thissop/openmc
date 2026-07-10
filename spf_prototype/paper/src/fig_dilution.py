@@ -21,6 +21,5 @@ for xi, a, b in zip(x, fs, sc):
                 va="bottom" if b >= 0 else "top", fontsize=8)
 ax.set_xticks(x); ax.set_xticklabels(labels)
 ax.set_ylabel("steering, load vs isotropic [%]")
-ax.set_title("Scattering dilutes the geometric steering ~3x")
 ax.legend(frameon=False, loc="lower right", fontsize=8)
 finish(fig, "fig_dilution")
