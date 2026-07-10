@@ -14,10 +14,10 @@ Q = np.array([float(r["nematic_Q"]) for r in rows])
 
 fig, ax = plt.subplots(1, 2, figsize=(7.4, 3.4))
 ax[0].scatter(PFg, Y, s=42, facecolor="none", edgecolor="0.15")
-ax[0].set_xlabel("headroom proxy PF$_\\mathrm{geo}$ (geometry only)")
-ax[0].set_ylabel("SPF benefit Y  [% peaking reduction]")
+ax[0].set_xlabel("Headroom Proxy PF$_\\mathrm{geo}$ (Geometry Only)")
+ax[0].set_ylabel("SPF Benefit Y [% Peaking Reduction]")
 ax[1].scatter(Q, Y, s=42, marker="s", facecolor="none", edgecolor="0.4")
-ax[1].set_xlabel("plasma shape (nematic Q)")
+ax[1].set_xlabel("Plasma Shape (Nematic Q)")
 for a in ax:
     a.axhline(0, color="0.8", lw=0.8)
     a.set_ylim(-1, 18)
