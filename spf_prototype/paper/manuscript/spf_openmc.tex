@@ -437,20 +437,21 @@ and concave outer (outboard) cylinders, with an $s^2$ guide.}
 \section{Transport on a realistic wall: scattering dilutes the steering}
 \label{sec:transport}
 
-The free-streaming cross-check certifies the source; the reason to have a Monte-Carlo
-source is what the analytic method cannot do, and the first of these is neutron transport.
-To isolate the effect of transport itself we deliberately hold the geometry fixed and
-simple: a square-cross-section (box) torus with a radially layered blanket, so that the
-wall is identical to the free-streaming cross-checks and the only change is the material.
-Any departure from the free-streaming steering is then attributable to scattering alone,
-not to a change of shape, and the radial blanket stack gives every neutron a well-defined,
-unambiguous path through the layers for a clean energy and breeding accounting---the
-conformal, poloidally- and toroidally-varying wall of \S\ref{sec:conformal} would confound
-the transport effect we want to measure here with the geometric load variation we measure
-there. Concretely, replacing the void interior and vacuum walls with an ARC-class layered
-blanket---a $1$~mm tungsten first wall, $1$~cm of Fe-9Cr structural steel, a $1$~cm
-beryllium multiplier, and $40$~cm of FLiBe breeder---turns the first-flight NWL into the
-transported flux and heating that a reactor blanket actually sees. The polarized angular
+The free-streaming cross-checks certify the source; the reason to have a Monte-Carlo source
+is what the analytic method cannot do, and the first of these is neutron transport. To
+obtain a first, clean estimate of how much scattering erodes the geometric steering, we
+isolate the transport effect by measuring it in the same axisymmetric square-torus geometry
+used for validation---holding the wall fixed and changing only the material, so that any
+departure from the free-streaming steering is attributable to scattering alone rather than
+to a change of shape, and the radially layered blanket gives every neutron a well-defined
+path through the layers for an unambiguous energy and breeding accounting. Replacing the
+void interior and vacuum walls with an ARC-class layered blanket---a $1$~mm tungsten first
+wall, $1$~cm of Fe-9Cr structural steel, a $1$~cm beryllium multiplier, and $40$~cm of
+FLiBe breeder---turns the first-flight NWL into the transported flux and heating that a
+reactor blanket actually sees. This box-torus estimate isolates the dilution factor; the
+definitive transported load on the conformal geometry, whose free-streaming limit is
+validated above (Fig.~\ref{fig:confxcheck}), follows by running the identical source and
+blanket on the DAGMC conformal wall, and is expected to carry the same dilution. The polarized angular
 emission enters this calculation only through the source; everything downstream is standard
 neutron transport, so the anisotropy is carried into the volumetric loads without further
 approximation. As an anchor, reducing every layer density by $10^{-4}$ (mean free path
@@ -548,6 +549,33 @@ satisfy $\NWL_{\perp}+\NWL_{\parallel}=2\,\NWL_{\rm unpol}$ bin by bin---an exac
 self-consistency identity requiring no analytic reference, which the transported maps
 confirm to the few-percent Monte-Carlo level and which we use as an in-situ correctness
 check on the whole equilibrium-to-map pipeline.
+
+Before drawing physics from these maps we validate the source free-streaming \emph{on the
+conformal geometry itself}, so that the cross-check is not limited to the axisymmetric
+square torus of \S\ref{sec:validation}. On the gentle QA (device 59509,
+$\epseff\approx0.43$) we evaluate the analytic point-patch free-streaming directionality
+$A/\iso$ and $B/\iso$ on the same $(\vartheta,\phi)$ conformal wall grid the ray-traced
+OpenMC source was binned onto, using the local field $\Bhat$ at each source voxel and
+front-facing visibility. The two agree closely (Fig.~\ref{fig:confxcheck}): the per-bin
+correlation is $0.91$, the global mean directionality matches to $\le1.2\%$
+($A/\iso$ analytic $1.027$ vs Monte-Carlo $1.018$; $B/\iso$ $0.973$ vs $0.985$), and by
+region the agreement is $1.6\%$/$2.3\%$ inboard and $0.5\%$/$0.6\%$ outboard, with the
+expected sign---mode A enhances the inboard load and suppresses the outboard, mode B/C the
+mirror. The source therefore reproduces the free-streaming NWL on the real conformal wall,
+not only in the axisymmetric limit, and the residual is the same shaping-driven point-patch
+effect isolated in \S\ref{sec:pointpatch} (small here, at $\epseff\approx0.43$; it grows on
+the strongly shaped devices, which is why they are Monte-Carlo-only).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.52\linewidth]{fig_conformal_xcheck.pdf}
+\caption{Free-streaming cross-check \emph{on the conformal wall} (device 59509): analytic
+point-patch NWL directionality versus the ray-traced OpenMC \texttt{StellaratorSource}, per
+wall bin, for modes A (perp) and B/C (par). The two agree to $0.5$--$2.3\%$ by region
+(per-bin correlation $0.91$), validating the source free-streaming on the real
+three-dimensional geometry, not only on the axisymmetric square torus.}
+\label{fig:confxcheck}
+\end{figure}
 
 Scanning $a_2\in[-1,1]$ for the polarization that minimizes the peaking factor
 $\mathrm{PF}=\max\NWL/\overline{\NWL}$, we find the optimum is device-specific (parallel for

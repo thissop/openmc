@@ -1,0 +1,6 @@
+# Free-streaming cross-check ON the conformal wall (device 59509, eps_eff~0.43). Source: python/conformal_freestream_xcheck.py
+# analytic point-patch vs ray-traced OpenMC StellaratorSource. Per-bin corr: A/iso 0.914, B/iso 0.920.
+region,A_iso_analytic,A_iso_openmc,A_rel_pct,B_iso_analytic,B_iso_openmc,B_rel_pct
+inboard,1.154,1.136,1.6,0.846,0.866,2.3
+outboard,0.892,0.888,0.5,1.108,1.114,0.6
+global_mean,1.027,1.018,0.9,0.973,0.985,1.2
