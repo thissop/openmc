@@ -47,9 +47,14 @@ Regenerate all figures: `cd src && for f in fig_*.py; do python $f; done`.
    Nucl. Fusion 62, 076040 (2022), DOI 10.1088/1741-4326/ac6a67. `parisi2024` = Parisi, Diallo,
    Schwartz, Nucl. Fusion 64, 126019 (2024), DOI 10.1088/1741-4326/ad7da3. Bae = Nucl. Fusion 65,
    086051 (2025); Lyytinen = Nucl. Fusion 64, 076042 (2024). All verified.
-3. **Conformal + scattering bridge run (the one worthwhile new run).** §7-8 are box-torus, §9 is
-   conformal; Limitations states this. A single scattering-on run on a conformal wall closes the
-   fidelity gap and shows the 3x dilution survives on real geometry. **The script already exists:**
+3. **Conformal + scattering bridge run (the remaining half).** ETHAN'S GUIDANCE: the square/box
+   torus is for *validation and Schwartz axisymmetric recovery ONLY*; the physics belongs on the
+   conformal geometry. Done this session: the **free-streaming cross-check ON the conformal wall**
+   (`python/conformal_freestream_xcheck.py`, device 59509) -- analytic point-patch vs ray-traced
+   OpenMC agree to 0.5-2.3% by region, per-bin r=0.91 (§9, Fig. fig_conformal_xcheck). This validates
+   the source free-streaming on real 3D geometry, not just the square torus. STILL TO DO: the
+   *scattering* half on the conformal wall, to move the 3x-dilution headline off the box-torus.
+   **The script already exists:**
    `python/run_conformal.py` runs BOTH free-streaming (density_scale=1e-4) and scattering
    (density_scale=1.0) per mode on a conformal DAGMC wall with the W/steel/Be/FLiBe/shield/coil
    blanket, tallying phi-resolved first-wall current + per-material heating. **Not yet run on a QUASR
