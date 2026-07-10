@@ -20,7 +20,6 @@ for i, (key, lab) in enumerate(metrics):
 ax.axhline(1.0, color="k", lw=0.8, ls=":")
 ax.set_xticks(x); ax.set_xticklabels(modes)
 ax.set_ylabel("relative to unpolarized = 1")
-ax.set_title("Rate vs steering: B buys steering at no rate cost")
 ax.legend(frameon=False, loc="upper left", fontsize=8, ncol=1)
 ax.annotate("1.70x", (1 + 0*w, 1.70), ha="center", va="bottom", fontsize=8)
 ax.annotate("0.85x", (2 + 0*w, 0.85), ha="center", va="bottom", fontsize=8)

@@ -9,14 +9,23 @@ DATA = HERE.parent / "data"
 FIGS = HERE.parent / "figures"
 FIGS.mkdir(exist_ok=True)
 
+# Embodies paper/PLOTTING_STYLE.md: full SM box, inward ticks all sides, big readable
+# labels/ticks, frameless legends. Do NOT strip spines or add titles/grids.
 plt.rcParams.update({
-    "figure.dpi": 150,
-    "savefig.dpi": 200,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
+    "savefig.dpi": 300,
     "axes.grid": False,
-    "font.size": 10,
+    "axes.labelsize": 14,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "xtick.direction": "in",
+    "ytick.direction": "in",
+    "xtick.top": True,
+    "ytick.right": True,
+    "legend.fontsize": 9,
+    "legend.frameon": False,
 })
+BLACK, BLUE, RED = "k", "#2166ac", "#b2182b"   # Rule 2 palette
+GRAY_SEQ, DIVERGENT = "gray_r", "RdBu_r"        # Rule 5 colormaps
 
 
 def finish(fig, name):
