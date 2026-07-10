@@ -38,3 +38,13 @@ Devices: 1052272 1090019 11357 1642553 180790 1854549 1960314 24285 262171 59509
 - Raw OpenMC statepoints remain on Ginsburg; the RESULTS_tierX.md ledger records the numbers.
 
 Regenerate figures: `cd ../src && python fig_*.py` (each writes to `../figures/`).
+
+## Conformal + scattering flux tally
+
+`conformal_maps/quasr59509_conformal_flux.npz` -- volumetric flux tally on the conformal
+multi-material DAGMC blanket (device 59509, scaled x10 to reactor size, scattering ON), from
+`python/conformal_scatter_59509.py` (Ginsburg job 8912742, native StellaratorSource, 3M/mode).
+Holds the poloidal fast-flux mesh `flux_<mode>` (nr,nphi,nz)=(39,32,39) and per-layer heating
+`heat_<mode>` for unpolarized/perpendicular/parallel, plus r/z/phi grids and R0/a. Figure
+`fig_conformal_flux`. FLiBe = 84% of the 1.1e7 eV/src heating; near-wall fast flux modulates
+perp -10% / parallel +10% vs unpolarized.
