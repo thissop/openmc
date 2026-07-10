@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from _style import DATA, finish
 
-f = np.load(DATA / "quasr886079_conformalmap.npz")
+f = np.load(DATA / "conformal_maps" / "quasr886079_conformalmap.npz")
 unpol, par, dA = f["unpol"], f["par"], f["dA"]
 d = dA / dA.sum()
 

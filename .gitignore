@@ -115,3 +115,10 @@ CMakeSettings.json
 /.claude/cache/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.dylib
 /.claude/cache/.venv/lib/python3.13/site-packages/lancedb/_lancedb.abi3.so
 /spf_export/results/tallies_long.csv
+
+# ...track the capstone paper package (figures, compiled PDF, data) despite global ignores
+!spf_prototype/paper/figures/*.pdf
+!spf_prototype/paper/figures/*.png
+!spf_prototype/paper/manuscript/*.pdf
+!spf_prototype/paper/data/**
+!spf_prototype/teaching_materials/*.pdf
