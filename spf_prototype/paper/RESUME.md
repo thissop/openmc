@@ -43,10 +43,10 @@ Regenerate all figures: `cd src && for f in fig_*.py; do python $f; done`.
 
 1. **Co-author sign-off.** Ethan Peterson is on the byline (from your draft). Confirm he is
    co-authoring and has seen §7-§10 before submission. His call, not assumed.
-2. **Firm two citations.** `schwartz2025` = arXiv:2507.11758 (set). `lion2022` ("A deterministic
-   method for stellarator NWL") and `parisi2024` ("Spin-polarized fusion in magnetic confinement")
-   are plausible but need exact journal/volume/DOI -- confirm before submission. Bae is
-   Nucl. Fusion 65, 086051 (2025); Lyytinen is Nucl. Fusion 64, 076042 (2024) (both verified).
+2. **Citations -- DONE.** `schwartz2025` = arXiv:2507.11758. `lion2022` = Lion, Warmer, Wang,
+   Nucl. Fusion 62, 076040 (2022), DOI 10.1088/1741-4326/ac6a67. `parisi2024` = Parisi, Diallo,
+   Schwartz, Nucl. Fusion 64, 126019 (2024), DOI 10.1088/1741-4326/ad7da3. Bae = Nucl. Fusion 65,
+   086051 (2025); Lyytinen = Nucl. Fusion 64, 076042 (2024). All verified.
 3. **Conformal + scattering bridge run (the one worthwhile new run).** §7-8 are box-torus, §9 is
    conformal; Limitations states this. A single scattering-on run on a conformal wall closes the
    fidelity gap and shows the 3x dilution survives on real geometry. **The script already exists:**
@@ -61,8 +61,11 @@ Regenerate all figures: `cd src && for f in fig_*.py; do python $f; done`.
    stream/mode and save to `data/quasr886079_conformal_scatter.npz`. Expect the free stream to match
    the frozen `conformal_maps/quasr886079_conformalmap.npz` steering (an anchor) and the scatter
    stream to show the ~3x dilution on real geometry.
-4. **Target venue decision.** Nucl. Fusion (fits Bae/Lyytinen), Comp. Phys. Comm. (tool angle), or
-   Fusion Eng. & Design. Sets length/format; the draft is article-class and venue-agnostic for now.
+4. **Target venue -- DECIDED: Nuclear Fusion.** Before submission, port the manuscript from
+   `article` class to the IOP `iopart` class (`\documentclass[12pt]{iopart}`, IOP bib style). Keep
+   the draft in `article` for circulating to Ethan; convert once content is frozen (the conversion is
+   mechanical but can break spacing/floats, so do it last). NF is a good fit: same journal as Bae
+   (65, 086051), Lyytinen (64, 076042), Lion (62, 076040), and Parisi (64, 126019).
 5. **Prose density pass on §7-§10** against your §1-§6 bar -- you are the calibration.
 
 ## Ginsburg (how to get more data)
