@@ -147,7 +147,9 @@ published QA equilibrium, and Section~\ref{sec:pointpatch} identifies the one re
 the analytic point-patch limit. Section~\ref{sec:transport} turns on scattering and reports
 the dilution of the steering; Section~\ref{sec:rate} restores the reactivity and the
 rate-versus-steering trade-off; Section~\ref{sec:conformal} evaluates conformal-wall loads
-for real stellarators and the local-versus-global result. Section~\ref{sec:companion}
+for real stellarators and the local-versus-global result; and
+Section~\ref{sec:conformalscatter} transports the source through a conformal multi-material
+blanket for the volumetric flux and heating. Section~\ref{sec:companion}
 describes the analytic companion and the division of labour, Section~\ref{sec:limitations}
 bounds the claims, and Section~\ref{sec:summary} summarizes.
 
@@ -630,6 +632,39 @@ significant). The steering benefit must be evaluated per device by transport.}
 \label{fig:predictor}
 \end{figure}
 
+\section{Transported flux and heating on the conformal blanket}
+\label{sec:conformalscatter}
+
+Free-streaming isolates the source; a reactor calculation must transport the neutrons through
+a real blanket on the real wall. We place the full tungsten / Fe-9Cr steel / beryllium / FLiBe
+/ shield / coil blanket conformally on the last-closed surface of device 59509 and mesh it as
+a six-material DAGMC solid; because the ARC-class blanket stack is $\sim\!1$~m thick, the
+equilibrium is uniformly scaled to a reactor-scale major radius of $\sim\!10$~m (the unit
+field $\Bhat$ is scale-invariant, so the polarized emission is unchanged), and the native
+\texttt{StellaratorSource} is transported through it with scattering on.
+Figure~\ref{fig:cflux} shows the resulting volumetric fast-flux ($E>0.1$~MeV) distribution in
+the poloidal plane and the heating deposited in each layer. The fast flux is concentrated in
+the plasma-facing region and attenuates through the blanket, and the heating is dominated by
+the FLiBe breeder ($84\%$ of the total $1.1\times10^{7}$~eV per source neutron) with the
+tungsten first wall taking $\sim\!0.1\%$---the same radial energy partition the box-torus
+model of \S\ref{sec:transport} gives, now on the conformal geometry. The near-wall fast flux
+itself shifts with the polarization mode at the $\sim\!10\%$ level (perpendicular $-10\%$,
+parallel $+10\%$ relative to unpolarized), the anisotropic birth distribution carried through
+to the volumetric load. The run exercises the full pipeline end to end on a real device---a
+verified VMEC equilibrium, the native polarized source, a conformal multi-material DAGMC
+blanket, and scattering transport.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_conformal_flux.pdf}
+\caption{Volumetric flux tally on the conformal blanket (device 59509, scattering on, native
+\texttt{StellaratorSource}). Left: poloidal fast-flux ($E>0.1$~MeV) distribution
+($\phi$-averaged), concentrated in the plasma-facing region and attenuating outward through
+the blanket. Right: heating deposited per blanket layer (per source neutron), dominated by
+the FLiBe breeder.}
+\label{fig:cflux}
+\end{figure}
+
 \section{The analytic companion and the division of labour}
 \label{sec:companion}
 
@@ -670,12 +705,14 @@ needs.
 \label{sec:limitations}
 
 Several bounds on the present results should be stated. The scattering and rate-trade-off
-studies (\S\ref{sec:transport}--\ref{sec:rate}) use a layered box-torus blanket rather than
-the conformal stellarator wall of \S\ref{sec:conformal}; the two are used at the fidelity
-that isolates their respective effects---the box-torus for a clean volumetric energy and
-breeding accounting, the conformal wall for the geometric load pattern---but a unified
-conformal, scattering run is the natural next step and is expected to inherit the
-$\sim\!3\times$ dilution. The steering results are monoenergetic at $14.1$~MeV; a
+studies (\S\ref{sec:transport}--\ref{sec:rate}) use a layered box-torus blanket, whose clean
+radial geometry isolates the material physics---the $\sim\!3\times$ dilution and the
+rate--steering trade-off; the conformal geometry carries the free-streaming load pattern
+(\S\ref{sec:conformal}) and the transported volumetric flux and heating
+(\S\ref{sec:conformalscatter}). A conformal run resolving the transported inboard/outboard
+\emph{steering} would require a first-wall surface-current tally, which the volumetric mesh
+of \S\ref{sec:conformalscatter} does not provide; the near-field steering asymmetry is a
+surface, not a volumetric, effect. The steering results are monoenergetic at $14.1$~MeV; a
 Ballabio-broadened source is available and does not affect the angular physics. The
 analytic companion is first-flight and convex-patch, its grazing-robust path is validated
 in the unpolarized channel and holds for the polarized channel by construction rather than

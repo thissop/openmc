@@ -47,9 +47,17 @@ Regenerate all figures: `cd src && for f in fig_*.py; do python $f; done`.
    Nucl. Fusion 62, 076040 (2022), DOI 10.1088/1741-4326/ac6a67. `parisi2024` = Parisi, Diallo,
    Schwartz, Nucl. Fusion 64, 126019 (2024), DOI 10.1088/1741-4326/ad7da3. Bae = Nucl. Fusion 65,
    086051 (2025); Lyytinen = Nucl. Fusion 64, 076042 (2024). All verified.
-3. **Conformal + scattering bridge run (the remaining half).** ETHAN'S GUIDANCE: the square/box
-   torus is for *validation and Schwartz axisymmetric recovery ONLY*; the physics belongs on the
-   conformal geometry. Done this session: the **free-streaming cross-check ON the conformal wall**
+3. **Conformal + scattering bridge run -- DONE.** ETHAN'S GUIDANCE: the square/box torus is for
+   *validation and Schwartz axisymmetric recovery ONLY*; the physics belongs on the conformal
+   geometry. Done this session: (a) the **conformal + scattering volumetric flux tally**
+   (`python/conformal_scatter_59509.py`, Ginsburg job 8912742) -- the native StellaratorSource
+   transported through the full W/steel/Be/FLiBe/shield/coil DAGMC blanket (device scaled x10 to
+   reactor size), giving the poloidal fast-flux map + per-layer heating (FLiBe 84%; near-wall flux
+   perp -10% / parallel +10%). Manuscript Sec on "Transported flux and heating", Fig fig_conformal_flux.
+   NOTE: this shows the volumetric flux tally, NOT inboard/outboard steering -- the near-field
+   steering asymmetry is a SURFACE effect a volumetric mesh cannot resolve; a conformal *steering*
+   number would need a first-wall surface-current tally (documented, not required by the paper).
+   And (b) the **free-streaming cross-check ON the conformal wall**
    (`python/conformal_freestream_xcheck.py`, device 59509) -- analytic point-patch vs ray-traced
    OpenMC agree to 0.5-2.3% by region, per-bin r=0.91 (§9, Fig. fig_conformal_xcheck). This validates
    the source free-streaming on real 3D geometry, not just the square torus. STILL TO DO: the
