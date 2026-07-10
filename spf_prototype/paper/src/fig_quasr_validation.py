@@ -15,12 +15,12 @@ B_an = np.array([float(r["B_iso_ana"]) for r in rows])
 fig, ax = plt.subplots(figsize=(4.4, 4.2))
 lim = [0.70, 1.30]
 ax.plot(lim, lim, "-", color="0.7", lw=0.9, zorder=0)
-for mc, an, mk, lab in [(A_mc, A_an, "o", "A (perp)"), (B_mc, B_an, "s", "B/C (par)")]:
+for mc, an, mk, lab in [(A_mc, A_an, "o", "A (Perpendicular)"), (B_mc, B_an, "s", "B/C (Parallel)")]:
     ax.scatter(an, mc, marker=mk, s=45, facecolor="none", edgecolor="0.15", label=lab)
 for w, a, m in zip(walls, A_an, A_mc):
-    ax.annotate(w, (a, m), (4, -2), textcoords="offset points", fontsize=7, color="0.4")
+    ax.annotate(w.title(), (a, m), (4, -2), textcoords="offset points", fontsize=7, color="0.4")
 ax.set_xlim(lim); ax.set_ylim(lim)
-ax.set_xlabel("analytic  load / isotropic")
-ax.set_ylabel("OpenMC  load / isotropic")
+ax.set_xlabel("Analytic Load / Isotropic")
+ax.set_ylabel("OpenMC Load / Isotropic")
 ax.legend(frameon=False, loc="upper left", fontsize=8)
 finish(fig, "fig_quasr_validation")

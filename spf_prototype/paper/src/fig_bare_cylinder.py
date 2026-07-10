@@ -11,13 +11,13 @@ inner = np.array([float(r["inner_absdiff"]) for r in rows])
 outer = np.array([float(r["outer_absdiff"]) for r in rows])
 
 fig, ax = plt.subplots(figsize=(5.0, 3.4))
-ax.plot(s, inner, "o-", color="k", label="inboard (convex)")
-ax.plot(s, outer, "s--", color="k", label="outboard (concave)")
+ax.plot(s, inner, "o-", color="k", label="Inboard (Convex)")
+ax.plot(s, outer, "s--", color="k", label="Outboard (Concave)")
 ss = np.linspace(0, 1, 50)
 ax.plot(ss, inner[-1] * ss**2, ":", color="k", lw=1.0, label="~ s^2")
-ax.set_xlabel("plasma shaping amplitude s")
-ax.set_ylabel("analytic point-patch error |A/iso - ray|")
+ax.set_xlabel("Plasma Shaping Amplitude $s$")
+ax.set_ylabel("Analytic Point-Patch Error |A/iso - ray|")
 ax.legend(frameon=False, loc="upper left", fontsize=8)
-ax.annotate("3x worse\ninboard", (1.0, inner[-1]), xytext=(0.62, 0.075),
+ax.annotate("3x Worse\nInboard", (1.0, inner[-1]), xytext=(0.62, 0.075),
             fontsize=8, arrowprops=dict(arrowstyle="->", lw=0.7))
 finish(fig, "fig_bare_cylinder")

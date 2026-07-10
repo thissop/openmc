@@ -18,8 +18,11 @@ style: serif font, full box frame, inward ticks. Do not restyle away from it.
    every plot you will ever make needs only black, white, blue, and red.
 
 3. **Make the axes shout and the ink whisper.** Large, readable axis labels and tick labels
-   — they must stand out on a printed page. Keep the full box with inward ticks. No grid
-   unless the grid carries information. No chartjunk.
+   — they must stand out on a printed page. **Every axis and legend label is Title Case**
+   ("Toroidal Angle", "Fusion Rate", "A (Perpendicular)") — never lowercase, never sentence
+   case. Keep the full box with inward ticks. No grid unless it carries information. No
+   chartjunk. (Units, math symbols, and proper names keep their own case: `[%]`, `$s$`,
+   `OpenMC`, `PF$_\mathrm{geo}$`.)
 
 4. **Never title a figure, and never draw in the panel what the caption can say.** Kill
    titles. Kill any in-plot annotation that belongs in the LaTeX caption (a stray "χ²" label
@@ -86,6 +89,7 @@ red (`#b2182b`), on white. (This is the two-phase / CMB look.)
 **3-D.** `ax.plot_wireframe(...)` in black on white — wireframe, never a shaded surface.
 
 ## Never
+- a lowercase or sentence-case axis/legend label (always Title Case)
 - a figure title; an in-panel label that the caption should carry
 - grey lines beside black ones; colour used for decoration rather than a real contrast
 - a boxed/opaque legend, or a legend that sits on top of the data
