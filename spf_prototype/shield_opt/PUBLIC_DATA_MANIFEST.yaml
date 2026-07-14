@@ -1,0 +1,79 @@
+# Public-data manifest for the hotspot-driven nonuniform-shield optimizer.
+# Every external input records provenance so runs are reproducible (brief S15.2).
+# sha256 fields are filled by scripts/fetch_public_data.py after download.
+
+datasets:
+  - id: wechsung_qa_2022
+    role: precise-QA coil set (first QA baseline)
+    paper: >-
+      Wechsung, Landreman, Giuliani, Cerfon, Stadler (2022),
+      "Precise stellarator quasi-symmetry can be achieved with electromagnetic coils",
+      PNAS 119(13) e2202084119.
+    doi: 10.1073/pnas.2202084119
+    code_url: https://github.com/florianwechsung/CoilsForPreciseQS
+    license: check-repo   # confirm on fetch (likely MIT/BSD); record before redistribution
+    expected_files:
+      - simsopt coil objects / Fourier-dof coil files (CurveXYZFourier, order 16)
+    config:
+      targets: [QA-LP, QA+Well-LP]
+      modular_coils_unique: 4
+      total_coils_after_symmetry: 16
+      recommended_baseline: [QA[24], QA+Well[24]]   # longest-length family, best fidelity
+      length_families_m: [18, 20, 22, 24]
+    units: meters at R0 = 1 m (SCALE to reactor minor radius explicitly)
+    symmetry: field-period + stellarator symmetry (expand 4 unique -> 16)
+    sha256: TBD
+
+  - id: wiedman_qh_2024
+    role: precise-QH coil set (first QH baseline)
+    paper: >-
+      Wiedman, Buller, Landreman (2024),
+      "Coil optimization for quasi-helically symmetric stellarator configurations",
+      J. Plasma Phys. 90, 905900307.
+    doi: 10.1017/S0022377824000540
+    data_doi: 10.5281/zenodo.10211349
+    data_url: https://doi.org/10.5281/zenodo.10211349
+    license: check-record
+    expected_files:
+      - SIMSOPT coil files (Cartesian Fourier series X/Y/Z), L-BFGS-optimized
+    config:
+      recommended_baseline: Landreman-Paul precise-QH vacuum
+      nfp: 4
+      aspect_ratio: 8.0
+      iota_mean: 1.24
+      reactor_scale: {B_volavg_T: 5.86, minor_radius_m: 1.7}
+      unique_coils_per_half_period: 5
+      total_coils_after_symmetry: 40
+      min_coil_coil_distance_m: 1.09
+      min_coil_boundary_distance_m: 1.62
+      blanket_shield_distance_scale_m: 1.5   # paper's reactor plasma-coil spacing scale
+    units: meters, reactor-scaled as above
+    symmetry: 4 field periods + stellarator symmetry (5 unique -> 40)
+    sha256: TBD
+
+tools:
+  - id: parastell
+    role: primary geometry + DAGMC engine (variable radial build + coil sweep)
+    paper: >-
+      Moreno, Bader, Wilson (2024), "ParaStell: parametric modeling and neutronics
+      support for stellarator fusion power plants", Front. Nucl. Eng. 3.
+    doi: 10.3389/fnuen.2024.1384788
+    repo: https://github.com/svalinn/parastell
+    key_api:
+      thickness_field: "per-layer thickness_matrix shape (n_toroidal, n_poloidal) == t_l(phi,theta)"
+      coils: "construct_magnets_from_filaments(coils_file, width, thickness, toroidal_extent)"
+      cubit_free_export: "export_cad_to_dagmc via cad_to_dagmc + MOAB + PyDAGMC + CadQuery"
+    note: closed-loop optimization is future work in the paper -> our novelty
+  - id: simsopt
+    role: Fourier(theta,phi) field parameterization + optimization plumbing
+    repo: https://github.com/hiddenSymmetries/simsopt
+    docs: https://simsopt.readthedocs.io/
+    note: no adjoint through OpenMC (black box) -> finite-diff/surrogate only
+  - id: quasr
+    role: statistical expansion (Phase G), NOT first coil source
+    portal: https://quasr.flatironinstitute.org/
+    local_cache: spf_prototype/data/quasr/ (catalogue + 366 serials + coil_standoff.csv)
+  - id: openmc
+    role: transport truth model (fixed-source, DAGMC, mesh + coil tallies)
+    docs: https://docs.openmc.org/
+    repo: https://github.com/openmc-dev/openmc

@@ -1,0 +1,397 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+% Same aesthetic as the SPF primer: simple, default theme, dove, serif.
+\usetheme{default}
+\usecolortheme{dove}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{itemize items}[circle]
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\definecolor{key}{rgb}{0.10,0.35,0.65}
+\definecolor{acc}{rgb}{0.60,0.20,0.15}
+\newcommand{\key}[1]{\textcolor{key}{\textbf{#1}}}
+\newcommand{\acc}[1]{\textcolor{acc}{#1}}
+\newcommand{\bhat}{\hat{\mathbf{b}}}
+\setbeamercolor{frametitle}{fg=key}
+\newcommand{\qq}[1]{\begin{center}\emph{#1}\end{center}}
+
+\title{From a Spin-Polarized Source to a Stellarator Shield Optimizer}
+\subtitle{A teaching guide to everything we built this session\\{\small (assumes: multivariable calculus, linear algebra, intro upper-division physics)}}
+\author{built to read on the train}
+\date{\today}
+
+\begin{document}
+\frame{\titlepage}
+
+\begin{frame}{How to read this}
+\begin{itemize}
+\item Each part starts from something you know and adds one idea.
+\item \key{Blue} words are the terms worth keeping.
+\item Every formula comes with a plain sentence --- skip the algebra, read the sentence.
+\item Goal: by the end you can explain the whole arc --- why we pivoted, what the tool is,
+      and why anyone outside our niche should care.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The one-paragraph version}
+\qq{We built the first native spin-polarized fusion neutron source in OpenMC. It gave a
+weak effect at the first wall. Ethan pointed out the magnets matter more; Elizabeth Paul
+pointed out that geometry is a bigger, less-niche lever than polarization. So the project
+grew a second, broader half: a tool that reads where the neutron load actually lands on the
+magnets, traces it back to the plasma regions that cause it, and then automatically
+re-partitions blanket material --- trading tritium breeder for neutron shield, at a fixed
+outer envelope --- to protect the coils. Spin polarization becomes one knob among the
+geometric knobs.}
+\end{frame}
+
+% ============================================================
+\section{Part 1}
+\begin{frame}{Part 1 --- Where we started: the polarized source}\Large
+The physics that spawned the project.\end{frame}
+
+\begin{frame}{The neutron we care about}
+D--T fusion: \(\ {}^2\mathrm D + {}^3\mathrm T \rightarrow {}^4\mathrm{He}\,(3.5\,\text{MeV})
++ n\,(\key{14.1\,\text{MeV}})\).
+\begin{itemize}
+\item The neutron is \key{uncharged}: magnetic fields don't bend it. Once born it flies
+      \key{straight} until it hits something.
+\item So \emph{where} neutrons are born and \emph{which way} they point decides where the
+      energy lands --- on the first wall, the breeder, and the magnets.
+\end{itemize}
+\qq{Everything downstream is bookkeeping on straight lines from the plasma to the walls.}
+\end{frame}
+
+\begin{frame}{Spin polarization makes emission directional}
+If you align the deuteron and triton \key{spins}, the neutron is emitted preferentially at
+an angle \(\theta\) to the local magnetic field \(\bhat\) (Schwartz 2025):
+\[
+\frac{d\sigma}{d\Omega} = \frac{\sigma_0}{2\pi}\Big[
+\underbrace{\tfrac34 a\sin^2\theta}_{\text{perp}}
++ \underbrace{\big(\tfrac23 b+\tfrac13 c\big)\big(\tfrac14+\tfrac34\cos^2\theta\big)}_{\text{parallel}}\Big].
+\]
+Three "modes" from the spin fractions \((a,b,c)\):
+\begin{itemize}\footnotesize
+\item \key{A} (perpendicular): fires sideways to \(\bhat\), \(+50\%\) rate.
+\item \key{B} (parallel): fires along \(\bhat\), same rate as unpolarized.
+\item \key{C}: same \emph{shape} as B, half the rate (\textbf{not} isotropic --- a common myth).
+\end{itemize}
+\qq{Polarization is a knob on the \emph{direction} of the source, nothing else.}
+\end{frame}
+
+\begin{frame}{What we built, and the first result}
+\begin{itemize}
+\item A \key{native OpenMC source} (\texttt{StellaratorSource}) that samples birth position
+      from a real 3-D equilibrium and birth direction from that polarized law about the
+      local \(\bhat\) --- built on Ethan Peterson's \texttt{TokamakSource} pattern.
+\item Verified exactly (the sampled angles match theory before any transport).
+\item Result across 15 stellarators, \key{at the first wall}: polarization lowers the load
+      \key{peaking factor} by only \key{$\sim$4\% (median), 16\% (best case)}.
+\end{itemize}
+\qq{Honest read: a weak lever at the first wall. That is where Ethan's pivot comes in.}
+\end{frame}
+
+% ============================================================
+\section{Part 2}
+\begin{frame}{Part 2 --- The pivot: magnets, not the first wall}\Large
+Why the important number moved outward.\end{frame}
+
+\begin{frame}{What ``peaking factor'' means}
+For any load field \(q\) over a surface,
+\[
+{\color{key}\mathrm{PF}} = \frac{q_{\max}}{\bar q}
+= \frac{\text{hottest spot}}{\text{average}}.
+\]
+\begin{itemize}
+\item \(\mathrm{PF}=1\) is perfectly uniform; big \(\mathrm{PF}\) means a nasty hot spot.
+\item A hot spot is what fails a component --- it sets the lifetime, not the average.
+\end{itemize}
+\qq{Lower the peak, and the weakest part of the machine lasts longer.}
+\end{frame}
+
+\begin{frame}{Ethan's correction}
+\begin{itemize}
+\item First-wall \emph{uniformity} is nice but not decision-critical --- the wall is
+      replaceable.
+\item The \key{magnets} are the expensive, hard-to-replace, radiation-sensitive part. Their
+      peak nuclear load (fast-neutron dose, heating) is the number that matters.
+\item Our magnets were a \key{uniform conformal shell} --- a smooth blanket-shaped rind. That
+      is \emph{not} what stellarator coils look like.
+\item Real \key{nonplanar coils} are discrete, twisted, and unevenly spaced $\Rightarrow$
+      they will have sharper, more localized hotspots than a shell can show.
+\end{itemize}
+\qq{A weak first-wall effect does not imply a weak \emph{coil} effect. We have to look at
+real coils.}
+\end{frame}
+
+% ============================================================
+\section{Part 3}
+\begin{frame}{Part 3 --- Picking reactor-relevant devices}\Large
+Not every pretty equilibrium can fit a reactor.\end{frame}
+
+\begin{frame}{The coil--plasma standoff}
+\begin{itemize}
+\item A reactor needs \(\sim\!1\,\text{m}$ of blanket + shield between plasma and coils. If
+      the coils hug the plasma, there is no room --- the device is not reactor-relevant.
+\item We load the \key{real coil filaments} from the QUASR database ($\sim\!370{,}000$
+      devices) and compute the \key{minimum coil-to-plasma distance} \(d_{\min}\).
+\end{itemize}
+\key{The trap we avoided.} Normalizing by minor radius, \(d_{\min}/a\), is misleading: it
+correlates with aspect ratio at \(\rho=+0.83\) --- it mostly rewards \emph{skinny} plasmas.
+\qq{The right measure is the \emph{absolute} gap at reactor scale, i.e. \(d_{\min}/R_0\)
+(aspect-independent). At a 10\,m machine, 95\% of devices clear the 1\,m stack.}
+\end{frame}
+
+% ============================================================
+\section{Part 4}
+\begin{frame}{Part 4 --- Turning coil curves into coil solids}\Large
+A wire has no thickness; a magnet does.\end{frame}
+
+\begin{frame}{Sweeping a cross-section along a curve}
+The public data gives each coil as a \key{filament centerline} --- a closed 3-D curve. To
+tally heating we need a \key{solid} winding pack. We sweep a small cross-section (circle or
+square) along the curve.
+\medskip
+
+The subtlety: as you march along the curve, how do you \emph{orient} the cross-section? A
+naive ``Frenet frame'' (built from the curve's bending) \key{spins} wildly at straight spots
+and flips at inflections --- the tube corkscrews and can pinch shut.
+\qq{Fix: a \key{rotation-minimizing frame} (Bishop frame) --- carry the cross-section with
+the \emph{least} possible twist, then close the loop by spreading the leftover angle
+smoothly.}
+\end{frame}
+
+\begin{frame}{The one number that catches self-intersection}
+When a fat tube follows a tightly-curved wire, the inner wall can fold through the axis ---
+the solid \key{pinches}. This happens exactly when
+\[
+{\color{key}\kappa\, r > 1},
+\]
+curvature \(\times\) cross-section radius. We report \(\max(\kappa r)\) per device: below 1,
+clean; at 1, shrink the pack or scale up the machine.
+\qq{We built this ourselves (\texttt{coil\_geometry.py}); it stays as a fallback/validator
+now that ParaStell does the same job in production.}
+\end{frame}
+
+% ============================================================
+\section{Part 5}
+\begin{frame}{Part 5 --- Real public coils, at reactor scale}\Large
+Benchmarks the community already trusts.\end{frame}
+
+\begin{frame}{Two public coil sets, two formats}
+\begin{itemize}
+\item \key{Precise QA} (Wechsung 2022): a quasi-\emph{axisymmetric} field from
+      \key{16 coils}. Stored as Fourier coefficients (a state vector) --- we rebuild the
+      curves and expand by symmetry.
+\item \key{Precise QH} (Wiedman 2024): a quasi-\emph{helical} field from \key{20 coils}.
+      Stored as explicit point lists (MAKEGRID) --- read directly.
+\end{itemize}
+\key{Reactor scale, always.} A fusion-relevant plasma is meters, not centimeters. We scale
+both to a common \key{plasma minor radius \(a=1.7\,\text{m}\)} (the QH reactor scaling; \(
+\langle B\rangle=5.86\,\text{T}\)), keeping each native aspect ratio --- QA becomes the
+compact \(R_0\approx10\,\text{m}\) machine, QH the larger \(R_0\approx14\,\text{m}\) one.
+\end{frame}
+
+% ============================================================
+\section{Part 6}
+\begin{frame}{Part 6 --- The core idea: a closed-loop shield optimizer}\Large
+This is the publishable tool.\end{frame}
+
+\begin{frame}{The engineering idea in one picture}
+\begin{itemize}
+\item The neutron load is \key{not uniform} --- it comes in diagonal high-flux stripes that
+      persist outward toward the coils.
+\item So don't shield everything equally. \key{Thicken the neutron shield only where a coil
+      is getting cooked}, and \key{thin the FLiBe breeder by the same amount there} so the
+      \key{outer envelope never moves} (the coils don't get pushed).
+\item Shielding is \key{exponential}, so a modest local thickening buys a big local dose cut.
+\end{itemize}
+\qq{Trade breeder for shield, locally, where it protects the magnets --- for free on the
+outside dimensions.}
+\end{frame}
+
+\begin{frame}{The control field \(t_{\text{shield}}(\theta,\phi)\)}
+We do \emph{not} optimize a thickness at every mesh point (too many knobs, too much Monte
+Carlo noise). Instead a \key{smooth field} over the two angular coordinates:
+\[
+t_{\text{shield}}(\theta,\phi) = t^0 + \sum_{m,n} a_{mn}\cos(m\theta - nN_{fp}\phi) + \dots
+\]
+a handful of \key{Fourier modes} (10--40 numbers).
+\begin{itemize}\footnotesize
+\item Smooth by construction $\Rightarrow$ manufacturable, and gentle on the FLiBe flow.
+\item Periodic + stellarator-symmetric for free --- same representation SIMSOPT uses for
+      plasma surfaces.
+\item The breeder field is just \(t_{\text{breeder}} = t^0_{\text{breeder}} -
+      t_{\text{shield}}\): fixed sum, fixed envelope.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Who does what (we don't reinvent CAD)}
+\begin{itemize}
+\item \key{ParaStell} (UW--Madison): turns a per-\((\theta,\phi)\) \emph{thickness matrix}
+      into real stellarator CAD $\to$ watertight DAGMC geometry for OpenMC. It also sweeps
+      coil solids from filaments. \emph{This already exists.}
+\item \key{SIMSOPT}: the Fourier-field bookkeeping and the optimizer plumbing. \emph{Exists.}
+\item \key{OpenMC}: the transport truth model --- fires neutrons, tallies coil heating.
+\item \key{Our new piece}: the \emph{loop} that reads the coil tally and updates
+      \(t_{\text{shield}}(\theta,\phi)\).
+\end{itemize}
+\qq{ParaStell's own paper varied thickness by a \emph{manual} 99-config sweep and called the
+closed loop ``future work.'' That gap is our contribution.}
+\end{frame}
+
+\begin{frame}{Why the loop can be cheap: exponential attenuation}
+A full OpenMC run per optimizer step is expensive and noisy, and you cannot differentiate
+through it. But shielding obeys a near-analytic law: dose at a coil \(\sim
+e^{-\sum_i t_i/\lambda_i}\). So the \key{gradient is almost free}:
+\[
+\frac{\partial(\text{coil dose})}{\partial t_{\text{shield}}}\approx -\frac{\text{dose}}{\lambda_{\text{shield}}},
+\qquad
+\frac{\partial(\text{coil dose})}{\partial t_{\text{breeder}}}\approx +\frac{\text{dose}}{\lambda_{\text{breeder}}}.
+\]
+Trading breeder\(\to\)shield helps whenever \(\lambda_{\text{shield}}<\lambda_{\text{breeder}}\)
+(the shield stops fast neutrons in fewer cm --- it does).
+\qq{Optimize on this cheap surrogate, then \emph{correct} with a few real OpenMC runs. That
+is the whole strategy.}
+\end{frame}
+
+\begin{frame}{What we minimize, and what stops us}
+\key{Objective:} not the single hottest mesh cell (Monte Carlo noise makes it jump around).
+Instead a \key{robust aggregate} --- the mean of the hottest 1--5\% of coil volume, or a
+smooth log-sum-exp ``soft maximum'' of coil heating.
+\medskip
+
+\key{Constraints:}
+\begin{itemize}\footnotesize
+\item \key{Tritium breeding ratio} (TBR): pulling FLiBe makes fewer tritons. Can't drop
+      below \(\sim\!1.05\) or the reactor doesn't fuel itself. \emph{This is the real
+      tension that makes it an optimization, not a giveaway.}
+\item minimum breeder thickness; smooth gradients; fixed envelope.
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{Part 7}
+\begin{frame}{Part 7 --- Where does the peaking come from?}\Large
+Elizabeth Paul's question, and a map that answers it.\end{frame}
+
+\begin{frame}{The load is a weighted vote of plasma regions}
+The free-streaming load at a wall patch \(\mathbf w\) is an integral over plasma source
+voxels \(\mathbf r\):
+\[
+\mathrm{NWL}(\mathbf w) = \int S(\mathbf r)\; g(\theta)\;
+\frac{\hat{\mathbf n}_w\cdot\hat{\mathbf u}}{|\mathbf w-\mathbf r|^2}\; dV,
+\]
+with \(g\) the angular factor (\(1\) unpolarized; \(\sin^2\theta\) or
+\(\tfrac14+\tfrac34\cos^2\theta\) for the SPF modes).
+\qq{Each wall hot spot is literally a \emph{sum of contributions} from plasma regions. Add up
+each voxel's share and you get a \key{culprit map}: color the plasma by how much it drives
+the peak.}
+\end{frame}
+
+\begin{frame}{Do we need to ``trace back''? Yes --- because of the gap}
+\begin{itemize}
+\item Plasma and wall are separated (SOL + first wall). Neutrons free-stream across that gap.
+\item Because of the gap and the \(1/r^2\) solid-angle spreading, a wall patch ``sees'' a
+      \key{broad swath} of plasma --- the nearest point is \emph{not} the culprit.
+\item So you need the \key{kernel-weighted back-projection}, not nearest-point. But for the
+      uncollided case it is \key{fully analytic and cheap} --- we already have the machinery.
+\end{itemize}
+\key{The novel twist:} \(g(\theta)\) differs by polarization, so the culprit map \emph{shifts}
+between unpolarized and SPF. ``Polarization redistributes which plasma regions cause the
+peak'' is a genuinely new figure --- and it ties SPF back into the geometric story.
+\qq{This is the diagnostic that feeds the optimizer: know \emph{where} the peak is and
+\emph{why} $\to$ know where to spend shield. (Prototyping now on device 59509.)}
+\end{frame}
+
+% ============================================================
+\section{Part 8}
+\begin{frame}{Part 8 --- An aside we can retire: liquid-metal MHD}
+\begin{itemize}
+\item A moving conductor in a magnetic field feels a braking force (MHD). For \key{liquid
+      metal} blankets this is a first-order design nightmare.
+\item We use \key{FLiBe}, a molten \emph{salt}: its electrical conductivity is $\sim\!10^4\times$
+      lower, so MHD pressure drop is $\sim\!10^4\times$ weaker. \key{For us it is a footnote}
+      --- cite the scaling and move on.
+\item Tooling note we clarified: ``OFT MUG'' is a \emph{plasma} MHD solver, not a
+      liquid-metal duct solver; COMSOL does the fluid side. Two different ``MHD''s.
+\end{itemize}
+\qq{The genuinely open problem (3-D field $\times$ liquid-metal MHD) is a \emph{liquid-metal}
+problem --- only relevant if we ever pivot the coolant. Not now.}
+\end{frame}
+
+% ============================================================
+\section{Part 9}
+\begin{frame}{Part 9 --- The bigger picture (why this got broader)}
+\begin{itemize}
+\item Spin polarization is \key{niche}: a handful of groups, a modest lever.
+\item \key{Geometry} is a big, general lever for stellarator neutronics --- wall shaping,
+      nonuniform shielding, breeder/shield trades. \emph{Everyone building a stellarator
+      reactor cares.}
+\item Elizabeth Paul's point: the geometric half of this work may matter more to the field
+      than the SPF half.
+\end{itemize}
+\qq{So the paper's center of gravity is the \key{attribution + geometric-control toolkit};
+SPF rides along as one especially clean knob on the source's directionality.}
+\end{frame}
+
+\begin{frame}{The unifying thesis (Phase C, generalized)}
+\qq{Attribute the neutron load --- at the first wall \emph{and} at the coils --- back to the
+plasma regions and geometric features that cause it; then use that attribution to place
+material where it does the most good.}
+\medskip
+
+Two arrows, one engine:
+\begin{itemize}\footnotesize
+\item \key{Backward} (attribution): wall/coil hotspot $\to$ culprit plasma regions.
+\item \key{Forward} (control): culprit knowledge $\to$ optimal \(t_{\text{shield}}(\theta,\phi)\).
+\item SPF enters as a \emph{setting} of the source directionality that changes both.
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{Part 10}
+\begin{frame}{Part 10 --- What exists right now}
+In \texttt{spf\_prototype/shield\_opt/}:
+\begin{itemize}\footnotesize
+\item \key{Docs}: \texttt{CURRENT\_PIPELINE.md} (the inherited code), \texttt{PUBLIC\_DATA\_MANIFEST.yaml},
+      \texttt{COIL\_DATA\_FORMATS.md}, capability + LM-MHD surveys.
+\item \key{\texttt{coil\_adapter.py}}: loads public QA (16) + QH (20) coils, reactor-scaled to
+      \(a=1.7\,\text{m}\); exports normalized + MAKEGRID files.
+\item \key{\texttt{coil\_geometry.py}} (\texttt{python/}): rotation-minimizing coil-solid sweep
+      (validated fallback to ParaStell).
+\item \key{\texttt{coil\_standoff.py}} (\texttt{sweep/}): reactor-relevance filter over 366 QUASR
+      devices.
+\item \key{In flight}: fresh \texttt{parastell} conda env on Ginsburg; the uncollided
+      culprit-map prototype on device 59509.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The road ahead (strict order)}
+\begin{enumerate}\footnotesize
+\item \key{A--B}: load public coils $\to$ finite-build solids $\to$ baseline ParaStell radial
+      build; clear the thin-layer watertightness test.
+\item \key{C}: baseline paired SPF/unpolarized runs; measure the first-wall$\to$coil-hotspot
+      relationship + the culprit maps. \emph{The engineering-truth checkpoint.}
+\item \key{D}: variable-thickness geometry (the fixed-envelope FLiBe$\leftrightarrow$shield trade).
+\item \key{E--F}: the surrogate optimizer, then the OpenMC correction loop.
+\item \key{G}: generalize across QA/QH, periodicity, shaping.
+\end{enumerate}
+\qq{No optimizer until the baseline coil-response truth is measured. Discipline first.}
+\end{frame}
+
+\begin{frame}{What to remember}
+\begin{itemize}
+\item We started with a clean, verified \key{polarized neutron source} --- and an honest,
+      weak first-wall result.
+\item Ethan moved the target to the \key{magnets}; Elizabeth Paul moved the frame to
+      \key{geometry}.
+\item The tool is a \key{closed loop}: measure coil hotspots, trace them to the plasma,
+      re-partition shield vs.\ breeder at fixed envelope to protect the coils.
+\item We build \key{on} ParaStell + SIMSOPT + OpenMC; the novelty is the loop and the
+      attribution, not the CAD.
+\end{itemize}
+\qq{Niche physics opened a general tool. That is the story worth telling.}
+\end{frame}
+
+\end{document}

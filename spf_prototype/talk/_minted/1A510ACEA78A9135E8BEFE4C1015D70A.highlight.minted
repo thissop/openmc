@@ -1,0 +1,3 @@
+\begin{MintedVerbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8\relax}]
+\PYG{n}{w}\PYG{p}{[}\PYG{n}{idx3}\PYG{p}{(}\PYG{n}{i}\PYG{p}{,}\PYG{n}{j}\PYG{p}{,}\PYG{n}{kk}\PYG{p}{)}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{=}\PYG{+w}{ }\PYG{n}{S\PYGZus{}}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{*}\PYG{+w}{ }\PYG{n}{sqrtg\PYGZus{}}\PYG{p}{[}\PYG{n}{idx3}\PYG{p}{(}\PYG{n}{i}\PYG{p}{,}\PYG{n}{j}\PYG{p}{,}\PYG{n}{kk}\PYG{p}{)}\PYG{p}{]}\PYG{p}{;}\PYG{+w}{      }\PYG{c+c1}{// emission x metric Jacobian}
+\end{MintedVerbatim}
