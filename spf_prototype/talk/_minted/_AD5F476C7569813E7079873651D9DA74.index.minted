@@ -1,0 +1,11 @@
+{
+  "jobname": "_mintedtest",
+  "md5": "AD5F476C7569813E7079873651D9DA74",
+  "timestamp": "20260713131542",
+  "cachefiles": [
+    "53CDD0FE567CF20290BF2CAD934A7BB7.highlight.minted",
+    "_AD5F476C7569813E7079873651D9DA74.index.minted",
+    "default.style.minted",
+    "friendly.style.minted"
+  ]
+}

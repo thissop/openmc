@@ -1,0 +1,6 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{n}{Direction}\PYG{+w}{ }\PYG{n+nf}{StellaratorSource::sample\PYGZus{}direction}\PYG{p}{(}\PYG{k+kt}{uint64\PYGZus{}t}\PYG{o}{*}\PYG{+w}{ }\PYG{n}{seed}\PYG{p}{)}\PYG{+w}{ }\PYG{k}{const}\PYG{+w}{ }\PYG{p}{\PYGZob{}}
+\PYG{+w}{  }\PYG{k+kt}{double}\PYG{+w}{ }\PYG{n}{u}\PYG{+w}{ }\PYG{o}{=}\PYG{+w}{ }\PYG{n}{prn}\PYG{p}{(}\PYG{n}{seed}\PYG{p}{)}\PYG{p}{;}
+\PYG{+w}{  }\PYG{k}{return}\PYG{+w}{ }\PYG{p}{(}\PYG{n}{u}\PYG{+w}{ }\PYG{o}{\PYGZlt{}}\PYG{+w}{ }\PYG{n}{P\PYGZus{}perp\PYGZus{}}\PYG{p}{)}\PYG{+w}{ }\PYG{o}{?}\PYG{+w}{ }\PYG{n}{sample\PYGZus{}perp}\PYG{p}{(}\PYG{n}{seed}\PYG{p}{)}\PYG{+w}{ }\PYG{o}{:}\PYG{+w}{ }\PYG{n}{sample\PYGZus{}par}\PYG{p}{(}\PYG{n}{seed}\PYG{p}{)}\PYG{p}{;}
+\PYG{p}{\PYGZcb{}}
+\end{MintedVerbatim}

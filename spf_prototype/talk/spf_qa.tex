@@ -1,0 +1,843 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+% Deliberately simple: default theme, no Metropolis (matches spf_results.tex).
+\usetheme{default}
+\usecolortheme{dove}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}
+\setbeamertemplate{itemize items}[circle]
+
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+
+\definecolor{key}{rgb}{0.10,0.35,0.65}
+\newcommand{\bhat}{\hat{\mathbf{b}}}
+\setbeamercolor{frametitle}{fg=key}
+
+% Render a bold question line
+\newcommand{\qitem}[1]{\medskip\textbf{#1}\par}
+
+\title{Anticipated Questions and Answers}
+\subtitle{Backup and Prep for the Peterson Meeting}
+\author{T.\ Kiker}
+\date{\today}
+
+\begin{document}
+\frame{\titlepage}
+
+% ============================================================
+\section{Reference Definitions}
+\begin{frame}
+\centering
+\vfill
+{\Large\color{key} Reference Definitions}\par
+\medskip
+{\footnotesize Precise, slide-ready definitions of the four recurring terms.}
+\vfill
+\end{frame}
+
+% ---- A1 ----
+\begin{frame}[allowframebreaks]{Reference Definitions: $\mathrm{PF_{geo}}$}
+\small
+\qitem{$\mathrm{PF_{geo}}$ --- geometry-only isotropic-flux peaking proxy}
+Source: \texttt{python/predictor\_test.py:geometry()} (lines 69--80).
+\begin{itemize}
+\item For wall points $w_k$ (conformal wall $=$ LCFS offset outward by $0.30\,a$ along the
+      poloidal normal) and source voxels $r_v$ (the VMEC fluxmap nodes), with per-voxel
+      weight $w_v = |\sqrt{g}|_v / \sum |\sqrt{g}|$ (normalized volumetric reactivity
+      support):
+\[
+G(w) = \sum_v \frac{w_v}{|w - r_v|^2}
+\qquad\text{(transport-free isotropic $1/d^2$ flux proxy)}
+\]
+\[
+\mathrm{PF_{geo}} = \frac{\max_k G(w_k)}{\sum_k G(w_k)\, dA_k},
+\qquad \sum_k dA_k = 1
+\]
+i.e.\ $\mathrm{PF_{geo}} = \max(G) / \text{area-weighted-mean}(G)$.
+\item \textbf{Plain English.} The neutron wall load a \emph{point isotropic} source cloud
+      would deposit, using only inverse-square geometry --- no scattering, no angular
+      physics, no polarization.
+\item Its peaking factor (hot-spot / mean) is the \textbf{peaking headroom the geometry
+      alone bakes in}: how non-uniform the wall load is before any transport or steering.
+\item ``Transport-free headroom'' because SPF can only flatten peaking that exists to be
+      flattened; $\mathrm{PF_{geo}}$ measures that budget from geometry in milliseconds.
+\item Best single predictor of SPF benefit in the $n=15$ set, but only borderline: Spearman
+      $\rho = +0.525$.
+\end{itemize}
+\end{frame}
+
+% ---- A2 ----
+\begin{frame}[allowframebreaks]{Reference Definitions: nematic $Q$}
+\small
+\qitem{$\mathrm{nematic\_Q}$ --- LCFS wall-normal director alignment}
+Source: \texttt{python/predictor\_test.py:geometry()} (lines 84--86).
+\begin{itemize}
+\item For the LCFS poloidal \emph{outward} normals $(n_R, n_Z)$ (from
+      \texttt{stellarator\_geometry.poloidal\_outward\_normals}), let
+      $\psi = \operatorname{atan2}(n_Z, n_R)$ be each normal's angle in the $(R,Z)$ plane.
+      Then
+\[
+Q = \big|\,\text{mean}\big(e^{2i\psi}\big)\,\big|
+\]
+the $2i$ because a director is a headless axis (period $\pi$).
+\item \textbf{Plain English.} The \textbf{nematic order parameter} of the wall-normal
+      \emph{director} field. The $2\psi$ (not $\psi$) makes it orientation-blind: $n$ and
+      $-n$ count the same, as for liquid-crystal directors.
+\item $Q = 0 \Rightarrow$ the boundary normals point every which way (isotropic orientation,
+      strongly/asymmetrically shaped cross-section); $Q = 1 \Rightarrow$ all normals aligned
+      (a slab/ellipse-like boundary).
+\item A \textbf{pure plasma-shape metric} --- computed from the LCFS alone, no wall standoff,
+      no transport. In the predictor test it is the representative ``does global plasma shape
+      forecast steering?'' descriptor (answer: weakly, $\rho = +0.396$, n.s.).
+\end{itemize}
+\end{frame}
+
+% ---- A3 ----
+\begin{frame}[allowframebreaks]{Reference Definitions: $\varepsilon_{\mathrm{eff}}$}
+\small
+\qitem{$\varepsilon_{\mathrm{eff}}$ (epsilon\_eff) --- helical excursion / source-to-wall standoff}
+A coined name for the anarrima-companion controlling parameter. Exact definition:
+\texttt{docs/analytic upgraded.tex}, Eq.\ \texttt{eq:epseff} (line 416); computed in
+\texttt{python/quasr\_geom.py:eps\_eff()} (lines 116--133).
+\begin{itemize}
+\item \textbf{Paper form (Eq.\ eq:epseff):}
+\[
+\varepsilon_{\mathrm{eff}} \sim \frac{\max_\phi \sqrt{dR^2 + dZ^2}}{\min_\phi |\Delta_0|}
+= \frac{\text{non-axisymmetric boundary excursion}}{\text{smallest source-to-wall standoff}}
+\]
+$\Delta_0$ is the source-to-wall separation; the closest approach controls the bound.
+\item \textbf{Truncation error of the analytic series at order $p$ scales as
+      $\varepsilon_{\mathrm{eff}}^{\,p+1}$.} For a wall conformal to the plasma, $\min|\Delta_0|$
+      is the plasma--wall gap and $\varepsilon_{\mathrm{eff}}$ is the ratio of helical
+      excursion to that gap.
+\item It is a property of the \textbf{boundary geometry, not of $|B|$ quasisymmetry} (a QA
+      device need not be geometrically axisymmetric).
+\item \textbf{Code form} (\texttt{quasr\_geom.eps\_eff}, per constant-$\theta$ filament loop):
+      $e_{\text{geom}} = \max_\theta(\max_\phi|\text{loop} - \langle\text{loop}\rangle|)/a$
+      (intrinsic, aspect-invariant excursion);
+      $\varepsilon_{\mathrm{eff}}(\text{gap}) = \max_\theta(\text{excursion}/\text{standoff})$
+      to a square wall gap$\cdot a$ outside the bbox, gap $= 0.25$ default.
+\end{itemize}
+
+\framebreak
+\textbf{Regime thresholds} (from \texttt{docs/analytic upgraded.tex} \S Convergence, lines 411--427):
+\begin{itemize}
+\item $\varepsilon_{\mathrm{eff}} \lesssim 0.15$ --- second-order series already $\le 1.5\%$
+      (Schwartz's uniform-NWL residual level); QA regime, $g^0 + g^1 + g^2$ sufficient.
+\item $\varepsilon_{\mathrm{eff}} < 1$ --- series still convergent (need higher orders $g^3$
+      or the hybrid quadrature as it grows).
+\item $\varepsilon_{\mathrm{eff}} \gtrsim 2$ --- \textbf{series breaks down}; characteristic
+      spurious double-peak in the inboard valley; must fall back to differentiable hybrid
+      quadrature ($\mathrm{precise\_QA} \approx 2.3$ is MC-only).
+\end{itemize}
+\textbf{Per-device / per-config values:}
+\begin{itemize}
+\item \textbf{59509} (the scatter/validation device, nfp$=3$, aspect $6.7$, $R_0=1$,
+      $a \approx 0.175$): $e_{\text{geom}} \approx 0.29$; at the square validation wall
+      (gap $0.4\,a$) \textbf{$\varepsilon_{\mathrm{eff}} \approx 0.43$}.
+\item Toy-QA-low patch: $\varepsilon_{\mathrm{eff}} \approx 0.08$. Published QAs at a tight
+      wall: precise\_QA/reactor\_QA \textbf{2.3}, ESTELL 1.0, NCSX 1.3, ARIES-CS 1.6,
+      WISTELL-A 1.6.
+\item \textbf{On the ``two thresholds $\sim 1/2$ and $\sim 2$'':} the repo explicitly states
+      the $\sim 2$ breakdown and the $<1$ convergence and $\lesssim 0.15$ second-order
+      bounds. No verbatim ``$\sim 1/2$'' threshold was found; cite $\lesssim 0.15$ (accurate)
+      and $\gtrsim 2$ (breakdown), or verify the $1/2$ number before it goes on a slide.
+\end{itemize}
+\end{frame}
+
+% ---- A4 ----
+\begin{frame}[allowframebreaks]{Reference Definitions: How the 15 QUASR Devices Were Selected}
+\small
+\qitem{Device-selection provenance}
+The set is layered: a stratified mine of the full QUASR catalogue plus a ``gentle-QA''
+shortlist, then whatever survived the VMEC $+$ conformal-wall pipeline.
+\begin{itemize}
+\item \textbf{Pool construction} (\texttt{sweep/select\_candidate\_pool.py}): start from the
+      full QUASR catalogue, \textbf{371{,}701 devices} (\texttt{data/quasr/catalogue.csv.gz}).
+\item Can't compute the field-coherence metric $S_\phi$ for all 371k, so \textbf{stratify on
+      the catalogue columns that drive it}: symmetry class (QA $=$ helicity 0 / QH), nfp,
+      quasisymmetry-error quintile, aspect ratio. Sample \textbf{6 per (class $\times$ nfp
+      $\times$ qs\_error-quintile) stratum} (seed 20260707) $\to$ 354-device
+      \texttt{candidate\_pool.csv}, chosen to \textbf{span} the coherence range, not cluster.
+\item \texttt{compute\_sphi\_pool.py} then computes $S_\phi$; \texttt{stratified\_select.py}
+      down-selects $\sim 120$ to a \textbf{flat $S_\phi$ histogram} per class (anti-bias step,
+      since QA piles up near $S_\phi \approx 1$).
+\end{itemize}
+
+\framebreak
+\textbf{The 15 transport devices} (\texttt{predictor\_test.py:DEV}, \texttt{PROVENANCE.md},
+\texttt{RESUME.md}):
+\begin{itemize}
+\item Ginsburg VMEC batch (\texttt{vmec\_batch30}, job 8885457): \textbf{30 QUASR devices $\to$
+      22 converged} fixed-boundary VMEC fluxmaps (QH devices self-intersect in fixed-boundary
+      VMEC and fail --- expected).
+\item Chained conformal batch (\texttt{conformal\_batch30}, job 8885458) built conformal walls
+      $+$ free-streaming NWL maps $\to$ \textbf{15 devices} with usable maps, \textbf{plus the
+      original 5} from the earlier conformal transport run (1960314, 59509, 803097, 886079,
+      932746).
+\item \textbf{Span:} $\sim 13$ QA $+$ 2 QH (1642553, 1854549; QH under-represented because
+      fixed-boundary VMEC rejects strongly-shaped QH). Aspect ratio \textbf{3.33 $\to$ 24}
+      (883496$=$3.33, 11357$=$5, 24285/59509$\approx$6.7, 1642553$=$8, 1854549$=$24). nfp
+      2--5. qs\_error ($\log_{10}$) $\approx -2.1 \to -4.1$. Shaping amp 0.16 $\to$ 1.00
+      (near-round to strongly shaped).
+\item Devices: \texttt{1052272 1090019 11357 1642553 180790 1854549 1960314 24285 262171
+      59509 66633 803097 883496 886079 932746}.
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{B1. Lineage \& Design (Q1--Q5)}
+\begin{frame}
+\centering\vfill
+{\Large\color{key} B1. Lineage \& Design}\par
+\medskip{\footnotesize Q1--Q5: why a new class, what was reused, upstreaming.}
+\vfill
+\end{frame}
+
+\begin{frame}[allowframebreaks]{B1. Lineage \& Design (Q1--Q5)}
+\small
+\qitem{Q1. Why a new \texttt{StellaratorSource} class instead of extending \texttt{TokamakSource}?}
+\begin{itemize}
+\item \texttt{TokamakSource} generates positions from an \textbf{analytic parametric
+      equilibrium} (Miller $R/Z$ with elongation/triangularity/Shafranov, per-flux-surface
+      energy spectra). A stellarator has \textbf{no such closed form} --- the plasma boundary
+      and $\sqrt{g}$ are fully 3-D $(\rho,\theta,\zeta)$.
+\item \texttt{StellaratorSource} samples positions from a \textbf{real gridded equilibrium}
+      (DESC/VMEC \texttt{spf\_fluxmap\_v1} file) via a rejection-free CDF cascade; there is no
+      parametric surface to reuse.
+\item The field $\bhat$ must come from the \textbf{same 3-D grid} $(B_R, B_\phi, B_Z)$ so
+      position and polarization axis are self-consistent --- not derivable from Miller
+      parameters.
+\item They share the \emph{polarized-direction} machinery (see Q3), not the \emph{position}
+      machinery. Two position models, one direction model.
+\end{itemize}
+
+\qitem{Q2. What did you reuse vs rewrite from PR \#3999?}
+\begin{itemize}
+\item \textbf{Reused verbatim} (copied, not re-derived) into both \texttt{native\_spf/source.cpp}
+      (the SPF-patched Tokamak) and \texttt{native\_spf/stellarator\_source.cpp}: the SPF
+      direction sampler \texttt{sample\_polarized\_direction}, the per-shape inverse-CDF roots
+      \texttt{spf\_costheta\_perp/par}, and the $(a,b,c) \to w_\perp/w_\parallel/P_\perp$
+      derivation block. Diff-confirmed identical code.
+\item \textbf{Reused pattern} from \texttt{TokamakSource}: \texttt{public openmc::Source}
+      subclass; constructor takes a \texttt{pugi::xml\_node};
+      \texttt{SourceSite sample(uint64\_t*) const override}; Python \texttt{SourceBase}
+      subclass with \texttt{populate\_xml\_element}/\texttt{from\_xml\_element};
+      \texttt{distribution\_from\_xml} for energy/time; registration via
+      \texttt{Source::create} dispatch branch.
+\item \textbf{Rewrote} (stellarator-specific, new translation unit): the
+      \texttt{spf\_fluxmap\_v1} reader, the marginal$\to$conditional CDF cascade
+      \texttt{build\_cdf\_cascade}, trilinear interp with $\theta/\zeta$ period wrap, and the
+      $\bhat$-from-grid path.
+\end{itemize}
+
+\framebreak
+\qitem{Q3. Could the polarized-direction hook be upstreamed straight into \texttt{TokamakSource}?}
+\begin{itemize}
+\item Yes --- that is exactly what \texttt{native\_spf/source.cpp} does: it adds an optional
+      \texttt{<polarization>} node to \texttt{TokamakSource} (absent $\Rightarrow$ unchanged
+      isotropic behavior, backward compatible), plus a \texttt{field\_model}
+      (\texttt{toroidal} default, or \texttt{pitched} with a q-profile) to build
+      $\bhat = \hat\varphi + s\lambda\hat p$.
+\item The clean upstreaming story: a small self-contained \texttt{spf\_sampler} header (the
+      $w_\perp/w_\parallel/P_\perp$ algebra $+$ two inverse-CDF roots $+$ Gram-Schmidt
+      rotation) that any \texttt{Source} can call with a local $\bhat$. \texttt{TokamakSource}
+      supplies $\bhat$ from Miller; \texttt{StellaratorSource} supplies $\bhat$ from the grid.
+\end{itemize}
+
+\qitem{Q4. Why port Python $\to$ C++ line-for-line rather than just call the Python?}
+\begin{itemize}
+\item The source \texttt{sample()} runs \textbf{inside the OpenMC transport loop, per history,
+      multithreaded} --- it must be native C++ (no Python GIL, no per-call overhead).
+\item The Python reference (\texttt{ConformalStellaratorSampler}) is the \textbf{validated
+      oracle}; the line-for-line port (same cumsum axis order, same
+      \texttt{searchsorted(side="right")}, same interp term order, same period wraps, same RNG
+      draw order) lets a \textbf{bit-for-bit parity test} (C++ vs Python on an identical seed
+      sequence) catch any transcription bug. Correctness is inherited, then \emph{proven}
+      preserved.
+\end{itemize}
+
+\qitem{Q5. Why is the fluxmap a bespoke \texttt{spf\_fluxmap\_v1} binary instead of HDF5?}
+\begin{itemize}
+\item Deliberately \textbf{HDF5-free} so the C++ reader is a plain \texttt{std::ifstream} ---
+      no new build dependency (mirrors \texttt{spf\_fieldmap\_v1} style). A \texttt{.meta} text
+      header (\texttt{magic/nR/ntheta/nzeta/nfp/sign\_sqrtg}) $+$ raw little-endian f8
+      \texttt{.bin} payload in fixed order
+      (\texttt{rho,theta,zeta, sqrtg,R,Z,phi,BR,Bphi,BZ}).
+\item Producer-agnostic: a real DESC/VMEC solve or a synthetic test map writes the identical
+      format; round-trips bit-exactly (tested).
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{B2. Correctness (Q6--Q13)}
+\begin{frame}
+\centering\vfill
+{\Large\color{key} B2. Correctness of the Sampler}\par
+\medskip{\footnotesize Q6--Q13: exactness, inverse-CDFs, thread safety, RNG.}
+\vfill
+\end{frame}
+
+\begin{frame}[allowframebreaks]{B2. Correctness (Q6--Q13)}
+\small
+\qitem{Q6. How do you know the direction distribution is exact (not just approximately right)?}
+\begin{itemize}
+\item \textbf{Stratified exact sampling, not rejection-into-histogram:} with probability
+      $P_\perp = a/\eta$ draw the $\sin^2\theta$ shape, else the
+      $\tfrac14 + \tfrac34\cos^2\theta$ shape, each via a \textbf{closed-form inverse-CDF}
+      (exact cubic roots). No binning approximation enters the sampler.
+\item Tier-1 gates: $\chi^2$ of sampled $\cos\theta$ vs the analytic marginal
+      \texttt{pdf\_costheta} for \{non-pol, A, B, C, mixed\}; \textbf{inverse-CDF vs rejection
+      two-sample KS} (independent method, same distribution) for each shape; $\phi$-uniformity;
+      rotation isotropy under a random $\bhat$.
+\end{itemize}
+
+\qitem{Q7. What's the inverse-CDF actually solving? (\texttt{spf\_costheta\_*}, spf\_mirror.py 101--114)}
+\begin{itemize}
+\item $\sin^2\theta$ shape, $p(x) \propto 1 - x^2$: CDF inversion solves
+      $x^3 - 3x + (4u - 2) = 0$; in-range trig root
+      $x = 2\cos(\tfrac13\arccos(1 - 2u) - 2\pi/3)$.
+\item $\tfrac14 + \tfrac34\cos^2\theta$ shape, $p(x) = \tfrac14 + \tfrac34 x^2$: solves
+      $x^3 + x + (2 - 4u) = 0$ (discriminant $> 0$ always $\Rightarrow$ single real Cardano
+      root). Endpoints verified $u=0 \to x=-1$, $u=1 \to x=+1$; both \texttt{std::clamp}ed
+      against fp drift.
+\end{itemize}
+
+\framebreak
+\qitem{Q8. The $a_2$-linearity identity --- what is it and why does it prove the mode weights are right?}
+\begin{itemize}
+\item The emission intensity
+      $I(\theta) = w_\perp \sin^2\theta + w_\parallel(\tfrac14 + \tfrac34\cos^2\theta)$ is
+      exactly a $P_2$ multipole: $I \propto 1 + a_2 P_2(\cos\theta_B)$, with
+      $a_2 = (-\tfrac23 w_\perp + \tfrac12 w_\parallel)/(\tfrac23 w_\perp + \tfrac12 w_\parallel)$.
+      Pure-A $a_2 = -1$ (oblate $\perp \bhat$), pure-B/C $a_2 = +1$ (prolate $\parallel \bhat$),
+      unpolarized $a_2 = 0$.
+\item Because the wall load is \textbf{linear in the emission multipole}, the NWL map of any
+      mixed $(a,b,c)$ must equal the same linear combination of the pure-mode maps.
+      \texttt{predictor\_test.py:benefit()} sweeps $a_2 \in [-1,1]$ as
+      $\text{unpol} + t(\text{par} - \text{unpol})$ and finds $a_2^{\text{opt}}$; the linearity
+      of that interpolation is the identity. If mode-selection probabilities were wrong,
+      linearity would fail.
+\end{itemize}
+
+\qitem{Q9. Thread safety?}
+\begin{itemize}
+\item \textbf{No mutable members.} Every field (grids, CDFs,
+      $w_\perp/w_\parallel/p_\perp/\texttt{polarized\_}/\texttt{field\_model\_}$) is set in the
+      constructor and \texttt{const} at \texttt{sample()} time. Each thread owns its
+      \texttt{seed}. Verified by construction and asserted in the header comment.
+\end{itemize}
+
+\qitem{Q10. RNG discipline \& reproducibility?}
+\begin{itemize}
+\item \texttt{openmc::prn(seed)} only --- never \texttt{rand()}/\texttt{<random>}. Fixed draw
+      \textbf{order} (cell: $\rho \to \zeta \to \theta$; jitter: $\rho \to \theta \to \zeta$;
+      direction: selector $\to$ shape-$u \to \phi$; then energy, then time).
+\item The Python mirror (\texttt{spf\_mirror.Rng}) is a \textbf{bit-exact port of OpenMC's
+      PCG-RXS-M-XS} \texttt{prn} (\texttt{src/random\_lcg.cpp}), including
+      \texttt{future\_seed}/\texttt{init\_seed}, so C++ vs Python is bit-for-bit on an
+      identical seed sequence --- the transcription proof.
+\end{itemize}
+
+\framebreak
+\qitem{Q11. Gram-Schmidt degeneracy --- how do you avoid the $\bhat \parallel \hat z$ blow-up?}
+\begin{itemize}
+\item Do \textbf{not} build the frame from $\bhat \times \hat z$. Pick the world axis
+      \textbf{least aligned} with $\bhat$ as the reference
+      ($\text{ref} = \arg\min|\bhat \cdot \hat e|$ over $\hat x, \hat y, \hat z$), then
+      $e_x = \text{normalize}(\text{ref} - (\text{ref} \cdot \bhat)\bhat)$,
+      $e_y = \bhat \times e_x$. The reference is never near-parallel to $\bhat$, so $e_x$ never
+      degenerates. Tier-1 explicitly tests $\bhat = \pm\hat z$.
+\end{itemize}
+
+\qitem{Q12. Birth weight --- always 1?}
+\begin{itemize}
+\item Yes, spatially: the cascade is \textbf{rejection-free} (marginal$\to$conditional CDF),
+      so every position is an exact draw with weight 1.
+      $\texttt{site.wgt} = E_{\text{wgt}} \cdot t_{\text{wgt}}$, which is 1 for the default
+      monoenergetic/delta distributions and carries importance weights only for biased
+      energy/time.
+\end{itemize}
+
+\qitem{Q13. Jitter can push $\rho$ a half-cell past the axis/edge --- is that a bug?}
+\begin{itemize}
+\item No: $\rho$ is \textbf{clamped} (non-periodic) in the interp bracket; the half-cell
+      extrapolation is a bounded discretization bias that $\to 0$ under grid refinement
+      (documented, matches the reference exactly). $\theta/\zeta$ wrap periodically with a
+      non-negative modulo (correct even for jitter just below \texttt{grid[0]}).
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{B3. Physics (Q14--Q20)}
+\begin{frame}
+\centering\vfill
+{\Large\color{key} B3. Physics}\par
+\medskip{\footnotesize Q14--Q20: Schwartz Eq.~2, modes, rate/direction separation, energy.}
+\vfill
+\end{frame}
+
+\begin{frame}[allowframebreaks]{B3. Physics (Q14--Q20)}
+\small
+\qitem{Q14. Derive $w_\perp$, $w_\parallel$, $\eta$ from Schwartz Eq.~2.}
+\begin{itemize}
+\item Eq.~2:
+      $\dfrac{d\sigma}{d\Omega} = \dfrac{\sigma_0}{2\pi}\big[\tfrac34 a\sin^2\theta
+      + (\tfrac23 b + \tfrac13 c)(\tfrac14 + \tfrac34\cos^2\theta)\big]$,
+      $\theta$ measured from \textbf{local $\bhat$}.
+\item Angular weights: $w_\perp = \tfrac34 a$ (the $\sin^2\theta$ piece),
+      $w_\parallel = \tfrac23 b + \tfrac13 c$ (the $\tfrac14 + \tfrac34\cos^2\theta$ piece).
+\item Total-rate factor:
+      $\eta = \int \tfrac{d\sigma}{d\Omega}\, d\Omega / \sigma_0 = a + \tfrac23 b + \tfrac13 c$.
+      Verified symbolically in \texttt{python/abc\_modes.py} /
+      \texttt{tests/test\_abc\_modes.py}.
+\end{itemize}
+
+\qitem{Q15. Why is C-mode NOT isotropic (a common mistake)?}
+\begin{itemize}
+\item Set $a=0$ in Eq.~2: both the $b$ and $c$ terms multiply the \textbf{same} angular
+      function $\tfrac14 + \tfrac34\cos^2\theta$. So B and C are \textbf{identical in shape}
+      (peak $\parallel \bhat$) and differ \textbf{only in total rate}: pure-B $\eta = \tfrac23$,
+      pure-C $\eta = \tfrac13$ (C is half the rate of B, same directionality). C is
+      emphatically not isotropic. \texttt{abc\_modes.angular\_shape\_b\_minus\_c()} proves
+      $\text{bracket}_B - 2\cdot\text{bracket}_C \equiv 0$ symbolically.
+\end{itemize}
+
+\framebreak
+\qitem{Q16. Where does $P_\perp = a/\eta$ come from?}
+\begin{itemize}
+\item Solid-angle integrals: $\int \sin^2\theta\, d\Omega = 8\pi/3$,
+      $\int(\tfrac14 + \tfrac34\cos^2\theta)\, d\Omega = 2\pi$. So the integrated weights are
+      $W_\perp = w_\perp \cdot 8\pi/3 = 2\pi a$ and $W_\parallel = w_\parallel \cdot 2\pi$.
+      Then $P_\perp = W_\perp/(W_\perp + W_\parallel) = 2\pi a/(2\pi a + 2\pi w_\parallel)
+      = a/\eta$. Derived in-code, no magic constants.
+\end{itemize}
+
+\qitem{Q17. Corner totals (your oracle)?}
+\begin{itemize}
+\item Non-pol $(\tfrac13,\tfrac13,\tfrac13)$: $\eta = \tfrac23$. Pure-A $(1,0,0)$: $\eta = 1$
+      (\textbf{$+50\%$} vs $2/3$). Pure-B $(0,1,0)$: $\eta = \tfrac23$. Pure-C $(0,0,1)$:
+      $\eta = \tfrac13$ (\textbf{half} non-pol). All verified as corner cases in
+      \texttt{abc\_modes.CORNERS}.
+\end{itemize}
+
+\qitem{Q18. Angular vs rate separation --- why is it the key design decision?}
+\begin{itemize}
+\item The \textbf{direction pdf} depends only on $(w_\perp, w_\parallel) \to P_\perp$; the
+      \textbf{overall rate} $\eta$ is a separate scalar that multiplies the spatial source
+      strength. This lets A and C emit different \emph{numbers} of neutrons but each emit
+      correctly \emph{shaped} directions --- mirroring how Schwartz separates angular factors
+      from rate factors. In code: the sampler only ever uses $P_\perp$; $\eta$ is exposed for
+      rate/TBR accounting (Tier 7).
+\end{itemize}
+
+\framebreak
+\qitem{Q19. $(a,b,c)$ from spin fractions?}
+\begin{itemize}
+\item Schwartz Eq.~1: $a = d_+ t_+ + d_- t_-$, $b = d_0$ ($= d_0 t_+ + d_0 t_-$),
+      $c = d_+ t_- + d_- t_+$. Implemented as \texttt{spin\_fractions\_to\_abc} (Python) /
+      documented in the header. Non-polarized fuel $\Rightarrow a = b = c = \tfrac13$.
+\item \textbf{Footnote for Ethan:} Bae et al.\ use $(a,b,c)$ for \emph{different} symbols ---
+      flag this collision (already an appendix footnote in the paper plan).
+\end{itemize}
+
+\qitem{Q20. Energy handling --- monoenergetic 14.06 MeV?}
+\begin{itemize}
+\item Default \texttt{Discrete([14.06e6],[1.0])} --- energy is decoupled from the polarized
+      angular distribution to leading order, and the steering/NWL verification is
+      energy-independent. \texttt{TokamakSource} carries per-flux-surface Ballabio spectra; the
+      stellarator prototype uses \textbf{one} distribution for all $\rho$ (documented
+      limitation). A per-$r$ spectrum is a drop-in extension (the XML already loops
+      \texttt{<energy>}).
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{B4. Geometry \& Equilibrium (Q21--Q27)}
+\begin{frame}
+\centering\vfill
+{\Large\color{key} B4. Geometry \& Equilibrium}\par
+\medskip{\footnotesize Q21--Q27: flux map, $\sqrt{g}$ gates, field model, conformal wall.}
+\vfill
+\end{frame}
+
+\begin{frame}[allowframebreaks]{B4. Geometry \& Equilibrium (Q21--Q27)}
+\small
+\qitem{Q21. Where does the flux map come from?}
+\begin{itemize}
+\item \texttt{python/quasr\_fluxmap.py} in a DESC venv: solves a fixed-boundary DESC
+      equilibrium from a QUASR boundary (or loads a converged DESC example), evaluates
+      $\sqrt{g}, R, Z, \phi, B, V$ on a full-torus $(\rho,\theta,\zeta)$ tensor grid (default
+      $16 \times 64 \times 192$), and writes both \texttt{.npz} and the portable
+      \texttt{spf\_fluxmap\_v1} \texttt{.meta}/\texttt{.bin}. The Ginsburg batch used VMEC
+      equilibria (job 8885457).
+\end{itemize}
+
+\qitem{Q22. What rigor gates guard the fluxmap? (Ethan will care about $\sqrt{g}$ correctness.)}
+\begin{itemize}
+\item Asserted at write time (\texttt{quasr\_fluxmap.py}, not warnings):
+      \textbf{V1} own-quadrature volume $\sum|\sqrt{g}|\, d\rho\, d\theta\, d\zeta$ vs DESC $V$
+      ($< 3\mathrm{e}{-2}$, trapezoid w/ axis point);
+      \textbf{V1b} independent LCFS volume via the \textbf{divergence theorem}
+      $V = \tfrac13\oint X \cdot (X_\theta \times X_\zeta)$ ($< 1\mathrm{e}{-2}$);
+      \textbf{V2} $\sqrt{g}$ single-signed on $\rho > 0$ (nested surfaces);
+      \textbf{V3} DESC node set is a clean $(\rho,\theta,\zeta)$ tensor product after explicit
+      lexsort; \textbf{V4} $\rho = 1$ surface reconstructs the fitted QUASR boundary
+      ($< 5\mathrm{e}{-2}$ of extent); \textbf{V0} force-balance convergence. A map that fails
+      never reaches the sampler.
+\end{itemize}
+
+\framebreak
+\qitem{Q23. Why $\sqrt{g}$ volumetric weighting, and why does it matter?}
+\begin{itemize}
+\item Birth-position density is $p(\rho,\theta,\zeta) \propto S(\rho)\cdot|\sqrt{g}|$ ---
+      $\sqrt{g}$ is the metric Jacobian (real volume element of the flux coordinates). Without
+      it you'd sample uniformly in coordinate space and \textbf{over-weight the compressed
+      inboard flux surfaces}, biasing the source (and hence the wall load) toward the wrong
+      poloidal/toroidal distribution.
+\item $S(\rho)$ is the emissivity profile (default parabolic $1 - \rho^2$). Uniform
+      $(\rho,\theta,\zeta)$ spacing means the constant cell volume cancels in the normalized
+      CDFs, so only $S\cdot\sqrt{g}$ enters.
+\end{itemize}
+
+\qitem{Q24. The field model --- fluxmap $\bhat$ vs toroidal override?}
+\begin{itemize}
+\item \texttt{field\_model='fluxmap'} (default): trilinear-interp $(B_R, B_\phi, B_Z)$ from
+      the \textbf{same grid} as position, rotate rpz$\to$Cartesian using the interpolated
+      $\phi$, normalize $\to$ the real 3-D field direction.
+\item \texttt{field\_model='toroidal'}: override with pure
+      $\hat\varphi = (-\sin\phi, \cos\phi, 0)$ --- the \textbf{axisymmetric limit} used to
+      cross-check against \texttt{TokamakSource}'s $\bhat = \hat\varphi$ case and the
+      Schwartz/anarrima analytic oracle.
+\item (The SPF-patched \texttt{TokamakSource} instead offers \texttt{toroidal} vs
+      \texttt{pitched} $= \hat\varphi + s\lambda\hat p$ from a q-profile.)
+\end{itemize}
+
+\framebreak
+\qitem{Q25. How is the conformal wall / blanket built?}
+\begin{itemize}
+\item \texttt{python/stellarator\_geometry.py}: take the LCFS grid $R(\theta,\phi),
+      Z(\theta,\phi)$, offset \textbf{outward along the poloidal cross-section normal} by
+      cumulative layer thickness, emit each layer as a \textbf{watertight closed-shell STL};
+      \texttt{build\_dagmc.py} (Ginsburg/conda) $\to$ DAGMC \texttt{.h5m};
+      \texttt{run\_conformal.py} transports.
+\item Guards: edge-manifold watertightness $+$ a \texttt{\_poly\_is\_simple}
+      \textbf{self-intersection check} per $\phi$ cross-section (naive normal-offset folds on
+      the concave inboard side beyond the curvature radius), and a signed-volume orientation
+      guard (G6) so outer normals point outward for either $\theta$-handedness.
+\end{itemize}
+
+\qitem{Q26. The \texttt{DEFAULT\_LAYERS} thicknesses --- where from?}
+\begin{itemize}
+\item \texttt{DEFAULT\_LAYERS} (\texttt{stellarator\_geometry.py}, cm, plasma$\to$out):
+      \textbf{sol 5.0} (scrape-off vacuum gap), \textbf{W 0.2} (tungsten first-wall armor),
+      \textbf{steel 3.8} (RAFM structural FW), \textbf{Be 2.0} (multiplier), \textbf{FLiBe
+      50.0} (breeder), \textbf{shield 40.0} (WC/steel shield), \textbf{coil 15.0} (coil block,
+      damage tally). $\sim 111$ cm total build.
+\item Provenance: \textbf{ARC-class / ARIES-CS reactor radial-build proportions} (reused
+      material identities from \texttt{reactor\_model}); flagged \texttt{INJECT(helios)} ---
+      placeholder public values, swap for real Helios numbers. The scatter run scales the
+      device $\times 10$ so the $\sim 110$ cm blanket fits a reactor-size plasma ($\bhat$ is
+      scale-invariant).
+\end{itemize}
+
+\qitem{Q27. Where is the conformal-wall offset gap set?}
+\begin{itemize}
+\item $0.30\,a$ outward from the LCFS in \texttt{predictor\_test.geometry()} /
+      \texttt{conformal\_wallmap} ($a =$ half the $R$-extent). The 59509 free-stream validation
+      used $0.40\,a$.
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{B5. Results \& Interpretation (Q28--Q37)}
+\begin{frame}
+\centering\vfill
+{\Large\color{key} B5. Results \& Interpretation}\par
+\medskip{\footnotesize Q28--Q37: Schwartz recovery, scatter dilution, predictor null.}
+\vfill
+\end{frame}
+
+\begin{frame}[allowframebreaks]{B5. Results \& Interpretation (Q28--Q37)}
+\small
+\qitem{Q28. Schwartz recovery is $+39/-21\%$ (MC) vs his $+43/-22\%$ analytic --- why not exact?}
+\begin{itemize}
+\item The MC numbers are the free-streaming \texttt{StellaratorSource} on the square torus; the
+      $\sim 4/1$-point gap is the \textbf{$\varepsilon_{\mathrm{eff}} \approx 0.43$ shaping
+      residual}, not a sampler error. On the toy-QA-low patch
+      ($\varepsilon_{\mathrm{eff}} \approx 0.08$) MC$\leftrightarrow$analytic agree $\le 1.8\%$
+      on \textbf{all} walls; at $\varepsilon_{\mathrm{eff}} \approx 0.43$ the gap appears
+      \textbf{only on the inboard wall} (closest, most curved), $4.1\%/5.7\%$.
+\item Both methods eliminated as the cause: sampler exact (A/iso $= (3/2)\sin^2\theta$ to
+      $0.3\%$/bin), analytic $\equiv$ anarrima to $1.2\mathrm{e}{-12}$, insensitive to
+      visibility, field, and near-field gap.
+\end{itemize}
+
+\qitem{Q29. What exactly causes the inboard residual?}
+\begin{itemize}
+\item The \textbf{point-patch approximation} of the filamentary free-streaming \emph{analytic}
+      on a strongly-curved wall --- a limitation of the analytic, with the
+      sampler-exact/geometry-exact MC as the reference. \texttt{bare\_cylinder\_demo.py}
+      isolates it: single shaped filament, analytic point-patch vs exact ray/surface
+      intersection; error grows $\approx s^2$ with shaping amplitude and is $\sim 3\times$
+      larger on the convex inboard cylinder ($|\Delta|$ $0.002 \to 0.098$ as $s: 0 \to 1$).
+      This is the paper's ``where MC is necessary.''
+\end{itemize}
+
+\framebreak
+\qitem{Q30. Scattering dilutes steering $\sim 3\times$ --- physical reason?}
+\begin{itemize}
+\item Free-streaming, A-mode steers inboard \textbf{$+40\%$ / $-20\%$} outboard; with the full
+      W/steel/Be/FLiBe/shield blanket ON it drops to \textbf{$+13.2\%$ / $-9.2\%$}
+      (\texttt{steering\_dilution.csv}, Tier 5). Physically: the polarized anisotropy is a
+      \textbf{birth-direction} effect; every scatter \textbf{randomizes direction}, so the wall
+      load is a mix of uncollided (steered) $+$ scattered (isotropized) neutrons. Roughly a
+      factor $\sim 3$ of the first-flight lever survives to the wall. \textbf{This is the
+      headline MC-necessity result} --- a free-streaming/analytic method overstates the benefit
+      $\sim 3\times$.
+\end{itemize}
+
+\qitem{Q31. FLiBe $= 84\%$ of heating --- is that expected?}
+\begin{itemize}
+\item Yes: the 50 cm FLiBe breeder is the thickest layer and the primary neutron-energy sink.
+      The volumetric-flux run (device 59509 $\times 10$, scattering ON, mesh
+      $(n_r, n_\phi, n_z) = (39, 32, 39)$) gives FLiBe $= 84\%$ of the $1.1\mathrm{e}7$ eV/src
+      heating (\texttt{PROVENANCE.md}). Near-wall fast flux modulates \textbf{perp $-10\%$ /
+      parallel $+10\%$} vs unpolarized --- the volumetric echo of the surface steering.
+\item Caveat to volunteer: the volumetric mesh shows heating, \textbf{not} inboard/outboard
+      steering --- the near-field steering asymmetry is a \textbf{surface} effect a volumetric
+      mesh can't resolve (would need a first-wall surface-current tally).
+\end{itemize}
+
+\qitem{Q32. Free-streaming cross-check ON the conformal wall (not just the box torus)?}
+\begin{itemize}
+\item \texttt{conformal\_freestream\_xcheck.py}, device 59509: analytic point-patch vs
+      ray-traced OpenMC \texttt{StellaratorSource} on the \textbf{real 3-D conformal wall}.
+      Agree \textbf{0.5--2.3\% by region} (inboard A/iso 1.6\%, B/iso 2.3\%; outboard
+      0.5\%/0.6\%; global 0.9\%/1.2\%), per-bin $r \approx 0.91$
+      (\texttt{conformal\_xcheck.csv}). Validates the source free-streaming on real geometry,
+      not only the square torus.
+\end{itemize}
+
+\framebreak
+\qitem{Q33. Directional efficiency $\eta = 0.89$ --- definition?}
+\begin{itemize}
+\item Fraction of the axisymmetric steering \textbf{retained under the real pitched 3-D field}.
+      Tier 8b: parallel mode reduces the inboard load \textbf{2.2\%} with the 3-D QA field vs
+      \textbf{2.4\%} with pure toroidal $\Rightarrow \eta = 2.2/2.4 \approx$ \textbf{0.89}
+      (\texttt{RESULTS\_tier8\_3d.md}). The pitched field tilts $\bhat$ off $\hat\varphi$,
+      costing $\sim 11\%$ of the ideal-toroidal lever. Emission moments confirm the sampler:
+      $\langle(u \cdot \bhat)^2\rangle = 0.201/0.333/0.467$ (perp/unpol/par) vs analytic
+      $0.200/0.333/0.467$ (\texttt{emission\_moments.csv}).
+\end{itemize}
+
+\qitem{Q34. The n=15 predictor NULL --- what did it show?}
+\begin{itemize}
+\item SPF global benefit
+      $Y = (\mathrm{PF}_{\text{unpol}} - \min_{a_2}\mathrm{PF})/\mathrm{PF}_{\text{unpol}}$ is
+      \textbf{weak: 0--16\%, median $\sim 4\%$} across the 15 devices
+      (\texttt{predictor\_n15.csv}).
+\item Best predictor is the \textbf{transport-free headroom proxy PF$_{\mathrm{geo}}$
+      ($\rho = +0.525$, borderline)}; \textbf{plasma-shape metrics do not forecast it}
+      (nematic\_Q $\rho = +0.396$ n.s., shaping\_amp $\rho = -0.186$). The strong $n=5$
+      correlation (PF$_{\mathrm{geo}}$ $\rho = +0.90$) \textbf{regressed to noise} at $n=15$ ---
+      a properly-powered null.
+\end{itemize}
+
+\qitem{Q35. Why is the SPF benefit weak for stellarators / why doesn't plasma shape forecast it?}
+\begin{itemize}
+\item Peaking is dominated by a \textbf{narrow near-field grazing spike} (0.3--2.8\% of wall
+      area) that the $P_2$ angular lever \textbf{cannot move}; SPF only steers the \textbf{broad,
+      low-harmonic} in/out asymmetry (the $\pm 22$--$43\%$ lever). So benefit tracks
+      \textbf{available headroom}, not shaping.
+\item Mechanistically, free-streaming line-of-sight integration is a \textbf{spatial low-pass
+      filter} $T(N) \sim \exp(-N a/R_0)$ (\texttt{RIPPLE\_AND\_PREDICTOR.md}): the wall
+      \textbf{structurally cannot resolve} high-harmonic plasma shaping, so a shape-harmonic
+      predictor is decoupled by construction. (Honest caveat: the low-pass is directly
+      validated for the \emph{ripple}; extending it to ``shape can't predict steering'' is
+      supported by the $n=15$ null but not independently proven --- \texttt{shaping\_amp} did
+      not cleanly decouple.)
+\end{itemize}
+
+\framebreak
+\qitem{Q36. Device 803097 is the interesting outlier --- why?}
+\begin{itemize}
+\item Peaked ($\mathrm{PF}_{\text{unpol}} = 1.40$) but \textbf{unsteerable} ($Y = 0.014$,
+      $\sim 10\times$ below the rest) and the \textbf{only perp-optimal device}
+      ($a_2^{\text{opt}} = -0.83$). PF$_{\mathrm{geo}}$ flags it as \emph{low} peaking (1.19),
+      so its transport peaking comes from an anisotropic near-field structure the isotropic
+      proxy can't see --- both perp-favorable and steering-resistant. This is ``when can SPF
+      \textbf{not} help.''
+\end{itemize}
+
+\qitem{Q37. Rate-vs-steering trade --- why is B the ``sweet spot''?}
+\begin{itemize}
+\item Tier 7 (\texttt{rate\_steering.csv}): A gives the biggest steering ($+70\%$
+      center-stack) but $\eta = 1.0$ requires full alignment; C halves the rate
+      ($\eta = \tfrac13$). \textbf{B keeps the non-polarized rate ($\eta = \tfrac23$,
+      fusion\_rate $= 1.00$) while still steering} (center-stack 0.85, outboard 1.09) --- best
+      rate-preserving directional lever. TBR/neutron is nearly mode-flat ($\sim 1.15$).
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{B6. Prior Art (Q38--Q41)}
+\begin{frame}
+\centering\vfill
+{\Large\color{key} B6. Comparison to Prior Art}\par
+\medskip{\footnotesize Q38--Q41: Bae, Lyytinen, TokamakSource, what is first-of-kind.}
+\vfill
+\end{frame}
+
+\begin{frame}[allowframebreaks]{B6. Prior Art (Q38--Q41)}
+\small
+\qitem{Q38. How does this differ from Bae et al.\ 2025?}
+\begin{itemize}
+\item Bae $=$ \textbf{precomputed static point-cloud} polarized source, one fixed tokamak,
+      tabulated and replayed. Ours is \textbf{native / on-the-fly / general}: samples
+      position $+$ polarized direction inside the transport loop from a real equilibrium, so it
+      carries \textbf{local-field polarized emission} ($\bhat$ varies in space) --- a tabulated
+      cloud cannot.
+\item One-liner: \emph{``Bae replays a frozen tokamak source; we generate a local-field-aware
+      polarized source on the fly, for any equilibrium.''}
+\item Do \textbf{not} claim ``first polarized source in OpenMC'' (Bae has that); \textbf{do}
+      claim ``first \emph{native/general/on-the-fly} polarized source in a production MC code.''
+\end{itemize}
+
+\qitem{Q39. vs Lyytinen 2024?}
+\begin{itemize}
+\item Lyytinen $=$ \textbf{Serpent2}, HELIAS, a \textbf{ported MCNP isotropic} source with
+      parametric \emph{geometry} --- no polarization, different code. One-liner:
+      \emph{``Lyytinen ports an isotropic stellarator source into Serpent2; we add
+      spin-polarized, local-field emission natively in OpenMC.''} Don't claim ``first MC
+      stellarator source.''
+\end{itemize}
+
+\framebreak
+\qitem{Q40. vs Peterson's own \texttt{TokamakSource}?}
+\begin{itemize}
+\item \texttt{TokamakSource} $=$ analytic axisymmetric tokamak geometry, isotropic
+      (unpolarized) emission, per-surface spectra. We (a) add the \textbf{SPF polarized
+      direction} hook (upstreamable into \texttt{TokamakSource} itself) and (b) add a sibling
+      \textbf{StellaratorSource} for real 3-D equilibria with grid-field $\bhat$. One-liner:
+      \emph{``same Source pattern; we add polarization $+$ a 3-D-equilibrium position/field
+      model.''}
+\end{itemize}
+
+\qitem{Q41. What's genuinely first-of-kind here?}
+\begin{itemize}
+\item First \textbf{polarized stellarator} source ($\bhat$ from a real 3-D equilibrium) ---
+      nobody has this. First \textbf{equilibrium-rigorous StellaratorSource in OpenMC} (gated
+      $\sqrt{g}$ volumetric). Plus the honest-findings results ($3\times$ scattering dilution,
+      MC-necessity boundary, B sweet spot).
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{B7. Limitations \& Pushback (Q42--Q50)}
+\begin{frame}
+\centering\vfill
+{\Large\color{key} B7. Limitations \& Likely Pushback}\par
+\medskip{\footnotesize Q42--Q50: monoenergetic, depolarization, convexity, honest gaps, asks.}
+\vfill
+\end{frame}
+
+\begin{frame}[allowframebreaks]{B7. Limitations \& Pushback (Q42--Q50)}
+\small
+\qitem{Q42. Monoenergetic --- isn't that unphysical for heating?}
+\begin{itemize}
+\item Yes for absolute heating; but the \textbf{steering/NWL physics is energy-independent} to
+      leading order, and the verification isolates source direction. Per-$r$ Ballabio spectra
+      are a drop-in (the XML already loops \texttt{<energy>}). Stated as a limitation.
+\end{itemize}
+
+\qitem{Q43. No depolarization physics in transport?}
+\begin{itemize}
+\item Correct --- this is a \textbf{birth-distribution} model; once born, neutrons transport
+      unpolarized (standard cross sections). Depolarization/spin-dependent scattering is out of
+      scope (as in Bae). The $3\times$ scatter dilution already captures the dominant
+      ``steering washes out'' effect via ordinary isotropizing scatter.
+\end{itemize}
+
+\qitem{Q44. Convex-ish wall assumption?}
+\begin{itemize}
+\item The analytic companion assumes a \textbf{convex cross-section / single visible arc}
+      (inherited from Schwartz); non-convex features (divertor legs) can split the visible
+      region --- flagged as future work. The \textbf{MC} side has no such restriction (it
+      ray-traces the true DAGMC wall); the assumption bounds only the analytic oracle. The
+      conformal builder also refuses self-intersecting (over-offset concave) walls.
+\end{itemize}
+
+\framebreak
+\qitem{Q45. Steering is ``just'' a source/free-stream effect that scattering dilutes --- so what?}
+\begin{itemize}
+\item That \textbf{is} the paper's point, stated honestly: SPF is a \textbf{local actuator, not
+      a global flattener}, and quantifying the $\sim 3\times$ dilution is \emph{why you need
+      transport} rather than the analytic. Two independent methods (MC $+$ anarrima) agree on
+      the weak-global-lever finding.
+\end{itemize}
+
+\qitem{Q46. Single device for the scatter run (59509) --- is that enough?}
+\begin{itemize}
+\item The \textbf{$3\times$ dilution} headline currently rests on the box-torus Tier-5 blanket
+      $+$ the 59509 conformal volumetric run. Broadening to more conformal \emph{scattering}
+      devices is the acknowledged to-do (the script \texttt{run\_conformal.py} exists, wired
+      for precise\_QA, not yet looped over QUASR devices). The 15-device set is free-streaming
+      NWL maps, not scattering. State the fidelity ladder explicitly.
+\end{itemize}
+
+\qitem{Q47. The box/square torus --- is that your physics geometry?}
+\begin{itemize}
+\item \textbf{No --- validation only.} Per Ethan's own earlier guidance: the square/box torus
+      is for sampler $+$ NWL verification and Schwartz axisymmetric recovery \textbf{only}; the
+      physics belongs on the conformal QUASR wall. The fidelity ladder is explicit in
+      \texttt{PAPER\_DIRECTION.md} (5 rungs, each isolating one effect).
+\end{itemize}
+
+\framebreak
+\qitem{Q48. Are the blanket materials/thicknesses real Helios values?}
+\begin{itemize}
+\item No --- \textbf{public ARC/ARIES-CS placeholders}, every device-specific value marked
+      \texttt{INJECT(helios)}. The machinery is validated; the specific radial build is a
+      stand-in pending real Helios numbers. Not a Helios physics claim.
+\end{itemize}
+
+\qitem{Q49. anarrima cross-checks you did NOT do (be upfront)?}
+\begin{itemize}
+\item \textbf{[from PAPER\_DIRECTION honest-gaps]} polarized-at-grazing (singularity
+      subtraction) is by-construction, \textbf{untested}; \texttt{jit(grad)} through the
+      anarrima engine hangs (eager grad works $\sim 9$s); the anarrima$\leftrightarrow$OpenMC
+      uncollided cross-check was never run. These are Limitations, not claims.
+\end{itemize}
+
+\qitem{Q50. What would you want from Ethan specifically?}
+\begin{itemize}
+\item Co-author sign-off on \S7--\S10; a sanity check on the \texttt{TokamakSource} upstreaming
+      path for the \texttt{<polarization>} hook; and whether the
+      \texttt{spf\_fluxmap\_v1}-vs-HDF5 choice is acceptable for an eventual upstream (or
+      whether it should read the existing OpenMC HDF5 mesh/field infrastructure).
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{Cheat Sheet}
+\begin{frame}{Quick Numbers Cheat-Sheet}
+\small
+\begin{itemize}
+\item Corner $\eta$: non-pol $\tfrac23$, A $1$, B $\tfrac23$, C $\tfrac13$. $P_\perp = a/\eta$.
+      $\int\sin^2 = 8\pi/3$, $\int(\tfrac14 + \tfrac34\cos^2) = 2\pi$.
+\item $a_2$: A $= -1$, unpol $= 0$, B/C $= +1$.
+\item 59509: nfp3, aspect 6.7, $e_{\text{geom}}$ 0.29, $\varepsilon_{\mathrm{eff}}$ 0.43.
+      precise\_QA $\varepsilon_{\mathrm{eff}}$ 2.3 (MC-only).
+\item Scatter dilution: A inboard $+40\% \to +13.2\%$, outboard $-20\% \to -9.2\%$
+      ($\sim 3\times$).
+\item FLiBe 84\% heating; near-wall flux perp $-10\%$/par $+10\%$. $\eta_{\text{dir}} = 0.89$.
+      TBR/n $\sim 1.15$.
+\item $n=15$ benefit: 0--16\%, median $\sim 4\%$; PF$_{\mathrm{geo}}$ $\rho = +0.525$ (best,
+      borderline); nematic $\rho = +0.396$ (n.s.).
+\item Conformal free-stream xcheck: 0.5--2.3\% by region, per-bin $r \approx 0.91$.
+\end{itemize}
+\end{frame}
+
+\end{document}

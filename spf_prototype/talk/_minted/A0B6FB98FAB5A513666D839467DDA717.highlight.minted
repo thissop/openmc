@@ -1,0 +1,10 @@
+\begin{MintedVerbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8\relax}]
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{openmc}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{StellaratorSource}
+
+\PYG{n}{src} \PYG{o}{=} \PYG{n}{StellaratorSource}\PYG{p}{(}
+    \PYG{n}{fluxmap}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{quasr59509\PYGZus{}cm\PYGZus{}fluxmap}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}     \PYG{c+c1}{\PYGZsh{} spf\PYGZus{}fluxmap\PYGZus{}v1 grid}
+    \PYG{n}{polarization}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mf}{1.0}\PYG{p}{,} \PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{l+m+mf}{0.0}\PYG{p}{)}\PYG{p}{,}        \PYG{c+c1}{\PYGZsh{} (a, b, c); A\PYGZhy{}mode = perpendicular}
+    \PYG{n}{field\PYGZus{}model}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{fluxmap}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}               \PYG{c+c1}{\PYGZsh{} local b\PYGZhy{}hat from the equilibrium}
+    \PYG{n}{energy}\PYG{o}{=}\PYG{n}{openmc}\PYG{o}{.}\PYG{n}{stats}\PYG{o}{.}\PYG{n}{Discrete}\PYG{p}{(}\PYG{p}{[}\PYG{l+m+mf}{14.06e6}\PYG{p}{]}\PYG{p}{,} \PYG{p}{[}\PYG{l+m+mf}{1.0}\PYG{p}{]}\PYG{p}{)}\PYG{p}{,}
+\PYG{p}{)}
+\end{MintedVerbatim}

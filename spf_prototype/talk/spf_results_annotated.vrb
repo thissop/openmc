@@ -1,0 +1,19 @@
+\frametitle{Python API And The Flux-Map Format}
+The user-facing side stays OpenMC-idiomatic:
+\begin{minted}{python}
+from openmc import StellaratorSource
+
+src = StellaratorSource(
+    fluxmap="quasr59509_cm_fluxmap",     # spf_fluxmap_v1 grid
+    polarization=(1.0, 0.0, 0.0),        # (a, b, c); A-mode = perpendicular
+    field_model="fluxmap",               # local b-hat from the equilibrium
+    energy=openmc.stats.Discrete([14.06e6], [1.0]),
+)
+\end{minted}
+\texttt{spf\_fluxmap\_v1}: a \texttt{.meta} text header (\texttt{magic},
+$n_R,n_\theta,n_\zeta,n_{fp}$) plus a little-endian f8 payload in C-order:
+\[
+\rho,\ \theta,\ \zeta,\ \sqrt{g},\ R,\ Z,\ \phi,\ B_R,\ B_\phi,\ B_Z .
+\]
+Spin fractions map in cleanly: \texttt{a=d+t+ + d-t-},\ \ \texttt{b=d0},\ \
+\texttt{c=d+t- + d-t+}.

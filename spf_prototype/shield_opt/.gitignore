@@ -1,0 +1,9 @@
+data/raw/
+__pycache__/
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.synctex.gz
