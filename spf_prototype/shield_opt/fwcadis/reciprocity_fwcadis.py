@@ -76,7 +76,7 @@ def parse_args():
 # --------------------------------------------------------------------------- #
 # Materials  (copied verbatim from ../ww_pert_pipeline/coil_run.py)
 # --------------------------------------------------------------------------- #
-def build_materials():
+def build_materials(vacuum=True):
     # EXACT tag set of dagmc_corr_breed (matches coil_percoil5.py): 9 in-vessel + Vacuum.
     w = openmc.Material(); w.add_element("W", 1.0); w.set_density("g/cm3", 19.3)
     rafm = openmc.Material(); rafm.add_element("Fe", 1.0); rafm.set_density("g/cm3", 7.9)
@@ -98,7 +98,9 @@ def build_materials():
     ts = openmc.Material(name="thermal_shield"); ts.add_element("Fe", 0.9, "wo"); ts.add_element("Cr", 0.1, "wo"); ts.set_density("g/cm3", 7.9)
     mg = openmc.Material(name="magnets"); mg.add_element("Cu", 1.0); mg.set_density("g/cm3", 8.5)
     vac = openmc.Material(name="Vacuum"); vac.add_nuclide("H1", 1.0); vac.set_density("g/cm3", 1e-6)
-    return openmc.Materials([fw, mult, br, bw, sh, gap, vv, ts, mg, vac])
+    base = [fw, mult, br, bw, sh, gap, vv, ts, mg]
+    # QA DAGMC has a 9-tag set (no Vacuum); QH has 10. Drop Vacuum for QA.
+    return openmc.Materials(base + ([vac] if vacuum else []))
 
 
 # --------------------------------------------------------------------------- #
