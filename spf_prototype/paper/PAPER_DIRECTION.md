@@ -57,8 +57,8 @@ lever.
 | Claim | Status | Prior art to cite & differentiate |
 |---|---|---|
 | **Geometry→load-structure decomposition** (geometry sets structure; polarization/emissivity are bounded modulators) across a device zoo | our contribution | ParaStell (Davis et al.) = manual parametric radial-build sweeps, per-device, no structure decomposition; Lyytinen 2024 (Serpent2, parametric geometry, isotropic) |
-| **Adjoint coil-kerma importance map** (adjoint source = magnet response, random-ray adjoint, flux = importance field) for a **3-D stellarator** | novel (methodological center) | FW-CADIS / CADIS use adjoint for variance reduction, not as a coil→plasma *attribution* map; Miralles-Dolz / Thea use random-ray FW-CADIS for WW, not closed-loop shield design |
-| **Closed-loop breeder-for-shield magnet-protection optimizer** driven by that importance map | novel | no published closed-loop breeder↔shield magnet optimizer on a 3-D stellarator |
+| **Adjoint coil-kerma importance map** (adjoint source = magnet response, random-ray adjoint, flux = importance field) for a **3-D stellarator** | novel (methodological center); **built + validated on real QH DAGMC** (reciprocity +0.76) | FW-CADIS / CADIS use adjoint for variance reduction, not as a coil→plasma *attribution* map; Miralles-Dolz / Thea use random-ray FW-CADIS for WW, not closed-loop shield design |
+| **Closed-loop breeder-for-shield magnet-protection optimizer** driven by that importance map | novel; **built** (surrogate benefit ~19% Bosch–Hale; OpenMC calibration pending) | no published closed-loop breeder↔shield magnet optimizer on a 3-D stellarator |
 | First-wall load **concentration law** (elongation→ξ, iota→peak) on a real device zoo | our result | — |
 | **Native, on-the-fly** polarized fusion source in OpenMC (supplementary) | defensible increment | Bae 2025 = precomputed static point cloud, one fixed tokamak |
 
@@ -79,7 +79,9 @@ Three linked claims, in order:
 2. **The load is attributable, and therefore optimizable, via adjoint importance mapping.** An adjoint
    source = coil-kerma response in the coil cell → random-ray adjoint solve → adjoint flux = the
    importance map (which plasma/phase-space regions drive coil heating) → closed-loop breeder-for-shield
-   optimizer. *(Methodological centerpiece; status below.)*
+   optimizer. *(Methodological centerpiece; **built + validated** on the real QH DAGMC — reciprocity
+   Spearman +0.76, scalar-adjoint-suffices angular check; closed-loop benefit still surrogate pending
+   OpenMC calibration. See `RESULTS_adjoint.md`.)*
 3. **Actuators are bounded modulators on top of the geometric structure.** A
    geometry × polarization × emissivity decomposition: geometry sets structure; polarization is a
    ~10–15% device-dependent lever (parallel B/C flattens QA magnet peaking ~17%); realistic
@@ -136,16 +138,45 @@ Bae (a,b,c) symbol-collision footnote.
 - **§3 (verification):** Tier 1–2 sampler + NWL-vs-Schwartz; free-streaming analytic↔MC on QUASR 59509.
   Committed.
 - **§6 (SPF):** native (a,b,c) StellaratorSource, a₂-linearity identity. Committed.
-- **§4 (adjoint) — NOT YET BUILT.** This is the novel centerpiece and it is *aspirational*. The
-  overnight WW-reciprocity attempt (MAGIC weight windows) exploded then ran too slow; the identified
-  production path is **FW-CADIS via the random-ray adjoint solver (TRRM)** — exactly the vehicle the
-  adjoint importance map needs. Building §4 is the critical path to this paper (see Open questions).
+- **§4 (adjoint) — BUILT + VALIDATED.** The novel centerpiece now runs. The adjoint coil-kerma
+  importance map is solved with OpenMC's **random-ray adjoint solver** (localized adjoint source =
+  coil response on the coil guide curve, mainline `set_local_adjoint_sources`, no feature-branch
+  rebuild) on the **real QH DAGMC** geometry, and the full chain — importance map → contributon
+  C=S·ψ† → placement → closed-loop breeder-for-shield optimizer — is committed and validated.
+  Validation: forward↔adjoint **reciprocity Spearman +0.76** (n=20 coils, matched geometry `w35f` +
+  response band, uniform-matched emissivity); the **angular P1-vs-P0 check (M7)** shows a scalar
+  adjoint suffices for coil placement (median P1/P0 ~1, placement φ₀ unchanged); the closed-loop
+  optimizer cuts peak coil dose ~19% under realistic Bosch–Hale emissivity. **Key methodological
+  property:** the adjoint importance ψ†(r) is **reactivity-independent** (geometry + coil response
+  only; no plasma-source information), so switching the reactivity profile (uniform ↔ Bosch–Hale, or
+  any scenario) is a *free re-weight* of the attribution needing no new transport solve — which is why
+  the emissivity study and per-coil ranking are cheap, and why the hot-coil set and adjoint-peak coil
+  (cell 20) are unchanged uniform→Bosch–Hale. All headline numbers,
+  their run parameters, and their honest caveats are frozen in `paper/RESULTS_adjoint.md`. The
+  earlier WW-reciprocity attempt (MAGIC weight windows: exploded, then solved-but-slow) was the
+  precursor that redirected us to this random-ray adjoint (TRRM) path. **Remaining caveat:** the
+  closed-loop *benefit* is a surrogate-objective number (uncalibrated literature MFPs); OpenMC
+  transport calibration is pending (see Honest gaps / Open questions).
 
 ## Honest gaps (state in Limitations)
 
-- **§4 adjoint importance map is not yet demonstrated** — only the WW-reciprocity precursor was
-  attempted (failed as MAGIC, solved-but-slow, redirected to random-ray FW-CADIS). The paper's
-  methodological headline depends on standing this up. Do not write §4 as done.
+- **§4 closed-loop benefit is a surrogate number, not yet OpenMC-calibrated.** The adjoint importance
+  map and reciprocity/angular validations are full transport solves and are done. But the optimizer's
+  *inner loop* uses an exponential-attenuation surrogate with **uncalibrated literature removal MFPs**
+  (λ_shield=8 cm, λ_breeder=17 cm); the ~19% (Bosch–Hale) / ~55% (uniform) peak-dose reductions are
+  **surrogate-objective** figures given the adjoint-informed vs uniform baseline *shape*, not
+  OpenMC-verified dose cuts. Calibration to OpenMC uniform-thickness scans is the pending step;
+  label the benefit as surrogate until then.
+- **§4 is demonstrated on a single device (QH).** The full adjoint→optimizer→validation chain runs on
+  the Landreman–Paul QH reactor only; QA is in progress. Do not generalize the method's numbers beyond
+  QH.
+- **§4 per-coil reciprocity has two outliers.** Reciprocity holds in rank (Spearman +0.76 over 20
+  coils), but coils 15 and 28 are per-coil outliers — most likely filament source-matching on highly
+  non-planar windings; the forward-hottest coil is cell 15 while the adjoint-hottest is cell 20. The
+  overall ranking holds; individual coil magnitudes carry that caveat.
+- **§4 angular check is P1-only.** "Scalar suffices for coil placement" is specific to the plasma-side
+  attribution (optically thin, median P1/P0 ~1); it does not extend to deep in-shield fields, where a
+  controlled slab (M6) shows P1/P0 growth to ~1.7× at 5 mfp in the scattering bulk.
 - **QA-vs-QH magnet gap is a coil-standoff confound.** QA coils sit ~1.9× further (global-min 3.11 m
   vs 1.63 m; ~148 cm extra standoff); 1/r² plus the longer attenuated path explains the ~25–40× lower
   QA coil flux. This is **not** a quasisymmetry advantage. The *within-device* polarization effects
@@ -158,11 +189,12 @@ Bae (a,b,c) symbol-collision footnote.
 
 ## Open questions (updated 2026-07-23)
 
-1. **Stand up the adjoint coil-kerma importance map (critical path).** Random-ray adjoint in OpenMC,
-   adjoint source = kerma response in the coil cell. Confirm the random-ray adjoint solver is
-   available/working in this OpenMC build before committing §4 as the centerpiece. If it slips, does
-   the paper still stand on §2+§5 alone (geometry decomposition + actuator matrix)? — likely yes but
-   weaker; decide the fallback.
+1. **Calibrate the closed-loop benefit to OpenMC transport (new critical path).** The adjoint
+   importance map is built and reciprocity/angular-validated; what remains is turning the optimizer's
+   *surrogate* benefit into an OpenMC-grounded number. Run full-transport coil dose vs uniform
+   breeder→shield thickness, fit λ_shield/λ_breeder, replace the literature-scale defaults (8/17 cm),
+   and re-run the closed loop. The ~19% must be reported as surrogate until this closes; the
+   calibration may move it up or down.
 2. **Closed-loop breeder-for-shield optimizer scope** — how many design iterations / which shield
    parameters for a first demonstration? Single coil cell or the full coil set?
 3. **Fair QA-vs-QH comparison** — normalize by standoff or use same-standoff coil sets, so §5 has a
@@ -180,7 +212,8 @@ Bae (a,b,c) symbol-collision footnote.
 and the conformalmap npz) with `PROVENANCE.md` naming the source of every number. `paper/src/` figure
 scripts read only from `paper/data/` and write to `paper/figures/`. smplotlib, minimalist. One script
 per figure, fixed inputs, regenerable. New figures needed for the pivot: the ξ concentration-vs-
-elongation zoo scatter (§2), the adjoint importance map (§4, once built), the geometry×pol×emissivity
+elongation zoo scatter (§2), the adjoint importance map / contributon + closed-loop placement (§4,
+built — regenerate from the committed adjoint maps), the geometry×pol×emissivity
 decomposition bars (§5).
 
 ---
