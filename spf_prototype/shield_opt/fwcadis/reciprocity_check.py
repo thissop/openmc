@@ -31,12 +31,16 @@ sys.path.insert(0, os.path.dirname(HERE))          # shield_opt/
 from adjoint_placement import plasma_source_on_mesh   # noqa: E402
 
 
-def adjoint_coil_load(map_npz, fluxmap, scale=100.0):
-    """INT S(r) psi_dagger(r) dr for one coil's adjoint map (the contributon integral)."""
+def adjoint_coil_load(map_npz, fluxmap, scale=100.0, emissivity="uniform"):
+    """INT S(r) psi_dagger(r) dr for one coil's adjoint map (the contributon integral).
+
+    emissivity='uniform' to MATCH a uniform-source forward run (reciprocity validation);
+    'bosch_hale' for the PHYSICAL per-coil load ranking (free -- psi_dagger is
+    reactivity-independent, so this needs no new transport)."""
     d = np.load(map_npz)
     imp = d["importance"].astype(float)
     S = plasma_source_on_mesh(fluxmap, d["lower_left"], d["upper_right"], d["dimension"],
-                              scale=scale)
+                              scale=scale, emissivity=emissivity)
     return float((S * imp).sum())
 
 
@@ -93,6 +97,10 @@ def main():
     ap.add_argument("--coils-file", default="/burg-archive/home/tjk2147/pstl_test/coils_qh")
     ap.add_argument("--coil-centroids",
                     default="/burg-archive/home/tjk2147/pstl_test/corrected/coil_centroids_corr.npz")
+    ap.add_argument("--emissivity", default="uniform", choices=["uniform", "bosch_hale"],
+                    help="uniform to MATCH the uniform-source forward run (validation); "
+                         "bosch_hale for the physical per-coil ranking (free, reactivity-"
+                         "independent adjoint).")
     args = ap.parse_args()
 
     pc = np.load(args.percoil)
@@ -106,7 +114,8 @@ def main():
         if not os.path.exists(mp):
             print(f"  coil {cid}: MISSING {mp} (sweep not done?)")
             continue
-        adj = adjoint_coil_load(mp, args.fluxmap, scale=args.fluxmap_scale)
+        adj = adjoint_coil_load(mp, args.fluxmap, scale=args.fluxmap_scale,
+                                emissivity=args.emissivity)
         rows.append((cid, adj, fflux[fcells.index(cid)]))
 
     if len(rows) < 3:
