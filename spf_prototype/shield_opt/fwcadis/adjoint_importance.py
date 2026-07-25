@@ -80,6 +80,9 @@ def parse_args():
     # MGXS generation (identical knobs to reciprocity)
     p.add_argument("--mgxs-method", default="stochastic_slab",
                    choices=["material_wise", "stochastic_slab", "infinite_medium"])
+    p.add_argument("--scatter-order", type=int, default=0, choices=[0, 1],
+                   help="0 = P0 (scalar, transport-corrected); 1 = P1 anisotropic scatter "
+                        "(angular adjoint; requires the openmc-m7 build with angular C++)")
     p.add_argument("--mgxs-particles", type=int, default=20000)
     p.add_argument("--mgxs-path", default="mgxs.h5")
     # Plasma importance mesh (the deliverable) + random-ray source-region mesh
@@ -103,6 +106,36 @@ GROUP_EDGES = [1e-5, 0.025, 1.0, 100.0, 1e3, 1e4, 1e5, 5e5, 1e6, 2e6, 5e6, 1e7, 
 # --------------------------------------------------------------------------- #
 # The localized magnet-response adjoint source
 # --------------------------------------------------------------------------- #
+import contextlib
+
+
+@contextlib.contextmanager
+def _legendre_order_patch(order):
+    """Force convert_to_multigroup's internal mgxs.Library to a given legendre_order.
+
+    convert_to_multigroup builds `openmc.mgxs.Library(geometry)` internally with the
+    default legendre_order (0). For the angular (P1) solve we need the scatter matrix
+    at legendre_order>=1 so the exported MGXS carries NU_SCATTER_FMU (the mu-dependent
+    scatter the random-ray P1 source reads as Sigma_s1). We patch Library.__init__ to
+    stamp legendre_order after construction, then restore. order<=0 -> no-op (P0 path).
+    """
+    if order <= 0:
+        yield
+        return
+    Lib = openmc.mgxs.Library
+    orig_init = Lib.__init__
+
+    def patched_init(self, *a, **k):
+        orig_init(self, *a, **k)
+        self.legendre_order = int(order)
+
+    Lib.__init__ = patched_init
+    try:
+        yield
+    finally:
+        Lib.__init__ = orig_init
+
+
 def _parse_coils(path, scale):
     """MAKEGRID coils file -> list of (Npts,3) filament polylines, scaled (e.g. m->cm).
 
@@ -272,16 +305,27 @@ def run_adjoint(ce_model, plasma_mesh, ext, bounds, args):
         origin=(0.0, 0.0, 0.0),
     )
 
-    print("=== [1] convert_to_multigroup (%s) ===" % args.mgxs_method, flush=True)
+    print("=== [1] convert_to_multigroup (%s, scatter-order=%d) ==="
+          % (args.mgxs_method, args.scatter_order), flush=True)
     t0 = time.time()
-    mg_model.convert_to_multigroup(
-        method=args.mgxs_method,
-        groups=openmc.mgxs.EnergyGroups(GROUP_EDGES),
-        nparticles=args.mgxs_particles,
-        mgxs_path=args.mgxs_path,
-        source_energy=openmc.stats.delta_function(14.06e6),
-        overwrite_mgxs_library=False,
-    )
+    # For the ANGULAR (P1) solve the scatter matrix must carry the l=1 moment so the
+    # solver can read NU_SCATTER_FMU -> Sigma_s1. convert_to_multigroup hardcodes the
+    # mgxs Library to legendre_order=0; we force order=1 via a targeted monkeypatch for
+    # scatter-order 1. correction=None (untransport-corrected 'total') is used for BOTH
+    # orders: (a) it is the clean P0-vs-P1 comparison -- isolating the explicit angular
+    # (P1) effect from the P0 transport correction, matching the M6 methodology; and
+    # (b) the 'P0' transport correction drives near-void materials to NEGATIVE total XS,
+    # which random ray rejects ("No zero or negative total macroscopic cross sections").
+    with _legendre_order_patch(args.scatter_order):
+        mg_model.convert_to_multigroup(
+            method=args.mgxs_method,
+            groups=openmc.mgxs.EnergyGroups(GROUP_EDGES),
+            nparticles=args.mgxs_particles,
+            mgxs_path=args.mgxs_path,
+            source_energy=openmc.stats.delta_function(14.06e6),
+            correction=None,
+            overwrite_mgxs_library=False,
+        )
     print("MGXS_WALL_SECONDS %.1f" % (time.time() - t0), flush=True)
     _check_mgxs_nonzero(args.mgxs_path)
 
@@ -339,12 +383,14 @@ def structure_gate(sp_path, plasma_mesh, args):
                            "rays/batches needed" % med_rel)
     print("  GATE PASS: adjoint importance map is non-empty, localized, structured.\n")
 
-    out = f"adjoint_importance_{args.response}.npz"
+    tag = f"{args.response}_P{args.scatter_order}"
+    out = f"adjoint_importance_{tag}.npz"
     np.savez(out, importance=imp, flux=flux, err=err,
              dimension=np.array(plasma_mesh.dimension),
              lower_left=np.array(plasma_mesh.lower_left),
              upper_right=np.array(plasma_mesh.upper_right),
-             response=args.response, coil_cells=np.array(args.coil_cells))
+             response=args.response, scatter_order=args.scatter_order,
+             coil_cells=np.array(args.coil_cells))
     print("saved", out, flush=True)
 
 

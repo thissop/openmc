@@ -87,12 +87,17 @@ def build_materials():
     br.add_element("Be", 1.0); br.add_element("F", 4.0); br.set_density("g/cm3", 1.94)
     bw = openmc.Material(name="back_wall"); bw.add_element("Fe", 1.0); bw.set_density("g/cm3", 7.9)
     sh = openmc.Material(name="shield"); sh.add_element("W", 1.0); sh.add_element("C", 1.0); sh.set_density("g/cm3", 15.6)
-    gap = openmc.Material(name="gap"); gap.add_element("H", 1.0); gap.set_density("g/cm3", 1e-8)
+    # Near-void densities floored at 1e-6 g/cm3 (MFP ~ 4e5 cm >> device ~4e3 cm, so still
+    # physically void) so their MC-tallied random-ray total XS is DETERMINISTICALLY positive.
+    # At 1e-8/1e-10 the total sits at the tally-noise floor and can come out <=0, which random
+    # ray rejects ("No zero or negative total macroscopic cross sections") -- geometry/seed
+    # dependent (w20 happened to pass, w35f/thicker builds fail). VERIFIED fix 2026-07-25.
+    gap = openmc.Material(name="gap"); gap.add_element("H", 1.0); gap.set_density("g/cm3", 1e-6)
     vv = openmc.Material(name="vac_vessel")
     vv.add_element("Fe", 0.7, "wo"); vv.add_element("Cr", 0.2, "wo"); vv.add_element("Ni", 0.1, "wo"); vv.set_density("g/cm3", 7.9)
     ts = openmc.Material(name="thermal_shield"); ts.add_element("Fe", 0.9, "wo"); ts.add_element("Cr", 0.1, "wo"); ts.set_density("g/cm3", 7.9)
     mg = openmc.Material(name="magnets"); mg.add_element("Cu", 1.0); mg.set_density("g/cm3", 8.5)
-    vac = openmc.Material(name="Vacuum"); vac.add_nuclide("H1", 1.0); vac.set_density("g/cm3", 1e-10)
+    vac = openmc.Material(name="Vacuum"); vac.add_nuclide("H1", 1.0); vac.set_density("g/cm3", 1e-6)
     return openmc.Materials([fw, mult, br, bw, sh, gap, vv, ts, mg, vac])
 
 

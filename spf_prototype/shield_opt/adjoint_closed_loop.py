@@ -69,6 +69,10 @@ def main():
     ap.add_argument("--n-tor", type=int, default=36)
     ap.add_argument("--n-pol", type=int, default=36)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--emissivity", default="bosch_hale", choices=["bosch_hale", "uniform"],
+                    help="plasma reactivity profile for S(r) in the contributon. "
+                         "bosch_hale = realistic core-peaked (PHYSICAL, the default); "
+                         "uniform over-weights the shaped edge and OVER-STATES the benefit.")
     ap.add_argument("--fig", default=None, help="save the closed-loop figure to this path")
     args = ap.parse_args()
 
@@ -76,7 +80,12 @@ def main():
     pol = np.linspace(0, 360, args.n_pol, endpoint=False)
 
     # --- adjoint attribution -> placement priority on the optimizer's control grid ---
-    field = apl.contributon(args.map, args.fluxmap, scale=100.0)
+    # Use the PHYSICAL (Bosch-Hale core-peaked) reactivity by default: uniform emissivity
+    # over-weights the strongly-shaped plasma edge and overstates the localizable benefit
+    # (~55% vs ~19% realistic on QH coil-15). The adjoint psi_dagger is reactivity-
+    # independent; only this S(r) weighting changes.
+    print(f"reactivity profile (S(r) weighting): {args.emissivity}")
+    field = apl.contributon(args.map, args.fluxmap, scale=100.0, emissivity=args.emissivity)
     res = apl.placement_priority(field, tor, pol)
     P = res["priority"]                                # (n_tor, n_pol) in [0,1]
     cphi, _ = apl.coil_angles(args.coil_centroid, res["R0"])
