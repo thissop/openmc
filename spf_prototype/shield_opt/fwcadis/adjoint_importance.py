@@ -56,6 +56,8 @@ from reciprocity_fwcadis import build_materials, _check_mgxs_nonzero
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--dagmc", required=True, help="Path to DAGMC .h5m file")
+    p.add_argument("--no-vacuum", action="store_true",
+                   help="drop the Vacuum material (QA DAGMC has a 9-tag set, no Vacuum)")
     p.add_argument("--workdir", default=os.path.expanduser("~/pstl_test/adjoint"))
     p.add_argument("--coil-cells", type=int, nargs="+", default=[8],
                    help="DAGMC cell ID(s) whose coil guide curve hosts the adjoint source")
@@ -251,7 +253,7 @@ def _cu_kerma_weights(mids):
 # CE base model: geometry + plasma-mesh flux tally (the importance deliverable)
 # --------------------------------------------------------------------------- #
 def build_ce_model(args):
-    mats = build_materials()
+    mats = build_materials(vacuum=not args.no_vacuum)
 
     dag = openmc.DAGMCUniverse(args.dagmc, auto_geom_ids=True)
     bb = dag.bounding_box
