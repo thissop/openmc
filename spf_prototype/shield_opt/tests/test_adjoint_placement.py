@@ -205,6 +205,30 @@ def test_real_contributon_placement_points_at_coil15():
 
 @pytest.mark.skipif(not (os.path.exists(REAL_MAP) and os.path.exists(REAL_FLUX)),
                     reason="committed cell-15 adjoint map / fluxmap not present")
+def test_closed_loop_adjoint_beats_uniform():
+    """End-to-end: the adjoint-informed baseline lets the shield optimizer localize
+    and cut peak coil dose, while a uniform (no-attribution) baseline cannot."""
+    import adjoint_closed_loop as acl
+    from thickness_field import ThicknessField
+
+    tor = np.linspace(0, 360, 36, endpoint=False)
+    pol = np.linspace(0, 360, 36, endpoint=False)
+    field = ap.contributon(REAL_MAP, REAL_FLUX, scale=100.0)
+    P = ap.placement_priority(field, tor, pol)["priority"]
+    tf = ThicknessField(nfp=4, toroidal_angles_deg=tor, poloidal_angles_deg=pol,
+                        t_breeder0=80.0, t_shield0=20.0, t_breeder_min=10.0)
+    basis = tf.fourier_basis(M=3, N=2)
+    a = acl.run_case("adjoint", P / P.max(), tf, basis, seed=0)
+    u = acl.run_case("uniform", np.ones_like(P), tf, basis, seed=0)
+    # adjoint-informed must achieve a large peak-dose reduction; uniform ~none
+    assert a["reduction"] > 0.3, f"adjoint reduction {a['reduction']:.2f} too small"
+    assert a["reduction"] > u["reduction"] + 0.3, "adjoint must clearly beat uniform"
+    # neither may cheat the TBR floor
+    assert a["tbr"] >= 1.05 - 1e-3 and u["tbr"] >= 1.05 - 1e-3
+
+
+@pytest.mark.skipif(not (os.path.exists(REAL_MAP) and os.path.exists(REAL_FLUX)),
+                    reason="committed cell-15 adjoint map / fluxmap not present")
 def test_contributon_beats_bare_flux_on_real_map():
     """The contributon must point at the coil markedly better than the bare flux."""
     coil = np.array(COIL15); u = coil / np.linalg.norm(coil)
