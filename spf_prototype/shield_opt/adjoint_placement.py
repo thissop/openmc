@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import numpy as np
 
+_WARNED = {"uniform": False}   # one-time guard so uniform emissivity is never used silently
+
 
 def _voxel_centers(ll, ur, dim):
     return [np.linspace(ll[i], ur[i], dim[i] + 1)[:-1] + 0.5 * (ur[i] - ll[i]) / dim[i]
@@ -48,6 +50,13 @@ def plasma_source_on_mesh(fluxmap, ll, ur, dim, scale=100.0, emissivity="uniform
     Z = fm["Z"] * scale
     phi = fm["phi"]
     w = np.abs(fm["sqrtg"])
+    if emissivity == "uniform" and not _WARNED["uniform"]:
+        import sys
+        print("NOTE: plasma source S(r) uses UNIFORM emissivity (non-physical -- "
+              "over-weights the shaped plasma edge; ~3x optimistic vs core-peaked "
+              "Bosch-Hale on QH). Legitimate only for validation/geometry-isolation "
+              "or matching a uniform-source forward run.", file=sys.stderr, flush=True)
+        _WARNED["uniform"] = True
     if emissivity != "uniform":
         import os
         import sys
