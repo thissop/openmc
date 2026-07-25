@@ -192,6 +192,49 @@ but a reciprocity OUTLIER; the ADJOINT-hottest (true peak) is cell 20. Re-run th
 adjoint-peak coil (20) for the headline, and keep coil-15 only as a demo. Folds into Phase D (the
 15/28 outlier fix) + E.
 
+## STRATEGY INTEGRATION (from docs/SCIENCE_STRATEGY.md, 2026-07-25) — REPRIORITIZES THIS PLAN
+
+A critical strategy review reframed the science. Key conclusions (full detail + sources +
+prior-art in SCIENCE_STRATEGY.md):
+
+- **The METHOD is the right bet and publishable now** (adjoint coil-kerma attribution + closed-loop
+  + free-streaming companion). **The PREDICTIVE LAW is over-reached at n=2** and confounded 3 ways:
+  (i) the QA/QH pair differs mostly in **coil standoff** (1.9×) which drives both concentration AND
+  benefit; (ii) the benefit metric is a surrogate with the WRONG functional form (exp(−kδ) cannot
+  represent the leak-around SATURATION the group itself found — so metric-2 as wired *cannot test the
+  thesis*); (iii) magnet-side concentration is set by COIL descriptors (standoff, non-planarity), not
+  the plasma-shape descriptors that drive the first-wall ξ=0.96 → the "same geometry sets BOTH" unification
+  is softer than hoped. **Reframe the law as a HYPOTHESIS + falsification test, not a deliverable.**
+
+- **REPRIORITIZED ORDER (supersedes the A–F order above where they conflict):**
+  1. **Phase C is now STEP 1 = the KILL-OR-CONFIRM experiment (highest priority).** Build the adjoint-
+     PLACED vs equal-material-budget UNIFORM shield as two DAGMC models on QH+QA, run coil dose in FULL
+     TRANSPORT, compare. This retires the invalid surrogate AND is the one experiment that can falsify
+     "concentration ⇒ shieldable" (if placed ≈ uniform even at high concentration → thesis falsified;
+     still publishable as the null "placement can't beat leak-around").
+  2. **NEW STEP 2 = zoo-wide FREE-STREAMING coil-concentration law (cheap, real n, NO new DAGMC).**
+     Correlate free-streaming per-coil-flux concentration (Gini/PR) vs COIL descriptors (standoff,
+     non-planarity, winding curvature) AND plasma descriptors (elongation, iota) across the existing
+     QUASR zoo. Attacks the standoff confound with real n; delivers adjacent direction (a) for free;
+     publishable even if the through-shield law never closes. Uses committed modules only.
+  3. **Phase E (cross-device ξ) = STEP 3, reframed:** freeze the 4 metrics, compute QH/QA with the
+     TRANSPORT benefit (not surrogate), report as a FRAMEWORK + honest standoff-labeled n=2 comparison
+     + the through-shield law as a STATED HYPOTHESIS. Not a claimed law.
+  4. **QI feasibility spike (new, gates the ambitious arm):** pull 1–2 ConStellaration/CIEMAT-QI4X QI
+     boundaries → coil design → ParaStell → DAGMC → adjoint; MEASURE the per-device cost before committing
+     to n≈5. ParaStell→DAGMC→adjoint AUTOMATION is itself the publishable infra contribution (QA proved
+     it's not free).
+
+- **MVP paper (this cycle):** method + transport-grounded QH+QA benefit (Step 1) + zoo-wide free-streaming
+  coil law (Step 2) + 4-metric framework + honest n=2 comparison (Step 3). **Ambitious (multi-quarter):**
+  the through-shield law across n≈7 standoff-spanning QI+QS devices — buy ONLY after Step 1 confirms the
+  mechanism and the QI spike shows affordable per-device cost.
+
+- **Prior-art to pre-empt in the manuscript:** ParaStell already published 3-D shield/TBR variation on
+  WISTELL-D (differentiator: adjoint says WHERE, not brute force); arXiv 2604.26763 links coil non-planarity
+  to plasma-surface geometry (stay on the NEUTRON-LOADING axis); HELIAS used ADVANTG adjoint VR
+  (differentiate on ATTRIBUTION, not variance reduction).
+
 ## Global honesty gates (apply throughout)
 - Every reported number stamps: device, geometry (shield build), emissivity, response, objective
   (surrogate vs transport-calibrated), rel.err, n. (The self-reporting convention already added.)
