@@ -31,19 +31,31 @@ def _voxel_centers(ll, ur, dim):
             for i in range(3)]
 
 
-def plasma_source_on_mesh(fluxmap, ll, ur, dim, scale=100.0):
+def plasma_source_on_mesh(fluxmap, ll, ur, dim, scale=100.0, emissivity="uniform"):
     """Rasterize the plasma neutron SOURCE S(r) onto the importance mesh.
 
-    Uniform-emissivity source density ~ |sqrt(g)| (the plasma volume element), the
-    same S_v the free-streaming culprit map uses. The VMEC fluxmap gives (R, Z, phi)
-    on flux surfaces with |sqrt(g)| weights; we convert to Cartesian (scale m->cm to
-    match the DAGMC/mesh frame) and histogram onto the mesh cells. Returns S[nx,ny,nz].
+    Source density = |sqrt(g)| (plasma volume element) times a reactivity weight r(rho):
+      emissivity='uniform'    -> r=1 (the S_v the free-streaming culprit map uses)
+      emissivity='bosch_hale' -> core-peaked DT reaction rate n^2<sigma v>(T) on the
+                                 Miralles-Dolz profiles (shield_opt/emissivity.py).
+    NOTE the ADJOINT importance psi_dagger(r) is reactivity-INDEPENDENT (pure geometry +
+    coil response); the reactivity profile enters ONLY here, in S(r) -- so switching
+    profiles needs no new transport run, just a re-weight. The VMEC fluxmap gives
+    (R, Z, phi, rho, sqrt(g)); we scale m->cm and histogram onto the mesh. Returns S.
     """
     fm = np.load(fluxmap) if isinstance(fluxmap, str) else fluxmap
     R = fm["R"] * scale
     Z = fm["Z"] * scale
     phi = fm["phi"]
     w = np.abs(fm["sqrtg"])
+    if emissivity != "uniform":
+        import os
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from emissivity import emissivity_weight
+        rho = np.asarray(fm["rho"], dtype=float)            # (nrho,) per flux surface
+        r_of_rho = emissivity_weight(rho, kind=emissivity)  # normalized reactivity r(rho)
+        w = w * r_of_rho[:, None, None]                     # broadcast over (rho, theta, zeta)
     xs = (R * np.cos(phi)).ravel()
     ys = (R * np.sin(phi)).ravel()
     zs = Z.ravel()
@@ -52,7 +64,7 @@ def plasma_source_on_mesh(fluxmap, ll, ur, dim, scale=100.0):
     return S
 
 
-def contributon(map_npz, fluxmap, scale=100.0):
+def contributon(map_npz, fluxmap, scale=100.0, emissivity="uniform"):
     """Coil-attribution CONTRIBUTON C(r) = S(r) * psi_dagger(r).
 
     The bare adjoint flux psi_dagger peaks in the optically-thin central vacuum
@@ -65,7 +77,7 @@ def contributon(map_npz, fluxmap, scale=100.0):
     d = np.load(map_npz) if isinstance(map_npz, str) else map_npz
     imp = d["importance"].astype(float)
     ll, ur, dim = d["lower_left"], d["upper_right"], d["dimension"]
-    S = plasma_source_on_mesh(fluxmap, ll, ur, dim, scale=scale)
+    S = plasma_source_on_mesh(fluxmap, ll, ur, dim, scale=scale, emissivity=emissivity)
     C = S * imp
     out = {k: d[k] for k in d.files} if hasattr(d, "files") else dict(d)
     out["importance"] = C

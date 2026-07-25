@@ -213,17 +213,20 @@ def test_closed_loop_adjoint_beats_uniform():
 
     tor = np.linspace(0, 360, 36, endpoint=False)
     pol = np.linspace(0, 360, 36, endpoint=False)
-    field = ap.contributon(REAL_MAP, REAL_FLUX, scale=100.0)
+    # PHYSICAL reactivity (core-peaked Bosch-Hale): the realistic benefit is ~19% on
+    # QH coil-15 (uniform emissivity overstates it to ~55%). Assert the realistic,
+    # not the optimistic, benefit.
+    field = ap.contributon(REAL_MAP, REAL_FLUX, scale=100.0, emissivity="bosch_hale")
     P = ap.placement_priority(field, tor, pol)["priority"]
     tf = ThicknessField(nfp=4, toroidal_angles_deg=tor, poloidal_angles_deg=pol,
                         t_breeder0=80.0, t_shield0=20.0, t_breeder_min=10.0)
     basis = tf.fourier_basis(M=3, N=2)
     a = acl.run_case("adjoint", P / P.max(), tf, basis, seed=0)
     u = acl.run_case("uniform", np.ones_like(P), tf, basis, seed=0)
-    # adjoint-informed must achieve a large peak-dose reduction; uniform ~none
-    assert a["reduction"] > 0.3, f"adjoint reduction {a['reduction']:.2f} too small"
-    assert a["reduction"] > u["reduction"] + 0.3, "adjoint must clearly beat uniform"
-    # neither may cheat the TBR floor
+    # adjoint-informed must achieve a real peak-dose reduction and clearly beat the
+    # no-attribution (uniform) baseline, without cheating the TBR floor
+    assert a["reduction"] > 0.1, f"adjoint reduction {a['reduction']:.2f} too small"
+    assert a["reduction"] > u["reduction"] + 0.1, "adjoint must clearly beat uniform"
     assert a["tbr"] >= 1.05 - 1e-3 and u["tbr"] >= 1.05 - 1e-3
 
 
