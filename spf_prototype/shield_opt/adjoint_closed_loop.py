@@ -112,12 +112,12 @@ def main():
           f"(breeder sacrificed {100*a['sacrificed']:.1f}% vs {100*u['sacrificed']:.1f}%).")
 
     if args.fig:
-        _figure(a, tf, basis, P, tor, pol, args.fig)
+        _figure(a, tf, basis, P, tor, pol, args.fig, args.emissivity)
         print("  wrote", args.fig)
     return a, u
 
 
-def _figure(a, tf, basis, P, tor, pol, out):
+def _figure(a, tf, basis, P, tor, pol, out, emissivity):
     import smplotlib  # noqa: F401  house style before pyplot
     import matplotlib
     matplotlib.use("Agg")
@@ -133,9 +133,11 @@ def _figure(a, tf, basis, P, tor, pol, out):
     ax[1].set_title("Optimized Shield Added $\\delta(\\theta,\\phi)$ (cm)")
     ax[1].set_xlabel("Toroidal Angle (deg)"); ax[1].set_ylabel("Poloidal Angle (deg)")
     fig.colorbar(im1, ax=ax[1], fraction=0.046, pad=0.04, label="Shield Added (cm)")
-    fig.suptitle(f"Closed Loop: Adjoint-Informed Shield Cuts Peak Coil Dose "
+    prof = {"bosch_hale": "Realistic (Bosch--Hale) Reactivity",
+            "uniform": "UNIFORM Emissivity (Non-Physical)"}.get(emissivity, emissivity)
+    fig.suptitle(f"QH Closed Loop: Adjoint-Informed Shield Cuts Peak Coil Dose "
                  f"{100*a['reduction']:.0f}% (Breeder $-${100*a['sacrificed']:.0f}%, "
-                 f"TBR {a['tbr']:.2f})", fontsize=12)
+                 f"TBR {a['tbr']:.2f})\\n{prof}", fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     fig.savefig(out, dpi=200, bbox_inches="tight")
 
