@@ -19,10 +19,104 @@ Usage: python build_device_dagmc.py --wout W --coils C --nfp N --outname TAG --e
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 
 import numpy as np
+
+
+def write_status(export_dir, outname, status, **extra):
+    """Per-stage GO/NO-GO record the orchestrator classifies on (never crash -> always a status)."""
+    rec = dict(stage="dagmc", outname=outname, status=status, **extra)
+    (Path(export_dir) / f"dagmc_{outname}_build_status.json").write_text(json.dumps(rec, indent=2))
+    print(f"[dagmc] STATUS={status} " + " ".join(f"{k}={v}" for k, v in extra.items()), flush=True)
+    return rec
+
+
+def _count_subsolids(cq_shape):
+    """Number of disconnected TopoDS SOLIDs inside one CadQuery object (a split/pinched layer
+    is a compound of >1 solid). Returns >=1; 1 for a normal connected solid."""
+    try:
+        s = cq_shape.val() if hasattr(cq_shape, "val") and not hasattr(cq_shape, "Solids") else cq_shape
+        subs = s.Solids()
+        return max(1, len(subs))
+    except Exception:
+        return 1
+
+
+def export_dagmc_tag_safe(stellarator, filename, export_dir,
+                          min_mesh_size=5.0, max_mesh_size=20.0, algorithm=1):
+    """GUARD + RECOVER replacement for stellarator.export_cad_to_dagmc.
+
+    ParaStell builds one material tag PER in-vessel layer (+1 per coil), but gmsh tessellates a
+    geometrically DISCONNECTED layer (thin conformal offset that pinches into 2 lobes for a
+    high-aspect plasma) into 2+ volumes -> len(material_tags) < n_volumes -> cad_to_dagmc raises
+    'number of material_tags provided is N but number of triangle sets is M'. This is a BUILD-time
+    crash (upstream of the transport watertightness gate).
+
+    Discipline (pre-flight-then-commit): run gmsh, count volumes, and
+      * if n_tags == n_volumes -> commit (no split; normal export);
+      * else RECOVER -> expand the tag list by each ORIGINAL solid's disconnected-sub-solid count,
+        in build order (gmsh numbers a compound's sub-solids consecutively, and ParaStell appends
+        the coils LAST so the trailing volumes stay 'magnets'). Commit ONLY if the expanded list
+        reconciles exactly (sum == n_volumes) AND the coil-cell count is preserved;
+      * else REJECT cleanly (status='dagmc_tag_mismatch') -- never let cad_to_dagmc raise.
+
+    Returns a status dict.
+    """
+    import cad_to_dagmc
+
+    export_path = Path(export_dir) / (Path(filename).with_suffix(".h5m").name)
+
+    # rebuild the per-original-solid list + tags exactly as build_cad_to_dagmc_model did
+    ivb_solids, ivb_tags = stellarator.invessel_build.extract_solids_and_mat_tags()
+    magnet_solids = list(stellarator.magnet_set.all_coil_solids)
+    mtag = stellarator.magnet_set.mat_tag
+    magnet_tag = (mtag[0] if isinstance(mtag, (list, tuple)) else mtag)
+    solids = list(ivb_solids) + magnet_solids
+    per_solid_tags = list(ivb_tags) + [magnet_tag] * len(magnet_solids)
+    n_short = len(per_solid_tags)
+
+    # tessellate (mirror ParaStell.export_cad_to_dagmc up to vertices_to_h5m)
+    gmsh_obj = cad_to_dagmc.init_gmsh()
+    _, volumes = cad_to_dagmc.get_volumes(gmsh_obj, stellarator._geometry, method="in memory")
+    cad_to_dagmc.set_sizes_for_mesh(gmsh_obj, min_mesh_size=min_mesh_size,
+                                    max_mesh_size=max_mesh_size, mesh_algorithm=algorithm)
+    gmsh_obj.model.mesh.generate(dim=2)
+    vertices, tris_by_solid = cad_to_dagmc.mesh_to_vertices_and_triangles(volumes)
+    gmsh_obj.finalize()
+    n_vol = len(tris_by_solid)
+
+    if n_short == n_vol:
+        tags = per_solid_tags                      # no split -> commit as-is
+        recovered = False
+    else:
+        # RECOVER: expand by each solid's disconnected sub-solid count, in order.
+        counts = [_count_subsolids(s) for s in solids]
+        expanded = []
+        for tag, c in zip(per_solid_tags, counts):
+            expanded.extend([tag] * c)
+        n_magnet_pieces = sum(counts[len(ivb_solids):])
+        if len(expanded) == n_vol and n_magnet_pieces == len(magnet_solids):
+            tags = expanded
+            recovered = True
+            print(f"[dagmc] RECOVERED tag/solid split: {n_short} tags -> {len(expanded)} "
+                  f"(n_vol={n_vol}); split solids: "
+                  f"{[(t, c) for t, c in zip(per_solid_tags, counts) if c > 1]}", flush=True)
+        else:
+            # sub-solid counting did not reconcile with gmsh -> clean REJECT (never crash/mis-tag)
+            return write_status(export_dir, Path(filename).name.replace("dagmc_", ""),
+                                "dagmc_tag_mismatch", n_tags=n_short, n_volumes=n_vol,
+                                sum_subsolids=int(sum(counts)),
+                                n_magnet_pieces=int(n_magnet_pieces),
+                                n_coils=len(magnet_solids),
+                                note="sub-solid recovery did not reconcile; rejected (no crash)")
+
+    cad_to_dagmc.vertices_to_h5m(vertices, tris_by_solid, tags, h5m_filename=export_path)
+    outname = Path(filename).name.replace("dagmc_", "")
+    return write_status(export_dir, outname, "go", n_tags=len(tags), n_volumes=n_vol,
+                        n_coils=len(magnet_solids), recovered_split=recovered)
 
 
 def main():
@@ -107,14 +201,29 @@ def main():
 
     print("[dagmc] build_cad_to_dagmc_model ...", flush=True)
     stellarator.build_cad_to_dagmc_model()
-    print("[dagmc] material tags:", stellarator._material_tags, flush=True)
-    stellarator.export_cad_to_dagmc(filename=f"dagmc_{args.outname}", export_dir=export_dir)
+    print("[dagmc] material tags (ParaStell short list):",
+          len(stellarator._material_tags), flush=True)
+
+    # GUARDED export: tag/solid-count mismatch (split layers) recovers or rejects cleanly,
+    # and any unexpected error becomes a caught status -- never a mid-build crash / MPI_ABORT.
+    try:
+        st = export_dagmc_tag_safe(stellarator, filename=f"dagmc_{args.outname}",
+                                   export_dir=export_dir)
+    except Exception as e:
+        st = write_status(export_dir, args.outname, f"error:dagmc:{type(e).__name__}",
+                          message=str(e)[:200])
+    if st["status"] != "go":
+        print(f"[dagmc] NO-GO ({st['status']}); no DAGMC written. Device rejected cleanly.",
+              flush=True)
+        raise SystemExit(7)
+
     np.savez(Path(export_dir) / f"delta_{args.outname}.npz",
              delta=delta, t_shield=t_shield, t_breeder=t_breeder,
              variant=str(args.variant), be_cm=args.be_cm, nfp=nfp,
              toroidal_angles=np.array(toroidal_angles),
              poloidal_angles=np.array(poloidal_angles))
-    print(f"[dagmc] DONE build_{args.outname}", flush=True)
+    print(f"[dagmc] DONE build_{args.outname} (recovered_split={st.get('recovered_split')})",
+          flush=True)
 
 
 if __name__ == "__main__":

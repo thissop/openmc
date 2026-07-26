@@ -133,6 +133,13 @@ def finalize(ID, work, suite, row):
     eq_status = d / f"{label}_status.json"
     if eq_status.exists():
         rec["gate_status"]["equil"] = json.loads(eq_status.read_text()).get("status")
+    build_status = d / f"dagmc_{label}_build_status.json"
+    if build_status.exists():
+        bs = json.loads(build_status.read_text())
+        rec["gate_status"]["dagmc_build"] = bs.get("status")
+        rec["dagmc_recovered_split"] = bs.get("recovered_split")
+        rec["dagmc_n_volumes"] = bs.get("n_volumes")
+        rec["dagmc_n_coils"] = bs.get("n_coils")
     wt_status = d / f"dagmc_{label}_watertight.json"
     if wt_status.exists():
         wt = json.loads(wt_status.read_text())
@@ -296,7 +303,7 @@ def plan_and_run(args):
                 f"python {suite}/build_device_dagmc.py --wout {wout} --coils {coils_file} "
                 f"--nfp {row['nfp'] if row else 0} --outname {label} --export-dir {d}")
         sb = write_sbatch(d / "sb_dagmc.sh", f"dg{ID}", body, str(d),
-                          time="0-04:00", cpus=16, mem="4G")
+                          part="burst,short", time="0-06:00", cpus=16, mem="4G")
         jid_d = submit(sb, dep=_dep(jid), dry=dry)
     else:
         print("  dagmc: artifact present or not requested")

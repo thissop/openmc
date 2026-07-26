@@ -79,6 +79,19 @@ Every expensive stage is preceded by a cheap validity check that classifies the 
   (`OMP_NUM_THREADS`, default 1) so a login-node convergence doesn't silently diverge on a
   compute node. *Validated:* 1328722 GO (ier=0, resid 9.97e-13→artifacts) and forced NO-GO
   (`MAGNET_VMEC_FORCE_TOL=1e-20`→clean reject, no wout).
+- **DAGMC build-time tag/solid gate** (`build_device_dagmc.py`, `export_dagmc_tag_safe`): ParaStell
+  emits one material tag per in-vessel layer (+1/coil), but gmsh tessellates a geometrically
+  DISCONNECTED layer (a thin conformal offset that pinches into 2 lobes for a high-aspect plasma)
+  into 2+ volumes → `cad_to_dagmc` raises "number of material_tags provided is N but number of
+  triangle sets is M" mid-build. The export is now wrapped: after gmsh tessellation, if
+  `n_tags != n_volumes` it **RECOVERS** by expanding the tag list by each original solid's
+  disconnected sub-solid count (in build order; coils appended last stay `magnets`), committing
+  only if the expansion reconciles exactly AND the 32-coil count is preserved; otherwise it
+  **REJECTS** cleanly with `status="dagmc_tag_mismatch"` (records n_tags/n_volumes). Any other
+  error → caught `error:dagmc:*` status. *Validated:* the recovery algorithm end-to-end on a
+  synthetic split (`_count_subsolids`→[1,2,1], tags expand, gmsh reconciles, coils preserved);
+  ParaStell stores pinched layers as `cq.Compound`s so `.Solids()` detects the split. Real
+  1328722 build queued to confirm recovered-vs-rejected.
 - **DAGMC watertightness gate** (`dagmc_watertight_check.py`, run **before** any adjoint/forward):
   a cheap 10k-particle streaming probe (low-density filler in every tag, vacuum bounding sphere
   exactly as `adjoint_importance.py`, low `max_lost_particles`). Completes → `go` (records
