@@ -127,7 +127,17 @@ def finalize(ID, work, suite, row):
                d_min_over_a=float(row["d_min_over_a"]) if row else None,
                gap_m=float(row["gap_m_ARIESCS"]) if row else None,
                blanket_fit_1p29=int(row["blanket_fit_1.29m"]) if row else None,
-               stages={})
+               gate_status={}, stages={})
+
+    # ---- collect the pre-flight GATE statuses (GO / NO-GO-with-reason per stage) ----
+    eq_status = d / f"{label}_status.json"
+    if eq_status.exists():
+        rec["gate_status"]["equil"] = json.loads(eq_status.read_text()).get("status")
+    wt_status = d / f"dagmc_{label}_watertight.json"
+    if wt_status.exists():
+        wt = json.loads(wt_status.read_text())
+        rec["gate_status"]["dagmc_watertight"] = wt.get("status")
+        rec["dagmc_lost_frac"] = wt.get("lost_frac")
 
     # per-response adjoint maps produced by the adjoint stage
     cen_npz = d / f"{label}_coil_centroids.npz"
@@ -195,9 +205,22 @@ def finalize(ID, work, suite, row):
     except Exception as e:
         rec["transport_emissivity_error"] = str(e)
 
+    # ---- OVERALL classification: GO only if every gate passed and >=1 adjoint gate passed ----
+    reasons = []
+    for stg, st in rec["gate_status"].items():
+        if st and st != "go":
+            reasons.append(f"{stg}:{st}")
+    adj_entries = [v for k, v in rec["stages"].items()
+                   if k.startswith("adjoint_") and isinstance(v, dict)]
+    if adj_entries and not any(v.get("gate_pass") for v in adj_entries):
+        reasons.append("adjoint:structure_gate_fail")
+    if not adj_entries:
+        reasons.append("adjoint:missing")
+    rec["overall_status"] = "go" if not reasons else "no_go:" + ";".join(reasons)
+
     out = d / "record.json"
     out.write_text(json.dumps(rec, indent=2))
-    print(f"[finalize] wrote {out}")
+    print(f"[finalize] wrote {out}  OVERALL={rec['overall_status']}")
     print(json.dumps({k: rec[k] for k in ("ID", "nfp", "aspect", "qs_class")}, indent=0))
     for k, v in rec["stages"].items():
         if isinstance(v, dict):
@@ -261,35 +284,76 @@ def plan_and_run(args):
     else:
         print("  equil: artifact present or not requested")
 
+    def _dep(j):   # None if resuming (prior artifact present) or dry
+        return j if (j and j != "DRYJOBID") else None
+
+    watertight_json = d / f"dagmc_{label}_watertight.json"
+
     # dagmc ---------------------------------------------------------------
+    jid_d = None
     if "dagmc" in stages and not dagmc.exists():
         body = (f"conda activate {PSTL_ENV}\nexport PATH=\"$CONDA_PREFIX/bin:$PATH\"\n"
                 f"python {suite}/build_device_dagmc.py --wout {wout} --coils {coils_file} "
                 f"--nfp {row['nfp'] if row else 0} --outname {label} --export-dir {d}")
         sb = write_sbatch(d / "sb_dagmc.sh", f"dg{ID}", body, str(d),
                           time="0-04:00", cpus=16, mem="4G")
-        jid = submit(sb, dep=jid if jid != "DRYJOBID" else None, dry=dry)
+        jid_d = submit(sb, dep=_dep(jid), dry=dry)
     else:
         print("  dagmc: artifact present or not requested")
 
     # cells ---------------------------------------------------------------
+    jid_c = None
     if "cells" in stages and not cells.exists():
         body = (f"conda activate spf-stellarator\n"
                 f"python {SHIELD}/step1/step1_cells.py {dagmc} {cells}")
         sb = write_sbatch(d / "sb_cells.sh", f"cl{ID}", body, str(d),
                           time="0-00:30", cpus=4, mem="4G")
-        jid = submit(sb, dep=jid if jid != "DRYJOBID" else None, dry=dry)
+        jid_c = submit(sb, dep=_dep(jid_d), dry=dry)
     else:
         print("  cells: artifact present or not requested")
 
-    # adjoint (flat + kerma) ---------------------------------------------
+    # WATERTIGHTNESS PRE-FLIGHT GATE (cheap; BEFORE the expensive adjoint) ----
+    # A leaky DAGMC exits nonzero here, so the adjoint's afterok dependency auto-cancels it --
+    # the device is rejected at the right gate with a reason (dagmc_leaky) instead of burning
+    # cluster time in transport and MPI_ABORTing on "Maximum number of lost particles reached".
+    jid_w = None
+    if "watertight" in stages and not watertight_json.exists():
+        body = (
+            f"conda activate spf-stellarator\n"
+            f"export PYTHONPATH={ADJ_SRC}:$PYTHONPATH\n"
+            f"export PATH={ADJ_SRC}/build/bin:$PATH\n"
+            f"export LD_PRELOAD={ADJ_SRC}/build/lib/libopenmc.so\n"
+            f"export OPENMC_CROSS_SECTIONS={XS}\n"
+            f"python {suite}/dagmc_watertight_check.py {dagmc} "
+            f"--particles 10000 --max-lost 20 --rel-max-lost 1e-3 --out {watertight_json}")
+        sb = write_sbatch(d / "sb_watertight.sh", f"wt{ID}", body, str(d),
+                          time="0-00:30", cpus=8, mem="4G")
+        jid_w = submit(sb, dep=_dep(jid_d), dry=dry)
+    elif watertight_json.exists():
+        st = json.loads(watertight_json.read_text()).get("status")
+        print(f"  watertight: artifact present (status={st})")
+        if st and st != "go":
+            print(f"  -> NO-GO: skipping adjoint (dagmc gate = {st})")
+            return
+    else:
+        print("  watertight: not requested")
+
+    # adjoint (flat + kerma) -- depends on BOTH cells AND watertight passing ----
     if "adjoint" in stages:
+        adj_dep = ":".join(str(x) for x in (jid_c, jid_w) if x and x != "DRYJOBID") or None
         for response in ("flat", "kerma"):
             outmap = d / "adjoint" / f"adjoint_importance_{response}_P0.npz"
             if outmap.exists():
                 print(f"  adjoint {response}: artifact present"); continue
             body = (
                 f"conda activate spf-stellarator\n"
+                # belt-and-suspenders: refuse to run transport if the watertight gate is not GO
+                # (afterok already guards, but re-check the status file so a stale/leaky DAGMC is
+                # never transported even on a manual/resumed submit).
+                f"WT=$(python -c \"import json;print(json.load(open('{watertight_json}'))"
+                f"['status'])\" 2>/dev/null || echo missing)\n"
+                f"if [ \"$WT\" != go ]; then echo \"NO-GO: watertight=$WT; skipping adjoint\"; "
+                f"exit 0; fi\n"
                 f"export PYTHONPATH={ADJ_SRC}:$PYTHONPATH\n"
                 f"export PATH={ADJ_SRC}/build/bin:$PATH\n"
                 f"export LD_PRELOAD={ADJ_SRC}/build/lib/libopenmc.so\n"
@@ -301,14 +365,20 @@ def plan_and_run(args):
                 f"--coil-centroids {cen} --response {response} --scatter-order 0")
             sb = write_sbatch(d / f"sb_adjoint_{response}.sh", f"aj{ID}{response[0]}",
                               body, str(d), time="0-06:00", cpus=16, mem="4G")
-            submit(sb, dep=jid if jid != "DRYJOBID" else None, dry=dry)
+            submit(sb, dep=adj_dep, dry=dry)
 
-    # finalize (inline) ---------------------------------------------------
+    # finalize (inline) -- wrapped so an unexpected error becomes a clean status, never a crash
     if "finalize" in stages:
         any_map = any((d / "adjoint" / f"adjoint_importance_{r}_P0.npz").exists()
                       for r in ("flat", "kerma"))
         if any_map:
-            finalize(ID, work, suite, row)
+            try:
+                finalize(ID, work, suite, row)
+            except Exception as e:
+                (d / "record.json").write_text(json.dumps(
+                    dict(ID=int(ID), overall_status=f"error:finalize:{type(e).__name__}",
+                         message=str(e)[:200]), indent=2))
+                print(f"  finalize ERROR (recorded, no crash): {type(e).__name__}: {e}")
         else:
             print("  finalize: no adjoint map yet (run after the adjoint stage completes)")
 
@@ -323,7 +393,7 @@ def main():
     ap.add_argument("--suite", default=DEF_SUITE)
     ap.add_argument("--reactor-a", type=float, default=1.704)
     ap.add_argument("--stages",
-                    default="equil,fetch,dagmc,cells,adjoint,finalize")
+                    default="fetch,equil,dagmc,cells,watertight,adjoint,finalize")
     ap.add_argument("--with-shield", action="store_true")
     ap.add_argument("--submit", action="store_true",
                     help="actually submit SLURM jobs (else dry plan + inline stages)")

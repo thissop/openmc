@@ -66,6 +66,41 @@ Device descriptors (nfp, aspect, qs_class, d_min_over_a, gap_m, blanket_fit) + p
 `placement_points_at_coil`, and the structure gate (`gate_localized`, `gate_structured`,
 `gate_relerr_ok`, `gate_pass`).
 
+## ROBUSTNESS: pre-flight-then-commit gates (never crash mid-compute)
+Every expensive stage is preceded by a cheap validity check that classifies the device
+**GO / NO-GO-with-reason**; an unexpected exception in any stage becomes a caught
+`status="error:<stage>:<msg>"` record, never an MPI_ABORT that burns cluster time.
+
+- **VMEC convergence gate** (`equil_device.py`, `vmec_convergence`): after the solve, read
+  vmecpp `ier_flag` + force residual `max(fsqr,fsqz,fsql)` vs `ftolv`. If `ier_flag!=0` or the
+  residual exceeds `MAGNET_VMEC_FORCE_TOL` (default 1e-6; converged ≈1e-12, diverged ≈1e20+),
+  write `status="equil_unconverged"` and STOP — **no wout/fluxmap is written**, so a garbage
+  equilibrium can never reach ParaStell/DAGMC. Determinism: OMP/BLAS threads pinned
+  (`OMP_NUM_THREADS`, default 1) so a login-node convergence doesn't silently diverge on a
+  compute node. *Validated:* 1328722 GO (ier=0, resid 9.97e-13→artifacts) and forced NO-GO
+  (`MAGNET_VMEC_FORCE_TOL=1e-20`→clean reject, no wout).
+- **DAGMC watertightness gate** (`dagmc_watertight_check.py`, run **before** any adjoint/forward):
+  a cheap 10k-particle streaming probe (low-density filler in every tag, vacuum bounding sphere
+  exactly as `adjoint_importance.py`, low `max_lost_particles`). Completes → `go` (records
+  `lost_frac`); lost-fraction over threshold OR an OpenMC abort ("Maximum number of lost
+  particles reached / No intersection found with DAGMC cell N") → `dagmc_leaky`, and the adjoint
+  is skipped. Run as a **subprocess** so any MPI_ABORT is contained; exits via `os._exit(code)`
+  to bypass libopenmc's benign exit-time double-free (so SLURM `afterok` stays honest). In the
+  chain, adjoint depends on `afterok:cells:watertight`, and the adjoint sbatch re-checks the
+  status file (belt-and-suspenders). *Validated:* GO on the real QH `dagmc_corr_w35f` (exit 0,
+  n_lost=0). Leaky reject-path is coded (exit 7) but not exercised tonight (no leaky h5m free).
+
+**Conformal sweep integration** (same leak the sweep hit at transport): before the sweep's
+transport `.run`, add the identical subprocess pre-check and skip leaky devices —
+```
+rc = subprocess.run([sys.executable, ".../dagmc_watertight_check.py", h5m,
+                     "--out", f"{workdir}/watertight.json"]).returncode
+if rc == 7:  # dagmc_leaky -> record status, skip transport
+    ...
+```
+(Not wired into `sweep/sweep.py` here to avoid colliding with the running sweep agent; the check
+is standalone and ready to drop in.)
+
 ## HARD GATES (honest, no hand-tuning)
 - Adjoint structure gate: localized (`nnz_frac<0.98`), structured (`peaking>1.5`),
   converged (`median_relerr<0.25`), placement points at the coil (`dphi<45°`).
