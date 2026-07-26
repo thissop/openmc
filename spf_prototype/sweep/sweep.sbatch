@@ -26,8 +26,9 @@ conda activate spf-stellarator
 export PATH="$CONDA_PREFIX/bin:$PATH"                   # env python wins, not base
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-16}"
 
-REPO="${SPF_REPO:-$HOME/src/GitHub/openmc}"             # <-- edit to your clone path
-export OPENMC_CROSS_SECTIONS="${OPENMC_CROSS_SECTIONS:-$HOME/endfb-viii.0-hdf5/cross_sections.xml}"
+REPO="${SPF_REPO:-/ginsburg/astro/users/tjk2147/spf_work/openmc}"   # Ginsburg clone
+export SPF_REPO="$REPO"                                 # build_and_run.py resolves SO via this
+export OPENMC_CROSS_SECTIONS="${OPENMC_CROSS_SECTIONS:-/ginsburg/astro/users/tjk2147/spf_work/xs/endfb-viii.0-hdf5/cross_sections.xml}"
 MANIFEST="${MANIFEST:-$REPO/spf_prototype/sweep/configs/production.json}"
 OUT="${SLURM_SUBMIT_DIR:-$PWD}/sweep_out"
 
