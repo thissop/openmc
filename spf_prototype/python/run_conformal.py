@@ -103,6 +103,21 @@ def build_model(abc, h5m_path, fieldmap_stem, R0_cm, a_cm,
     s = openmc.Settings()
     s.run_mode = "fixed source"
     s.particles = int(particles); s.batches = int(batches); s.inactive = 0
+    # Lost-particle tolerance. OpenMC defaults to max_lost_particles=10, so a
+    # conformal shell with a few facet-tangle traps on the concave inboard side
+    # hard-ABORTS (RuntimeError) even when the lost fraction is negligible -- the
+    # sweep's own lost_particle_max=50 warn-threshold never runs because the abort
+    # fires first. Env override lets the leaky-recovery pass raise the cap so the
+    # run COMPLETES and the sweep can classify honestly on the recorded lost count.
+    import os as _os
+    s.max_lost_particles = int(_os.environ.get("SPF_MAX_LOST", 10))
+    s.rel_max_lost_particles = float(_os.environ.get("SPF_REL_MAX_LOST", 1e-6))
+    # Cap per-particle restart-file dumps so a leaky build cannot flood the run dir
+    # with thousands of particle_*.h5 files while we probe recoverability.
+    try:
+        s.max_write_lost_particles = int(_os.environ.get("SPF_MAX_WRITE_LOST", 5))
+    except Exception:
+        pass
     # source: births on (1-rho^2) flux surfaces (circular MVP, sized inside the FW),
     # B-hat from the real-equilibrium field map. INJECT(helios): a true LCFS
     # flux-surface source is the upgrade (DEFERRED.md).
