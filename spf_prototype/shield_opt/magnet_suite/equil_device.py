@@ -1,25 +1,42 @@
 #!/usr/bin/env python
-"""STAGE equil (DESC venv): QUASR device ID -> DESC fixed-boundary equilibrium ->
+"""STAGE equil (VMEC venv): QUASR device ID -> VMEC fixed-boundary equilibrium ->
    (a) the spf_fluxmap_v1 fluxmap the StellaratorSource + adjoint contributon consume, AND
    (b) a VMEC-format wout .nc that ParaStell (ps.Stellarator) consumes for the DAGMC build.
 
 This is the missing link that lets a FRESH QUASR device reach the ParaStell->DAGMC->adjoint
 pipeline: QH/QA had hand-obtained VMEC wouts; a zoo device has only a QUASR boundary+coils.
-DESC solves the fixed-boundary equilibrium from the boundary (quasr_fluxmap machinery) and
-DESC's VMECIO.save writes the wout ParaStell needs. Same equilibrium feeds both outputs, so
-the transport source geometry and the DAGMC geometry are CONSISTENT.
+VMEC (vmecpp) solves the fixed-boundary equilibrium from the boundary (QUASR is VMEC-native;
+DESC continuation trips 'No modes found' and DESC direct-solve does not converge these). Same
+equilibrium feeds both outputs, so source and DAGMC geometry are CONSISTENT.
 
-Run:  $HOME/desc_venv/bin/python equil_device.py <ID> <outdir> [--L 8 --n-rho 16 ...]
+ROBUSTNESS (pre-flight-then-commit): after the solve we HARD-GATE on VMEC convergence
+(ier_flag + force residual fsqr/fsqz/fsql vs ftolv) BEFORE writing any wout/fluxmap, so an
+UNCONVERGED equilibrium is rejected CLEANLY with status='equil_unconverged' and never reaches
+ParaStell/DAGMC (which would blow up mid-compute). Determinism: OMP threads are pinned so a
+solve that converges on the login node does not silently diverge on a compute node.
 
-Rigor: reuses quasr_fluxmap.build's asserted volume gates (V1/V1b/V2/V3/V4). The wout export
-is additionally sanity-checked (nfp, aspect finite). Idempotent: skips if outputs exist.
+Run:  $HOME/vmec_venv/bin/python equil_device.py <ID> <outdir> [--solver vmec --reactor-a 1.704]
+
+Idempotent: skips if outputs exist. Writes <label>_status.json for the orchestrator.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
+
+# DETERMINISM: pin OpenMP threads BEFORE vmecpp/numpy import so VMEC's threaded reductions are
+# reproducible login-node vs compute-node (the convergence gate is the hard safety net, but
+# pinning removes the silent-divergence path the coordinator flagged). Override via env.
+os.environ.setdefault("OMP_NUM_THREADS", os.environ.get("MAGNET_OMP_THREADS", "1"))
+os.environ.setdefault("OPENBLAS_NUM_THREADS", os.environ["OMP_NUM_THREADS"])
+os.environ.setdefault("MKL_NUM_THREADS", os.environ["OMP_NUM_THREADS"])
+
+# VMEC convergence gate default: a converged solve reaches ftolv~1e-12 (fsqr~1e-12); a diverged
+# one is 1e20+. 1e-6 cleanly separates GO from garbage while tolerating a slightly loose solve.
+VMEC_FORCE_TOL = float(os.environ.get("MAGNET_VMEC_FORCE_TOL", "1e-6"))
 
 # spf_pp/python holds quasr_fluxmap + quasr_equilibrium_field; sweep holds quasr_geom
 _THIS = Path(__file__).resolve()
@@ -36,6 +53,31 @@ def export_wout(eq, wout_path):
     from desc.vmec import VMECIO
     VMECIO.save(eq, str(wout_path))
     return str(wout_path)
+
+
+def write_status(outdir, label, stage, status, **extra):
+    """Write the per-stage GO/NO-GO record the orchestrator classifies on."""
+    rec = dict(stage=stage, status=status, **extra)
+    (Path(outdir) / f"{label}_status.json").write_text(json.dumps(rec, indent=2))
+    print(f"[{stage}] STATUS={status} " + " ".join(f"{k}={v}" for k, v in extra.items()),
+          flush=True)
+    return rec
+
+
+def vmec_convergence(w):
+    """Read VMEC convergence diagnostics from a vmecpp wout. Returns (ok, info)."""
+    import numpy as np
+    ier = int(getattr(w, "ier_flag", -1))
+    fsqr = float(getattr(w, "fsqr", np.nan))
+    fsqz = float(getattr(w, "fsqz", np.nan))
+    fsql = float(getattr(w, "fsql", np.nan))
+    ftolv = float(getattr(w, "ftolv", np.nan))
+    max_resid = float(np.nanmax([fsqr, fsqz, fsql]))
+    # GO iff VMEC's own success flag is 0 AND the force residual is not garbage.
+    ok = (ier == 0) and np.isfinite(max_resid) and (max_resid < VMEC_FORCE_TOL)
+    info = dict(ier_flag=ier, fsqr=fsqr, fsqz=fsqz, fsql=fsql, ftolv=ftolv,
+                max_force_resid=max_resid, force_tol=VMEC_FORCE_TOL)
+    return ok, info
 
 
 def _native_minor_radius(Rmodes, Zmodes):
@@ -104,6 +146,8 @@ def build_equil(ID, outdir, L=8, n_rho=16, n_theta=64, n_zeta=192,
     npz = outdir / f"{label}_fluxmap.npz"
     if not force and fluxmap_meta.exists() and wout_path.exists():
         print(f"[equil] {label}: outputs exist, skipping (use --force to rebuild)", flush=True)
+        if not (outdir / f"{label}_status.json").exists():
+            write_status(outdir, label, "equil", "go", cached=True)
         return str(wout_path), str(npz)
 
     nfp, Rmodes, Zmodes, _meta = qef._quasr_boundary_modes(ID)
@@ -118,35 +162,50 @@ def build_equil(ID, outdir, L=8, n_rho=16, n_theta=64, n_zeta=192,
         return n, Rm, Zm, m
     qef._quasr_boundary_modes = _patched
 
+    info = {}   # VMEC convergence diagnostics (populated in the vmec branch)
     try:
         if solver == "vmec":
             import vmec_fluxmap as vf
-            # reuse the proven VMEC producer for the fluxmap (writes quasr<ID>_vmec_fluxmap.*)
+            # SOLVE FIRST, GATE, THEN write. The wout solve is the gate subject; only if it
+            # CONVERGES do we build the fluxmap + save the wout, so an unconverged device
+            # leaves NO downstream-usable artifact -- just a clean status.
+            w, _nfp = vf._solve(ID)
+            ok, info = vmec_convergence(w)
+            if not ok:
+                write_status(outdir, label, "equil", "equil_unconverged", **info)
+                print(f"[equil] VMEC did NOT converge (ier={info['ier_flag']}, "
+                      f"max_force_resid={info['max_force_resid']:.2e} >= {VMEC_FORCE_TOL:.0e}); "
+                      f"rejecting device cleanly, NOT writing wout/fluxmap.", flush=True)
+                raise SystemExit(4)
+            print(f"[equil] VMEC CONVERGED: ier={info['ier_flag']} "
+                  f"max_force_resid={info['max_force_resid']:.2e} (ftolv={info['ftolv']:.0e})",
+                  flush=True)
+            # converged -> save wout + build fluxmap (reuses the proven producer)
+            w.save(str(wout_path))
             vf.build(ID, n_rho=n_rho, n_theta=min(n_theta, 48), n_zeta=min(n_zeta, 144),
                      outdir=str(outdir))
-            # rename to the stem the StellaratorSource + finalize expect
             for ext in ("npz", "meta", "bin"):
                 src = outdir / f"{label}_vmec_fluxmap.{ext}"
                 if src.exists():
                     src.replace(outdir / f"{label}_fluxmap.{ext}")
-            # save the wout for ParaStell (a second short VMEC solve under the same patch)
-            w, _nfp = vf._solve(ID)
-            w.save(str(wout_path))
         else:
             _desc_solve_and_extract(ID, nfp, outdir, label, npz, wout_path,
                                     L, n_rho, n_theta, n_zeta, ftol, maxiter)
+    except SystemExit:
+        raise
     except Exception as e:
-        (outdir / f"{label}_EQUIL_FAILED.txt").write_text(
-            f"device {ID}\nsolver {solver}\nerror {type(e).__name__}: {e}\n")
-        print(f"[equil] SOLVER '{solver}' FAILED ({type(e).__name__}: {e}). "
-              f"Wrote {label}_EQUIL_FAILED.txt (needs a hand solve or the other solver).",
-              flush=True)
+        write_status(outdir, label, "equil", f"error:equil:{type(e).__name__}",
+                     message=str(e)[:200], solver=solver)
+        print(f"[equil] SOLVER '{solver}' RAISED ({type(e).__name__}: {e}). "
+              f"Recorded clean error status (no crash).", flush=True)
         raise SystemExit(3)
     finally:
         qef._quasr_boundary_modes = _orig
 
     assert wout_path.exists() and wout_path.stat().st_size > 0, "wout export produced no file"
     assert npz.exists(), "fluxmap npz missing"
+    write_status(outdir, label, "equil", "go", nfp=int(nfp), reactor_factor=round(f, 4),
+                 solver=solver, **info)
     print(f"[equil] wrote {npz.name}, {label}_fluxmap.{{meta,bin}}, {wout_path.name} "
           f"(nfp={nfp}, reactor_factor={f:.3f}, solver={solver})", flush=True)
     return str(wout_path), str(npz)
