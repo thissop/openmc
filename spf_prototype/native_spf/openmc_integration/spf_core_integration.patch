@@ -1,0 +1,601 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d5af01610..4fb224102 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -424,6 +424,7 @@ list(APPEND libopenmc_SOURCES
+   src/settings.cpp
+   src/simulation.cpp
+   src/source.cpp
++  src/stellarator_source.cpp
+   src/state_point.cpp
+   src/string_utils.cpp
+   src/summary.cpp
+diff --git a/include/openmc/source.h b/include/openmc/source.h
+index f85452f11..15765ef4e 100644
+--- a/include/openmc/source.h
++++ b/include/openmc/source.h
+@@ -340,6 +340,33 @@ private:
+   //! \return Position in Cartesian coordinates [cm]
+   Position flux_to_cartesian(double r, double alpha, double phi) const;
+ 
++  //==========================================================================
++  // SPF (spin-polarized fusion) private helpers
++
++  //! Local magnetic-field DIRECTION b̂ at a birth point. The polarized neutron
++  //! angular distribution (Schwartz 2025, Eq. 2) is azimuthally symmetric about
++  //! this unit vector. All of r, alpha, phi are already in scope in sample().
++  //! \param r     Minor radius [cm]
++  //! \param alpha Poloidal angle [rad]
++  //! \param phi   Toroidal angle [rad]
++  //! \return Unit field direction in global Cartesian
++  Direction field_direction(double r, double alpha, double phi) const;
++
++  //! Sample a birth direction from the Schwartz P2 mode-mixture about b̂.
++  //! Line-for-line port of spf::sample_local_direction + build_frame +
++  //! to_global (spf_prototype/src/spf_sampler.hpp), rewritten in
++  //! openmc::Direction / openmc::prn. Thread-safe, const, no mutable state.
++  //! \param bhat Local field direction (need not be unit; renormalized here)
++  //! \param seed PRN seed pointer
++  //! \return Unit neutron direction in global Cartesian
++  Direction sample_polarized_direction(Direction bhat, uint64_t* seed) const;
++
++  //! Linear interpolation of the safety factor q on the r/a grid (pitched
++  //! field model only), clamped to the endpoint values outside the grid.
++  //! \param r_norm Normalized minor radius r/a
++  //! \return Interpolated q(r/a)
++  double interp_q(double r_norm) const;
++
+   //==========================================================================
+   // Data members
+ 
+@@ -353,9 +380,23 @@ private:
+   // Time distribution (defaults to a delta distribution at t=0)
+   UPtrDist time_;
+ 
+-  // Angular distribution (isotropic)
++  // Angular distribution (isotropic; the unpolarized / fallback path)
+   UPtrAngle angle_;
+ 
++  // --- SPF (spin-polarized fusion) emission -------------------------------
++  // All set in the constructor, all const at sample time -> no mutable state,
++  // thread-safe by construction (same discipline as the rest of this class).
++  // Weights/probabilities are DERIVED from (a,b,c) in the constructor from the
++  // Schwartz Eq. 2 coefficients (see source.cpp); no magic constants stored.
++  bool polarized_ {false}; //!< false => isotropic (backward compatible)
++  double w_perp_ {0.0};    //!< (3/4)·a          -- sin²θ weight
++  double w_par_ {0.0};     //!< (2/3)·b + (1/3)·c -- (1/4+3/4cos²θ) weight
++  double p_perp_ {0.0};    //!< a/η -- stratified selection prob of sin²θ shape
++  int field_model_ {0};    //!< 0 = toroidal (b̂=φ̂), 1 = pitched (q-profile)
++  double field_sign_ {1.0};   //!< s = ±1 handedness (pitched model only)
++  vector<double> q_r_over_a_; //!< r/a grid for q-profile (pitched model)
++  vector<double> q_values_;   //!< q(r/a) values          (pitched model)
++
+   // Tokamak geometry parameters
+   double major_radius_;    //!< Major radius R0 [cm]
+   double minor_radius_;    //!< Minor radius a [cm]
+diff --git a/openmc/__init__.py b/openmc/__init__.py
+index c204929c8..b7be55137 100644
+--- a/openmc/__init__.py
++++ b/openmc/__init__.py
+@@ -43,3 +43,5 @@ from . import examples
+ 
+ 
+ __version__ = importlib.metadata.version("openmc")
++from openmc.source import spin_fractions_to_abc
++from openmc.stellarator_source import StellaratorSource
+diff --git a/openmc/source.py b/openmc/source.py
+index 228505058..5d8b07463 100644
+--- a/openmc/source.py
++++ b/openmc/source.py
+@@ -205,6 +205,9 @@ class SourceBase(ABC):
+                 return MeshSource.from_xml_element(elem, meshes)
+             elif source_type == 'tokamak':
+                 return TokamakSource.from_xml_element(elem)
++            elif source_type == 'stellarator':
++                from openmc.stellarator_source import StellaratorSource
++                return StellaratorSource.from_xml_element(elem)
+             else:
+                 raise ValueError(
+                     f'Source type {source_type} is not recognized')
+@@ -898,6 +901,39 @@ class FileSource(SourceBase):
+         return cls(**kwargs)
+ 
+ 
++def spin_fractions_to_abc(d_plus, d_zero, d_minus, t_plus, t_minus):
++    """Schwartz 2025 Eq. 1 mode fractions from deuteron/triton spin fractions.
++
++    The spin-polarized D-T collision splits into three angular modes with
++    fractions (a, b, c). Given the deuteron spin-projection fractions
++    (d_plus, d_zero, d_minus) and triton fractions (t_plus, t_minus) -- each set
++    summing to 1 -- the mode fractions are
++
++        a = d_plus*t_plus + d_minus*t_minus     (the (3/4)sin²θ shape)
++        b = d_zero                              (transverse deuteron, m=0)
++        c = d_plus*t_minus + d_minus*t_plus     (shares the B-mode shape)
++
++    Non-polarized fuel gives a = b = c = 1/3. This mirrors the sympy-verified
++    ``spf_prototype/python/abc_modes.py``.
++
++    Parameters
++    ----------
++    d_plus, d_zero, d_minus : float
++        Deuteron spin-projection fractions (sum to 1)
++    t_plus, t_minus : float
++        Triton spin-projection fractions (sum to 1)
++
++    Returns
++    -------
++    tuple of float
++        Mode fractions (a, b, c)
++    """
++    a = d_plus * t_plus + d_minus * t_minus
++    b = d_zero
++    c = d_plus * t_minus + d_minus * t_plus
++    return a, b, c
++
++
+ class TokamakSource(SourceBase):
+     """A source representing neutron emission from a tokamak plasma.
+ 
+@@ -956,6 +992,23 @@ class TokamakSource(SourceBase):
+     constraints : dict
+         Constraints on sampled source particles. See :class:`SourceBase` for
+         valid keys and values.
++    polarization : tuple of float or dict, optional
++        Spin-polarization of the fuel (Schwartz 2025). Either the three mode
++        fractions ``(a, b, c)`` or a dict of deuteron/triton spin fractions
++        ``{'d_plus', 'd_zero', 'd_minus', 't_plus', 't_minus'}`` which is mapped
++        to ``(a, b, c)`` via :func:`spin_fractions_to_abc`. If None (default),
++        the source emits isotropically -- identical to the unpolarized behavior.
++    field_model : {'toroidal', 'pitched'}, optional
++        Magnetic-field direction model about which emission is anisotropic.
++        'toroidal' uses ``b̂ = φ̂`` (default; the axisymmetric case validated
++        against the analytic oracle). 'pitched' adds a poloidal tilt from a
++        safety-factor profile and requires ``safety_factor``.
++    safety_factor : tuple of numpy.ndarray, optional
++        ``(r_over_a, q)`` arrays defining the safety-factor profile q(r/a).
++        Required when ``field_model='pitched'``, ignored otherwise.
++    field_sign : {1, -1}, optional
++        Handedness s of the poloidal pitch (co-/counter-current). Only affects
++        the 'pitched' field model. Default 1.
+ 
+     Attributes
+     ----------
+@@ -991,6 +1044,15 @@ class TokamakSource(SourceBase):
+         Indicator of source type: 'tokamak'
+     constraints : dict
+         Constraints on sampled source particles
++    polarization : tuple of float or None
++        Stored mode fractions ``(a, b, c)`` (normalized to sum 1), or None if
++        unpolarized
++    field_model : str
++        Magnetic-field direction model, 'toroidal' or 'pitched'
++    safety_factor : tuple of numpy.ndarray or None
++        ``(r_over_a, q)`` safety-factor profile for the 'pitched' field model
++    field_sign : int
++        Handedness of the poloidal pitch (+1 / -1)
+ 
+     """
+ 
+@@ -1010,7 +1072,12 @@ class TokamakSource(SourceBase):
+         n_alpha: int = 101,
+         vertical_shift: float = 0.0,
+         strength: float = 1.0,
+-        constraints: dict[str, Any] | None = None
++        constraints: dict[str, Any] | None = None,
++        # --- SPF (spin-polarized fusion) additions ---------------------------
++        polarization=None,
++        field_model: str = 'toroidal',
++        safety_factor=None,
++        field_sign: int = 1,
+     ):
+         super().__init__(strength=strength, constraints=constraints)
+         self.major_radius = major_radius
+@@ -1027,8 +1094,19 @@ class TokamakSource(SourceBase):
+         self.energy = energy
+         self.time = time
+ 
++        # SPF: default polarization=None => unpolarized => isotropic (identical
++        # to the pre-SPF behavior; nothing is written to XML).
++        self.polarization = polarization
++        self.field_model = field_model
++        self.safety_factor = safety_factor
++        self.field_sign = field_sign
++
+         # Cross-field consistency checks (each setter only validates its own
+         # field, so the relationships between fields are verified here)
++        if self.polarization is not None and self.field_model == 'pitched' \
++                and self.safety_factor is None:
++            raise ValueError(
++                "field_model='pitched' requires a safety_factor=(r_over_a, q).")
+         if self.minor_radius >= self.major_radius:
+             raise ValueError(
+                 f"minor_radius ({self.minor_radius}) must be smaller than "
+@@ -1193,6 +1271,73 @@ class TokamakSource(SourceBase):
+         cv.check_type('vertical shift', value, Real)
+         self._vertical_shift = value
+ 
++    @property
++    def polarization(self):
++        """None or (a, b, c) mode fractions (Schwartz 2025)."""
++        return self._polarization
++
++    @polarization.setter
++    def polarization(self, value):
++        if value is None:
++            self._polarization = None
++            return
++        if isinstance(value, dict):
++            # Schwartz 2025 Eq. 1: deuteron d+,d0,d- ; triton t+,t- (each sums 1).
++            a, b, c = spin_fractions_to_abc(
++                value['d_plus'], value['d_zero'], value['d_minus'],
++                value['t_plus'], value['t_minus'])
++        else:
++            a, b, c = value  # (a, b, c) triple
++        for name, x in (('a', a), ('b', b), ('c', c)):
++            cv.check_greater_than(f'polarization {name}', x, 0.0, equality=True)
++        s = a + b + c
++        if s <= 0.0:
++            raise ValueError('polarization (a,b,c) must sum to a positive value.')
++        if abs(s - 1.0) > 1e-6:
++            # User input => warn (not assert); the C++ side renormalizes too.
++            warnings.warn(
++                f'polarization (a,b,c) sums to {s}, renormalizing to 1.')
++            a, b, c = a / s, b / s, c / s
++        self._polarization = (a, b, c)
++
++    @property
++    def field_model(self) -> str:
++        """Magnetic-field direction model: 'toroidal' (b̂=φ̂) or 'pitched'."""
++        return self._field_model
++
++    @field_model.setter
++    def field_model(self, value: str):
++        cv.check_value('field_model', value, ('toroidal', 'pitched'))
++        self._field_model = value
++
++    @property
++    def safety_factor(self):
++        """None or (r_over_a, q) tuple of arrays (pitched field only)."""
++        return self._safety_factor
++
++    @safety_factor.setter
++    def safety_factor(self, value):
++        if value is None:
++            self._safety_factor = None
++            return
++        r_q, q = value
++        r_q = np.asarray(r_q, dtype=float)
++        q = np.asarray(q, dtype=float)
++        if r_q.ndim != 1 or q.ndim != 1 or len(r_q) != len(q) or len(r_q) < 2:
++            raise ValueError(
++                'safety_factor must be (r_over_a, q) with equal length >= 2.')
++        self._safety_factor = (r_q, q)
++
++    @property
++    def field_sign(self) -> int:
++        """Handedness s = +1 / -1 of the poloidal pitch (pitched field only)."""
++        return self._field_sign
++
++    @field_sign.setter
++    def field_sign(self, value: int):
++        cv.check_value('field_sign', value, (1, -1, 1.0, -1.0))
++        self._field_sign = int(value)
++
+     def populate_xml_element(self, element):
+         """Add necessary tokamak source information to an XML element
+ 
+@@ -1232,6 +1377,19 @@ class TokamakSource(SourceBase):
+         if self.time is not None:
+             element.append(self.time.to_xml_element('time'))
+ 
++        # SPF: append only when polarized (keeps existing files byte-identical)
++        if self.polarization is not None:
++            a, b, c = self.polarization
++            ET.SubElement(element, "polarization").text = f"{a} {b} {c}"
++            ET.SubElement(element, "field_model").text = self.field_model
++            if self.field_model == 'pitched':
++                r_q, q = self.safety_factor
++                ET.SubElement(element, "q_r_over_a").text = \
++                    ' '.join(str(x) for x in r_q)
++                ET.SubElement(element, "q_values").text = \
++                    ' '.join(str(x) for x in q)
++                ET.SubElement(element, "field_sign").text = str(self.field_sign)
++
+     @classmethod
+     def from_xml_element(cls, elem: ET.Element) -> TokamakSource:
+         """Generate tokamak source from an XML element
+@@ -1285,6 +1443,21 @@ class TokamakSource(SourceBase):
+         strength_text = get_text(elem, 'strength')
+         strength = float(strength_text) if strength_text else 1.0
+ 
++        # SPF: all optional; absence => unpolarized (backward compatible)
++        pol_text = get_text(elem, 'polarization')
++        polarization = (tuple(float(x) for x in pol_text.split())
++                        if pol_text else None)
++        field_model = get_text(elem, 'field_model') or 'toroidal'
++        safety_factor = None
++        q_r_text = get_text(elem, 'q_r_over_a')
++        q_v_text = get_text(elem, 'q_values')
++        if q_r_text and q_v_text:
++            safety_factor = (
++                np.array([float(x) for x in q_r_text.split()]),
++                np.array([float(x) for x in q_v_text.split()]))
++        field_sign_text = get_text(elem, 'field_sign')
++        field_sign = int(float(field_sign_text)) if field_sign_text else 1
++
+         return cls(
+             major_radius=major_radius,
+             minor_radius=minor_radius,
+@@ -1300,7 +1473,11 @@ class TokamakSource(SourceBase):
+             n_alpha=n_alpha,
+             vertical_shift=vertical_shift,
+             strength=strength,
+-            constraints=constraints
++            constraints=constraints,
++            polarization=polarization,
++            field_model=field_model,
++            safety_factor=safety_factor,
++            field_sign=field_sign,
+         )
+ 
+ 
+diff --git a/src/source.cpp b/src/source.cpp
+index 708e0c17f..2e211a644 100644
+--- a/src/source.cpp
++++ b/src/source.cpp
+@@ -1,11 +1,13 @@
+ #include "openmc/source.h"
++#include "openmc/stellarator_source.h"
+ 
+ #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+ #define HAS_DYNAMIC_LINKING
+ #endif
+ 
+-#include <algorithm> // for lower_bound, max, distance
+-#include <cmath>     // for sin, cos, abs
++#include <algorithm> // for lower_bound, max, clamp, distance
++#include <cassert>   // for assert (SPF invariant checks)
++#include <cmath>     // for sin, cos, abs, acos, cbrt, sqrt
+ #include <utility>   // for move
+ 
+ #ifdef HAS_DYNAMIC_LINKING
+@@ -107,6 +109,8 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
+       return make_unique<MeshSource>(node);
+     } else if (source_type == "tokamak") {
+       return make_unique<TokamakSource>(node);
++    } else if (source_type == "stellarator") {
++      return make_unique<StellaratorSource>(node);
+     } else {
+       fatal_error(fmt::format("Invalid source type '{}' found.", source_type));
+     }
+@@ -684,6 +688,39 @@ SourceSite MeshSource::sample(uint64_t* seed) const
+ // TokamakSource implementation
+ //==============================================================================
+ 
++namespace {
++
++// --------------------------------------------------------------------------
++// SPF per-shape inverse-CDF marginal samplers in x = cosθ. These are a
++// line-for-line transcription of spf::sample_costheta_{perp,par}_invcdf
++// (spf_prototype/src/spf_sampler.hpp, lines 141-168). The roots were derived
++// and endpoint-verified there (u=0 -> x=-1, u=1 -> x=+1) and cross-checked
++// against rejection samplers via two-sample KS (tier-1 green). No magic
++// constants: every coefficient traces to Schwartz Eq. 2's two angular shapes.
++// --------------------------------------------------------------------------
++
++// sin²θ shape: p(x) ∝ (1 - x²). Inverse CDF solves x³ - 3x + (4u - 2) = 0.
++// Three real roots (|q|<=2); the one in [-1,1] is the k=1 trig root:
++//   x = 2 cos( (1/3) arccos(1 - 2u) - 2π/3 ).
++inline double spf_costheta_perp(double u)
++{
++  double x = 2.0 * std::cos(std::acos(1.0 - 2.0 * u) / 3.0 - 2.0 * PI / 3.0);
++  return std::clamp(x, -1.0, 1.0); // guard fp drift exactly at the endpoints
++}
++
++// 1/4 + 3/4 cos²θ shape: p(x) = 1/4 + 3/4 x² (already normalized on [-1,1]).
++// Inverse CDF solves x³ + x + (2 - 4u) = 0 (p=1>0 -> single real root, Cardano).
++inline double spf_costheta_par(double u)
++{
++  const double q = 2.0 - 4.0 * u;               // depressed cubic x³ + x + q = 0
++  const double sq = std::sqrt(q * q / 4.0 + 1.0 / 27.0); // disc > 0 always
++  // std::cbrt gives the real cube root (handles negative args correctly).
++  double x = std::cbrt(-q / 2.0 + sq) + std::cbrt(-q / 2.0 - sq);
++  return std::clamp(x, -1.0, 1.0);
++}
++
++} // namespace
++
+ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
+ {
+   // Read geometry parameters
+@@ -801,9 +838,69 @@ TokamakSource::TokamakSource(pugi::xml_node node) : Source(node)
+   epsilon_ = minor_radius_ / major_radius_;
+   delta_tilde_ = shafranov_shift_ / minor_radius_;
+ 
+-  // Initialize isotropic angular distribution
++  // Initialize isotropic angular distribution (unpolarized / fallback path)
+   angle_ = UPtrAngle {new Isotropic()};
+ 
++  // --- SPF: optional polarization (absent => isotropic, unchanged behavior) ---
++  // Physics (Schwartz 2025, Eq. 2), constants DERIVED not pasted:
++  //   dσ/dΩ = (σ0/2π)[ (3/4)a·sin²θ + ((2/3)b+(1/3)c)(1/4+(3/4)cos²θ) ]
++  //   w_perp = (3/4)a ; w_par = (2/3)b + (1/3)c ; η = a + (2/3)b + (1/3)c.
++  //   ∫sin²θ dΩ = 8π/3, ∫(1/4+3/4cos²θ) dΩ = 2π  =>  W_perp = 2πa, W_par = 2π·w_par
++  //   => P_perp = W_perp/(W_perp+W_par) = a/η. (Same as spf::make_mode_weights.)
++  if (check_for_node(node, "polarization")) {
++    auto abc = get_node_array<double>(node, "polarization"); // [a, b, c]
++    if (abc.size() != 3) {
++      fatal_error("TokamakSource: polarization must be 3 numbers 'a b c'.");
++    }
++    double a = abc[0], b = abc[1], c = abc[2];
++    // User input -> fatal_error on invalid; NaN fails the >= 0 test.
++    if (!(a >= 0.0) || !(b >= 0.0) || !(c >= 0.0)) {
++      fatal_error("TokamakSource: polarization fractions a,b,c must be >= 0.");
++    }
++    const double s = a + b + c;
++    if (!(s > 0.0)) {
++      fatal_error("TokamakSource: polarization a+b+c must be > 0.");
++    }
++    a /= s; // renormalize to sum 1 (Python side already warns on deviation)
++    b /= s;
++    c /= s;
++
++    w_perp_ = 0.75 * a;                          // (3/4) a
++    w_par_ = (2.0 / 3.0) * b + (1.0 / 3.0) * c;  // (2/3)b + (1/3)c
++    const double eta = a + (2.0 / 3.0) * b + (1.0 / 3.0) * c; // = w_perp·4/3 + ...
++    p_perp_ = a / eta;                           // == 2πa / (2πa + 2π·w_par)
++    // Invariant (not user input): P_perp is a valid probability. Hard-assert.
++    assert(p_perp_ >= -1e-15 && p_perp_ <= 1.0 + 1e-15 &&
++           "TokamakSource SPF: P_perp must lie in [0,1]");
++    polarized_ = true;
++
++    // Field model (default toroidal b̂=φ̂). "pitched" additionally needs a
++    // q-profile (r/a grid + q values) and an optional handedness sign.
++    field_model_ = 0;
++    if (check_for_node(node, "field_model")) {
++      std::string fm = get_node_value(node, "field_model");
++      if (fm == "toroidal") {
++        field_model_ = 0;
++      } else if (fm == "pitched") {
++        field_model_ = 1;
++      } else {
++        fatal_error(
++          "TokamakSource: field_model must be 'toroidal' or 'pitched'.");
++      }
++    }
++    if (field_model_ == 1) {
++      q_r_over_a_ = get_node_array<double>(node, "q_r_over_a");
++      q_values_ = get_node_array<double>(node, "q_values");
++      if (q_r_over_a_.size() != q_values_.size() || q_r_over_a_.size() < 2) {
++        fatal_error("TokamakSource: pitched field_model requires q_r_over_a and "
++                    "q_values of equal length >= 2.");
++      }
++      if (check_for_node(node, "field_sign")) {
++        field_sign_ = std::stod(get_node_value(node, "field_sign"));
++      }
++    }
++  }
++
+   precompute_sampling_cdfs();
+ }
+ 
+@@ -1145,6 +1242,99 @@ Position TokamakSource::flux_to_cartesian(
+   return {x, y, z};
+ }
+ 
++double TokamakSource::interp_q(double r_norm) const
++{
++  // Linear interpolation of q on the r/a grid, clamped at the endpoints.
++  // The grid is validated (size >= 2) in the constructor for the pitched model.
++  const auto& xg = q_r_over_a_;
++  const auto& yg = q_values_;
++  if (r_norm <= xg.front())
++    return yg.front();
++  if (r_norm >= xg.back())
++    return yg.back();
++  // First grid point strictly greater than r_norm.
++  auto it = std::upper_bound(xg.begin(), xg.end(), r_norm);
++  const size_t i = static_cast<size_t>(std::distance(xg.begin(), it));
++  const double t = (r_norm - xg[i - 1]) / (xg[i] - xg[i - 1]);
++  return yg[i - 1] + t * (yg[i] - yg[i - 1]);
++}
++
++Direction TokamakSource::field_direction(
++  double r, double alpha, double phi) const
++{
++  const double sphi = std::sin(phi), cphi = std::cos(phi);
++
++  if (field_model_ == 0) {
++    // Pure toroidal b̂ = φ̂ = (−sin φ, cos φ, 0). Already unit. This is exactly
++    // spf::ToroidalField ({−y/rxy, x/rxy, 0}) evaluated with phi in scope, and
++    // is the axisymmetric B̂=φ̂ case the Schwartz/anarrima oracle assumes.
++    return {-sphi, cphi, 0.0};
++  }
++
++  // Pitched model: toroidal + poloidal tangent scaled by local pitch
++  // λ = r/(q·R). Exact unit poloidal tangent from the Miller α-derivatives
++  //   R(r,α) = R0 + r·cos ψ + Δ(1 − (r/a)²),  ψ = α + δ·sin α
++  //   Z(r,α) = κ·r·sin α
++  //   tR = ∂R/∂α = −r·sin ψ·(1 + δ·cos α),  tZ = ∂Z/∂α = κ·r·cos α.
++  const double delta = triangularity_;
++  const double psi = alpha + delta * std::sin(alpha);
++  const double R = major_radius_ + r * std::cos(psi) +
++                   shafranov_shift_ *
++                     (1.0 - (r * r) / (minor_radius_ * minor_radius_));
++
++  const double tR = -r * std::sin(psi) * (1.0 + delta * std::cos(alpha));
++  const double tZ = elongation_ * r * std::cos(alpha);
++  const double tnorm = std::sqrt(tR * tR + tZ * tZ);
++  // At r == 0 the poloidal tangent is degenerate; the field is purely toroidal.
++  if (!(tnorm > 0.0))
++    return {-sphi, cphi, 0.0};
++  const double pR = tR / tnorm, pZ = tZ / tnorm;
++
++  // Local pitch magnitude from the q-profile (q_cyl relation), s = handedness.
++  const double q = interp_q(r / minor_radius_);
++  const double lambda = (q > 0.0) ? (r / (q * R)) : 0.0;
++  const double sl = field_sign_ * lambda;
++
++  // B = φ̂ + s·λ·p̂, expressed in Cartesian, then normalized.
++  //   R̂(φ) = (cos φ, sin φ, 0),  φ̂(φ) = (−sin φ, cos φ, 0),  ẑ = (0,0,1).
++  double Bx = -sphi + sl * pR * cphi;
++  double By = cphi + sl * pR * sphi;
++  double Bz = sl * pZ;
++  const double Bnorm = std::sqrt(Bx * Bx + By * By + Bz * Bz);
++  return {Bx / Bnorm, By / Bnorm, Bz / Bnorm};
++}
++
++Direction TokamakSource::sample_polarized_direction(
++  Direction bhat, uint64_t* seed) const
++{
++  // 1. cosθ relative to b̂ via stratified selection of the two P2 shapes.
++  //    RNG draw order: selector -> shape-u -> phi (matches spf_sampler.hpp so
++  //    the native port is bit-for-bit identical on a fixed seed sequence).
++  double x; // cosθ relative to b̂
++  if (prn(seed) < p_perp_) {
++    x = spf_costheta_perp(prn(seed));
++  } else {
++    x = spf_costheta_par(prn(seed));
++  }
++  const double az = 2.0 * PI * prn(seed);
++  const double st = std::sqrt(std::max(0.0, 1.0 - x * x));
++  const Direction local {st * std::cos(az), st * std::sin(az), x};
++
++  // 2. Rotate from the b̂-aligned local frame to global via Gram-Schmidt with a
++  //    least-aligned reference axis (avoids the b̂ ∥ ẑ_world degeneracy).
++  Direction b = bhat / bhat.norm();
++  const double ax = std::abs(b.x), ay = std::abs(b.y), az2 = std::abs(b.z);
++  Direction ref = (ax <= ay && ax <= az2) ? Direction {1.0, 0.0, 0.0}
++                  : (ay <= az2)           ? Direction {0.0, 1.0, 0.0}
++                                          : Direction {0.0, 0.0, 1.0};
++  Direction ex = ref - b.dot(ref) * b;
++  ex /= ex.norm();
++  Direction ey = b.cross(ex);
++
++  Direction u = local.x * ex + local.y * ey + local.z * b;
++  return u / u.norm(); // guard fp drift; |u| ≈ 1
++}
++
+ SourceSite TokamakSource::sample(uint64_t* seed) const
+ {
+   SourceSite site;
+@@ -1170,8 +1360,16 @@ SourceSite TokamakSource::sample(uint64_t* seed) const
+     site.r.z += vertical_shift_;
+   }
+ 
+-  // 5. Sample isotropic direction
+-  site.u = angle_->sample(seed).first;
++  // 5. Sample birth direction.
++  //    Unpolarized -> isotropic (bit-for-bit the previous behavior).
++  //    Polarized   -> Schwartz P2 mode-mixture about the local field b̂.
++  //    (r, alpha, phi are all still in scope from steps 1-3.)
++  if (polarized_) {
++    Direction bhat = field_direction(r, alpha, phi);
++    site.u = sample_polarized_direction(bhat, seed);
++  } else {
++    site.u = angle_->sample(seed).first;
++  }
+ 
+   // 6. Sample energy from distribution(s), applying the importance weight so
+   // that biased distributions are handled correctly
