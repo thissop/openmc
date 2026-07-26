@@ -1,0 +1,35 @@
+id,status,C,symmetry_class,nfp,lost,source,error
+1505944,error,0.5866,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+1577542,error,0.6409,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+1634455,audit_failed,,QH,4,,production,
+1743523,geometry_folded,0.7341,QH,4,,production,
+1762178,geometry_folded,0.6876,QH,3,,production,
+1790799,audit_failed,,QH,2,,production,
+1862008,error,0.69,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+1880092,error,0.7077,QH,4,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+1880259,geometry_folded,0.6884,QH,4,,production,
+1921186,audit_failed,,QH,4,,production,
+1955431,audit_failed,,QH,4,,production,
+2007828,audit_failed,,QH,6,,production,
+2013568,audit_failed,,QH,6,,production,
+2147186,error,0.7194,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+2150517,audit_failed,,QH,2,,production,
+2190977,error,0.6566,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+2194424,error,0.6259,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+2218517,error,0.6657,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+2225908,error,0.6344,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+2226889,audit_failed,,QH,2,,production,
+2230208,audit_failed,,QH,2,,production,
+2231728,audit_failed,,QH,3,,production,
+2291622,error,0.6999,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+2293681,audit_failed,,QH,2,,production,
+2296767,error,0.6759,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+2327752,audit_failed,,QH,2,,production,
+2331986,audit_failed,,QH,2,,production,
+2369483,error,0.6574,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+2469994,error,0.678,QH,2,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+2487320,audit_failed,,QH,4,,production,
+2487459,audit_failed,,QH,4,,production,
+2509345,audit_failed,,QH,3,,production,
+2524474,error,0.6609,QH,4,,production,"ValueError: Unable to set ""rel_max_lost_particles"" to ""1.0"" since it i"
+59509,done,0.997,QA,3,0,smoke,
