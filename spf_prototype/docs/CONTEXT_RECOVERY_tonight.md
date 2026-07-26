@@ -117,6 +117,31 @@ certain plasmas require close external magnetic coils." DOI 10.1088/1361-6587/ad
   planarity<->plasma-surface arXiv:2604.26763 (stay on NEUTRONICS axis); HELIAS ADVANTG adjoint VR
   (differentiate on ATTRIBUTION). Kappel itself: cite as the standoff-predictor; we add the neutronic outcome.
 
+## 4b. EXTENDED-VISION AGENT VERDICT (docs/SCIENCE_VISION_extended.md) -- read it, key points:
+- **The chain is TWO links, asymmetric.** Link 1 (L_gradB -> plasma-coil separation) is ALREADY VALIDATED
+  by Kappel (n>40, R^2=0.94) AND **our QH+QA are named points in his Appendix D**: precise QH L_REGCOIL~1.52 m
+  / L*_gradB~3.19 m; precise QA ~2.87 m / ~5.30 m; measured as-built standoffs 1.63/3.11 m (ratio 1.91) sit on
+  his predicted separations. So "geometry->standoff" is NO LONGER an n=2 line we must defend -- it's a
+  published 40-device law with QH/QA as named points (table lookup). Link 2 (separation->shield room->magnet
+  load) is OURS to establish, still n-limited to the DAGMC+adjoint subset.
+- **BIGGEST RISK (test it first):** Link 2 is trivial -- magnet load tracks standoff by plain 1/r^2 geometric
+  dilution, so the adjoint earns nothing over Kappel + inverse-square; OR leak-around saturation makes shield
+  room past ~1 m irrelevant (available-shield-thickness is the wrong operative variable). Either collapses the
+  chain to geometry alone (= the Step-1 null in a new guise).
+- **SHARPEST NEW EXPERIMENT: the controlled-standoff test at fixed plasma / fixed L_gradB.** Hold one boundary,
+  simsopt `CurveSurfaceDistance` to build coils at ~3 standoffs, measure whether magnet load AND attribution
+  concentration track standoff; decompose the response into geometric dilution (1/r^2) vs shield attenuation vs
+  leak-around. THE test of whether the neutronics adds signal beyond 1/r^2. Cheap variant: spatial-coincidence
+  -- does the adjoint magnet-load hotspot land at Kappel's L_gradB minimum (bean-inside)?
+- **PAPER-1 scope (reframe of the existing MVP):** label the QA-vs-QH comparison BY standoff/L_gradB, cite
+  Kappel, note both devices are in his DB -> the "confound" dissolves into a named, root-caused axis. Deliver:
+  adjoint attribution + reciprocity (+0.76/+0.83); the Step-1 placed-vs-uniform transport kill-shot (confirm OR
+  null, both publishable); the free-streaming zoo coil-concentration law (real-n companion); the
+  L_gradB->standoff->magnet chain stated as the organizing HYPOTHESIS with P2 as its test; SPF supplementary.
+  NO through-shield predictive law claimed in P1 (that's P2 = the Zenodo-40 study).
+- HONESTY FLAG: QH/QA preserve Kappel's ordering + the ~1.9x gap but sit somewhat BELOW his regression (L_gradB
+  ratio 1.66 under-predicts the measured 1.91) -> quote the ordering + "large gap", not a spuriously exact ratio.
+
 ## 5. KEY PATHS / ENVS / JOBS
 - Ginsburg openmc builds: adjoint runs use `~/src/GitHub/openmc-spf` (PYTHONPATH=$SRC + PATH=$SRC/build/bin +
   LD_PRELOAD=$SRC/build/lib/libopenmc.so, env spf-stellarator for deps, OPENMC_CROSS_SECTIONS=
