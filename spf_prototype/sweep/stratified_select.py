@@ -13,7 +13,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 POOL = HERE / "sweep_out" / "sphi_pool.csv"
 OUT = HERE / "sweep_out" / "selected_devices.csv"
-TARGET = 120
+TARGET = 320
 NBINS = 8
 RNG = np.random.default_rng(7)
 

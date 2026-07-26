@@ -15,7 +15,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 CAT = HERE.parent / "data" / "quasr" / "catalogue.csv.gz"
 OUT = HERE / "sweep_out" / "candidate_pool.csv"
-N_PER_STRATUM = 6           # sampled per (class x nfp x qs_error-quintile) stratum
+N_PER_STRATUM = 25          # sampled per (class x nfp x qs_error-quintile) stratum
 RNG = np.random.default_rng(20260707)
 
 
@@ -34,6 +34,9 @@ def main():
         r["_qs"] = _f(r, "qs_error")
         r["_asp"] = _f(r, "aspect_ratio")
     rows = [r for r in rows if r["_qs"] is not None and r["_asp"] is not None]
+    # reactor-relevance: cap aspect ratio (ARIES-CS ~4.5, HELIAS ~10); drop compact
+    # research configs with extreme aspect that are not engineering-relevant.
+    rows = [r for r in rows if 2.5 <= r["_asp"] <= 12.0]
 
     # qs_error quintile edges (global) -> a coherence proxy axis
     qs = np.array([r["_qs"] for r in rows])

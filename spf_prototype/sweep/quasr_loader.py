@@ -45,7 +45,13 @@ def fetch_serial(ID):
     fn = SERIAL_DIR / f"serial{z}.json"
     if not fn.exists():
         url = f"{BASE}/{z[:4]}/serial{z}.json"
-        urllib.request.urlretrieve(url, fn)
+        # explicit timeout: urlretrieve has none by default, so a hung socket
+        # would block a worker forever. Fetch to a tmp path then atomic-rename
+        # so a partial download can never masquerade as a cached serial.
+        tmp = fn.with_suffix(".json.part")
+        with urllib.request.urlopen(url, timeout=20) as resp, open(tmp, "wb") as out:
+            out.write(resp.read())
+        tmp.replace(fn)
     return fn
 
 

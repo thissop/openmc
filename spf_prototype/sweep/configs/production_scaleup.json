@@ -1,0 +1,1162 @@
+{
+  "_comment": "Scale-up manifest from stratified flat-S_phi selection. C_predicted/S_phi_predicted are cheap field-only predictions; the sweep measures eta_source (free-stream coil-flux directional change) to test them.",
+  "defaults": {
+    "particles": 200000,
+    "batches": 20,
+    "streams": "free",
+    "blanket": "baseline",
+    "nR": 48,
+    "nphi": 96,
+    "nZ": 48,
+    "scale_retries": 3,
+    "lost_particle_max": 50,
+    "vr": false,
+    "field_source": "coil"
+  },
+  "_coverage": {
+    "n_scan": 178,
+    "n_total_configs": 184,
+    "C_range": [
+      0.5669,
+      0.9998
+    ],
+    "S_phi_range": [
+      -0.2283,
+      0.9995
+    ],
+    "QA": 76,
+    "QH": 102,
+    "by_nfp": {
+      "1": 29,
+      "2": 79,
+      "3": 40,
+      "4": 26,
+      "5": 2,
+      "6": 2
+    }
+  },
+  "configs": [
+    {
+      "id": 2007828,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6186,
+      "S_phi_predicted": -0.2283
+    },
+    {
+      "id": 2013568,
+      "symmetry_class": "QH",
+      "C_predicted": 0.5669,
+      "S_phi_predicted": -0.1879
+    },
+    {
+      "id": 2487459,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6086,
+      "S_phi_predicted": -0.1731
+    },
+    {
+      "id": 1921186,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6436,
+      "S_phi_predicted": -0.0852
+    },
+    {
+      "id": 2487320,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7231,
+      "S_phi_predicted": -0.0709
+    },
+    {
+      "id": 1880259,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6965,
+      "S_phi_predicted": -0.0602
+    },
+    {
+      "id": 1743523,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7273,
+      "S_phi_predicted": -0.0351
+    },
+    {
+      "id": 1880092,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7139,
+      "S_phi_predicted": -0.0075
+    },
+    {
+      "id": 1955431,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6322,
+      "S_phi_predicted": 0.0518
+    },
+    {
+      "id": 2524474,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6566,
+      "S_phi_predicted": 0.1284
+    },
+    {
+      "id": 1505944,
+      "symmetry_class": "QH",
+      "C_predicted": 0.5876,
+      "S_phi_predicted": 0.133
+    },
+    {
+      "id": 2230208,
+      "symmetry_class": "QH",
+      "C_predicted": 0.5989,
+      "S_phi_predicted": 0.1339
+    },
+    {
+      "id": 1885670,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6648,
+      "S_phi_predicted": 0.1438
+    },
+    {
+      "id": 1762178,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6892,
+      "S_phi_predicted": 0.1607
+    },
+    {
+      "id": 2327752,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6277,
+      "S_phi_predicted": 0.1692
+    },
+    {
+      "id": 2225908,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6337,
+      "S_phi_predicted": 0.1697
+    },
+    {
+      "id": 1790799,
+      "symmetry_class": "QH",
+      "C_predicted": 0.5963,
+      "S_phi_predicted": 0.1815
+    },
+    {
+      "id": 1656157,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6567,
+      "S_phi_predicted": 0.1867
+    },
+    {
+      "id": 1950837,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6806,
+      "S_phi_predicted": 0.1913
+    },
+    {
+      "id": 2231728,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6982,
+      "S_phi_predicted": 0.1967
+    },
+    {
+      "id": 1336739,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6577,
+      "S_phi_predicted": 0.2015
+    },
+    {
+      "id": 2194424,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6195,
+      "S_phi_predicted": 0.2032
+    },
+    {
+      "id": 2296767,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6754,
+      "S_phi_predicted": 0.2122
+    },
+    {
+      "id": 1871622,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6878,
+      "S_phi_predicted": 0.2146
+    },
+    {
+      "id": 2218517,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6649,
+      "S_phi_predicted": 0.2197
+    },
+    {
+      "id": 2190977,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6564,
+      "S_phi_predicted": 0.2226
+    },
+    {
+      "id": 2150517,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6764,
+      "S_phi_predicted": 0.2234
+    },
+    {
+      "id": 2509345,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6945,
+      "S_phi_predicted": 0.2297
+    },
+    {
+      "id": 2369483,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6543,
+      "S_phi_predicted": 0.2309
+    },
+    {
+      "id": 1577542,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6606,
+      "S_phi_predicted": 0.2349
+    },
+    {
+      "id": 2450579,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6989,
+      "S_phi_predicted": 0.2364
+    },
+    {
+      "id": 1807182,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7015,
+      "S_phi_predicted": 0.2523
+    },
+    {
+      "id": 1624199,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6985,
+      "S_phi_predicted": 0.2552
+    },
+    {
+      "id": 2293681,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6865,
+      "S_phi_predicted": 0.2746
+    },
+    {
+      "id": 1330430,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7098,
+      "S_phi_predicted": 0.2751
+    },
+    {
+      "id": 1451468,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7098,
+      "S_phi_predicted": 0.2759
+    },
+    {
+      "id": 2439664,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6947,
+      "S_phi_predicted": 0.2818
+    },
+    {
+      "id": 2469994,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6782,
+      "S_phi_predicted": 0.298
+    },
+    {
+      "id": 2331986,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7013,
+      "S_phi_predicted": 0.2982
+    },
+    {
+      "id": 1862008,
+      "symmetry_class": "QH",
+      "C_predicted": 0.6871,
+      "S_phi_predicted": 0.306
+    },
+    {
+      "id": 1634455,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7289,
+      "S_phi_predicted": 0.3109
+    },
+    {
+      "id": 2226889,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7092,
+      "S_phi_predicted": 0.3154
+    },
+    {
+      "id": 2291622,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7049,
+      "S_phi_predicted": 0.3276
+    },
+    {
+      "id": 2147186,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7182,
+      "S_phi_predicted": 0.3363
+    },
+    {
+      "id": 890009,
+      "symmetry_class": "QA",
+      "C_predicted": 0.7699,
+      "S_phi_predicted": 0.3462
+    },
+    {
+      "id": 1331947,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7473,
+      "S_phi_predicted": 0.3516
+    },
+    {
+      "id": 185683,
+      "symmetry_class": "QA",
+      "C_predicted": 0.7525,
+      "S_phi_predicted": 0.3523
+    },
+    {
+      "id": 1740909,
+      "symmetry_class": "QH",
+      "C_predicted": 0.746,
+      "S_phi_predicted": 0.353
+    },
+    {
+      "id": 2361497,
+      "symmetry_class": "QH",
+      "C_predicted": 0.738,
+      "S_phi_predicted": 0.3534
+    },
+    {
+      "id": 2515642,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7455,
+      "S_phi_predicted": 0.3614
+    },
+    {
+      "id": 16928,
+      "symmetry_class": "QA",
+      "C_predicted": 0.7701,
+      "S_phi_predicted": 0.3781
+    },
+    {
+      "id": 2150556,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7528,
+      "S_phi_predicted": 0.3807
+    },
+    {
+      "id": 1577503,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7498,
+      "S_phi_predicted": 0.3876
+    },
+    {
+      "id": 2295232,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7638,
+      "S_phi_predicted": 0.392
+    },
+    {
+      "id": 195044,
+      "symmetry_class": "QA",
+      "C_predicted": 0.7666,
+      "S_phi_predicted": 0.4005
+    },
+    {
+      "id": 1949518,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7695,
+      "S_phi_predicted": 0.4029
+    },
+    {
+      "id": 17909,
+      "symmetry_class": "QA",
+      "C_predicted": 0.768,
+      "S_phi_predicted": 0.4036
+    },
+    {
+      "id": 2301830,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7614,
+      "S_phi_predicted": 0.4241
+    },
+    {
+      "id": 1598773,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7816,
+      "S_phi_predicted": 0.426
+    },
+    {
+      "id": 1940585,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7634,
+      "S_phi_predicted": 0.4303
+    },
+    {
+      "id": 1446437,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7748,
+      "S_phi_predicted": 0.4333
+    },
+    {
+      "id": 1337294,
+      "symmetry_class": "QH",
+      "C_predicted": 0.784,
+      "S_phi_predicted": 0.4381
+    },
+    {
+      "id": 1871375,
+      "symmetry_class": "QH",
+      "C_predicted": 0.784,
+      "S_phi_predicted": 0.443
+    },
+    {
+      "id": 1186520,
+      "symmetry_class": "QH",
+      "C_predicted": 0.788,
+      "S_phi_predicted": 0.4571
+    },
+    {
+      "id": 2438908,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7717,
+      "S_phi_predicted": 0.4581
+    },
+    {
+      "id": 890894,
+      "symmetry_class": "QA",
+      "C_predicted": 0.7943,
+      "S_phi_predicted": 0.4658
+    },
+    {
+      "id": 1048870,
+      "symmetry_class": "QA",
+      "C_predicted": 0.7943,
+      "S_phi_predicted": 0.4658
+    },
+    {
+      "id": 2151170,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7938,
+      "S_phi_predicted": 0.4813
+    },
+    {
+      "id": 899407,
+      "symmetry_class": "QA",
+      "C_predicted": 0.7984,
+      "S_phi_predicted": 0.4819
+    },
+    {
+      "id": 2161513,
+      "symmetry_class": "QH",
+      "C_predicted": 0.7874,
+      "S_phi_predicted": 0.4846
+    },
+    {
+      "id": 768706,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8084,
+      "S_phi_predicted": 0.4865
+    },
+    {
+      "id": 2182878,
+      "symmetry_class": "QH",
+      "C_predicted": 0.809,
+      "S_phi_predicted": 0.4898
+    },
+    {
+      "id": 16769,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8065,
+      "S_phi_predicted": 0.4935
+    },
+    {
+      "id": 2183348,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8106,
+      "S_phi_predicted": 0.4977
+    },
+    {
+      "id": 2456406,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8147,
+      "S_phi_predicted": 0.5048
+    },
+    {
+      "id": 1058555,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8143,
+      "S_phi_predicted": 0.505
+    },
+    {
+      "id": 15058,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8144,
+      "S_phi_predicted": 0.5053
+    },
+    {
+      "id": 345232,
+      "symmetry_class": "QA",
+      "C_predicted": 0.7448,
+      "S_phi_predicted": 0.5108
+    },
+    {
+      "id": 166828,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8134,
+      "S_phi_predicted": 0.5118
+    },
+    {
+      "id": 2301020,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8183,
+      "S_phi_predicted": 0.5128
+    },
+    {
+      "id": 911096,
+      "symmetry_class": "QA",
+      "C_predicted": 0.816,
+      "S_phi_predicted": 0.5165
+    },
+    {
+      "id": 339749,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8151,
+      "S_phi_predicted": 0.5178
+    },
+    {
+      "id": 2229509,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8148,
+      "S_phi_predicted": 0.5219
+    },
+    {
+      "id": 1481798,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8176,
+      "S_phi_predicted": 0.5304
+    },
+    {
+      "id": 1450985,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8232,
+      "S_phi_predicted": 0.5378
+    },
+    {
+      "id": 2472355,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8217,
+      "S_phi_predicted": 0.5399
+    },
+    {
+      "id": 2363982,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8177,
+      "S_phi_predicted": 0.5428
+    },
+    {
+      "id": 889942,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8302,
+      "S_phi_predicted": 0.5504
+    },
+    {
+      "id": 1484542,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8343,
+      "S_phi_predicted": 0.5557
+    },
+    {
+      "id": 166932,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8327,
+      "S_phi_predicted": 0.5559
+    },
+    {
+      "id": 1150446,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8361,
+      "S_phi_predicted": 0.5586
+    },
+    {
+      "id": 2291539,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8395,
+      "S_phi_predicted": 0.5674
+    },
+    {
+      "id": 1048713,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8404,
+      "S_phi_predicted": 0.5679
+    },
+    {
+      "id": 2193966,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8355,
+      "S_phi_predicted": 0.5687
+    },
+    {
+      "id": 2367903,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8392,
+      "S_phi_predicted": 0.5706
+    },
+    {
+      "id": 2370348,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8397,
+      "S_phi_predicted": 0.5736
+    },
+    {
+      "id": 1768896,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8421,
+      "S_phi_predicted": 0.5784
+    },
+    {
+      "id": 2480592,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8421,
+      "S_phi_predicted": 0.5796
+    },
+    {
+      "id": 2218691,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8394,
+      "S_phi_predicted": 0.5804
+    },
+    {
+      "id": 127511,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8432,
+      "S_phi_predicted": 0.584
+    },
+    {
+      "id": 118918,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8472,
+      "S_phi_predicted": 0.5855
+    },
+    {
+      "id": 137694,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8458,
+      "S_phi_predicted": 0.5873
+    },
+    {
+      "id": 2325547,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8441,
+      "S_phi_predicted": 0.5891
+    },
+    {
+      "id": 2336474,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8479,
+      "S_phi_predicted": 0.5957
+    },
+    {
+      "id": 1900793,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8494,
+      "S_phi_predicted": 0.6013
+    },
+    {
+      "id": 137142,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8538,
+      "S_phi_predicted": 0.6083
+    },
+    {
+      "id": 158443,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8543,
+      "S_phi_predicted": 0.6105
+    },
+    {
+      "id": 145549,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8541,
+      "S_phi_predicted": 0.6109
+    },
+    {
+      "id": 2222438,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8525,
+      "S_phi_predicted": 0.613
+    },
+    {
+      "id": 127300,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8561,
+      "S_phi_predicted": 0.6131
+    },
+    {
+      "id": 1653930,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8414,
+      "S_phi_predicted": 0.6158
+    },
+    {
+      "id": 1451331,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8601,
+      "S_phi_predicted": 0.616
+    },
+    {
+      "id": 2360993,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8532,
+      "S_phi_predicted": 0.6165
+    },
+    {
+      "id": 138006,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8626,
+      "S_phi_predicted": 0.624
+    },
+    {
+      "id": 136610,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8603,
+      "S_phi_predicted": 0.6265
+    },
+    {
+      "id": 610271,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8675,
+      "S_phi_predicted": 0.639
+    },
+    {
+      "id": 127090,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8694,
+      "S_phi_predicted": 0.6458
+    },
+    {
+      "id": 2325860,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8702,
+      "S_phi_predicted": 0.6475
+    },
+    {
+      "id": 137353,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8683,
+      "S_phi_predicted": 0.6477
+    },
+    {
+      "id": 2183149,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8723,
+      "S_phi_predicted": 0.653
+    },
+    {
+      "id": 768379,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8791,
+      "S_phi_predicted": 0.6661
+    },
+    {
+      "id": 166515,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8783,
+      "S_phi_predicted": 0.6669
+    },
+    {
+      "id": 610263,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8798,
+      "S_phi_predicted": 0.6679
+    },
+    {
+      "id": 152868,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8846,
+      "S_phi_predicted": 0.6782
+    },
+    {
+      "id": 1046656,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8864,
+      "S_phi_predicted": 0.6832
+    },
+    {
+      "id": 2195776,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8908,
+      "S_phi_predicted": 0.6943
+    },
+    {
+      "id": 166529,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8895,
+      "S_phi_predicted": 0.6986
+    },
+    {
+      "id": 1905010,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8886,
+      "S_phi_predicted": 0.6995
+    },
+    {
+      "id": 126237,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8912,
+      "S_phi_predicted": 0.7004
+    },
+    {
+      "id": 2150800,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8927,
+      "S_phi_predicted": 0.7013
+    },
+    {
+      "id": 1913757,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8919,
+      "S_phi_predicted": 0.7042
+    },
+    {
+      "id": 2327997,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8927,
+      "S_phi_predicted": 0.7077
+    },
+    {
+      "id": 182425,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8992,
+      "S_phi_predicted": 0.7204
+    },
+    {
+      "id": 1771633,
+      "symmetry_class": "QH",
+      "C_predicted": 0.897,
+      "S_phi_predicted": 0.7204
+    },
+    {
+      "id": 2183272,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8978,
+      "S_phi_predicted": 0.7219
+    },
+    {
+      "id": 23498,
+      "symmetry_class": "QA",
+      "C_predicted": 0.8989,
+      "S_phi_predicted": 0.722
+    },
+    {
+      "id": 2218574,
+      "symmetry_class": "QH",
+      "C_predicted": 0.8995,
+      "S_phi_predicted": 0.728
+    },
+    {
+      "id": 2328901,
+      "symmetry_class": "QH",
+      "C_predicted": 0.9012,
+      "S_phi_predicted": 0.7282
+    },
+    {
+      "id": 225602,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9032,
+      "S_phi_predicted": 0.7317
+    },
+    {
+      "id": 191253,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9063,
+      "S_phi_predicted": 0.7409
+    },
+    {
+      "id": 108650,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9084,
+      "S_phi_predicted": 0.7418
+    },
+    {
+      "id": 802142,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9082,
+      "S_phi_predicted": 0.7429
+    },
+    {
+      "id": 2193867,
+      "symmetry_class": "QH",
+      "C_predicted": 0.9109,
+      "S_phi_predicted": 0.7536
+    },
+    {
+      "id": 117149,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9127,
+      "S_phi_predicted": 0.7537
+    },
+    {
+      "id": 134076,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9105,
+      "S_phi_predicted": 0.7551
+    },
+    {
+      "id": 2336187,
+      "symmetry_class": "QH",
+      "C_predicted": 0.9196,
+      "S_phi_predicted": 0.7793
+    },
+    {
+      "id": 2337233,
+      "symmetry_class": "QH",
+      "C_predicted": 0.9213,
+      "S_phi_predicted": 0.7828
+    },
+    {
+      "id": 759978,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9287,
+      "S_phi_predicted": 0.795
+    },
+    {
+      "id": 157482,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9372,
+      "S_phi_predicted": 0.8186
+    },
+    {
+      "id": 151569,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9369,
+      "S_phi_predicted": 0.8186
+    },
+    {
+      "id": 134424,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9394,
+      "S_phi_predicted": 0.8243
+    },
+    {
+      "id": 134412,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9407,
+      "S_phi_predicted": 0.8295
+    },
+    {
+      "id": 124998,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9406,
+      "S_phi_predicted": 0.83
+    },
+    {
+      "id": 115887,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9424,
+      "S_phi_predicted": 0.8322
+    },
+    {
+      "id": 105477,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9451,
+      "S_phi_predicted": 0.8401
+    },
+    {
+      "id": 608085,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9454,
+      "S_phi_predicted": 0.8406
+    },
+    {
+      "id": 58823,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9463,
+      "S_phi_predicted": 0.8437
+    },
+    {
+      "id": 644261,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9492,
+      "S_phi_predicted": 0.8512
+    },
+    {
+      "id": 652242,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9502,
+      "S_phi_predicted": 0.8556
+    },
+    {
+      "id": 2300846,
+      "symmetry_class": "QH",
+      "C_predicted": 0.9536,
+      "S_phi_predicted": 0.8669
+    },
+    {
+      "id": 597805,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9581,
+      "S_phi_predicted": 0.8791
+    },
+    {
+      "id": 215582,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9637,
+      "S_phi_predicted": 0.8921
+    },
+    {
+      "id": 198168,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9637,
+      "S_phi_predicted": 0.893
+    },
+    {
+      "id": 258204,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9863,
+      "S_phi_predicted": 0.959
+    },
+    {
+      "id": 257245,
+      "symmetry_class": "QA",
+      "C_predicted": 0.989,
+      "S_phi_predicted": 0.9672
+    },
+    {
+      "id": 211891,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9893,
+      "S_phi_predicted": 0.9673
+    },
+    {
+      "id": 239373,
+      "symmetry_class": "QA",
+      "C_predicted": 0.991,
+      "S_phi_predicted": 0.9728
+    },
+    {
+      "id": 221574,
+      "symmetry_class": "QA",
+      "C_predicted": 0.992,
+      "S_phi_predicted": 0.9748
+    },
+    {
+      "id": 933682,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9968,
+      "S_phi_predicted": 0.9902
+    },
+    {
+      "id": 829354,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9984,
+      "S_phi_predicted": 0.995
+    },
+    {
+      "id": 671798,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9986,
+      "S_phi_predicted": 0.9957
+    },
+    {
+      "id": 828017,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9995,
+      "S_phi_predicted": 0.9985
+    },
+    {
+      "id": 828430,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9996,
+      "S_phi_predicted": 0.9986
+    },
+    {
+      "id": 948683,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9996,
+      "S_phi_predicted": 0.9988
+    },
+    {
+      "id": 1081582,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9997,
+      "S_phi_predicted": 0.9989
+    },
+    {
+      "id": 243440,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9997,
+      "S_phi_predicted": 0.999
+    },
+    {
+      "id": 948921,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9997,
+      "S_phi_predicted": 0.9991
+    },
+    {
+      "id": 828207,
+      "symmetry_class": "QA",
+      "C_predicted": 0.9998,
+      "S_phi_predicted": 0.9995
+    },
+    {
+      "id": 2007828,
+      "symmetry_class": "QH",
+      "blanket": "thin",
+      "streams": "both",
+      "C_predicted": 0.6186,
+      "S_phi_predicted": -0.2283,
+      "_note": "blanket-factorization subset"
+    },
+    {
+      "id": 2007828,
+      "symmetry_class": "QH",
+      "blanket": "thick",
+      "streams": "both",
+      "C_predicted": 0.6186,
+      "S_phi_predicted": -0.2283,
+      "_note": "blanket-factorization subset"
+    },
+    {
+      "id": 1484542,
+      "symmetry_class": "QH",
+      "blanket": "thin",
+      "streams": "both",
+      "C_predicted": 0.8343,
+      "S_phi_predicted": 0.5557,
+      "_note": "blanket-factorization subset"
+    },
+    {
+      "id": 1484542,
+      "symmetry_class": "QH",
+      "blanket": "thick",
+      "streams": "both",
+      "C_predicted": 0.8343,
+      "S_phi_predicted": 0.5557,
+      "_note": "blanket-factorization subset"
+    },
+    {
+      "id": 828207,
+      "symmetry_class": "QA",
+      "blanket": "thin",
+      "streams": "both",
+      "C_predicted": 0.9998,
+      "S_phi_predicted": 0.9995,
+      "_note": "blanket-factorization subset"
+    },
+    {
+      "id": 828207,
+      "symmetry_class": "QA",
+      "blanket": "thick",
+      "streams": "both",
+      "C_predicted": 0.9998,
+      "S_phi_predicted": 0.9995,
+      "_note": "blanket-factorization subset"
+    }
+  ]
+}
