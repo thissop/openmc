@@ -51,7 +51,13 @@ import dagmc_writer
 
 DATADIR = HERE.parent / "data"
 UNIT_CM = 100.0                      # QUASR metres -> cm
-TARGET_A_CM = 250.0                  # built minor radius target (precise_QA scale-15 ~ 258)
+TARGET_A_CM = 170.4                  # built minor radius target = ARIES-CS a=1.704 m.
+# HARMONIZED (2026-07-26) from 250.0 -> 170.4 so the conformal sweep, the Kappel L_gradB
+# spine, and the engineering-relevance blanket-fit filter ALL use one reactor convention
+# (ARIES-CS a=1.704 m, the field standard). At this scale the fixed 116 cm build sits at a
+# coil standoff of 0.68 a (vs 0.46 a at 250) -- the physically-correct minimum standoff, and
+# the inboard-blanket-fit aspect threshold becomes 1.68 (vs 1.46). eta depends on blanket/a,
+# so this changes eta magnitudes; the C->eta relationship is re-measured at this scale.
 POL_MODES = ("perpendicular", "parallel")   # vs unpolarized
 
 # blanket recipes (thickness knob; tau proxy from macroscopic scatter power * thickness).
