@@ -1,0 +1,130 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" name="W">
+      <density value="0.00193" units="g/cm3"/>
+      <nuclide name="W180" ao="0.0012"/>
+      <nuclide name="W182" ao="0.265"/>
+      <nuclide name="W183" ao="0.1431"/>
+      <nuclide name="W184" ao="0.3064"/>
+      <nuclide name="W186" ao="0.2843"/>
+    </material>
+    <material id="2" name="steel">
+      <density value="0.00078" units="g/cm3"/>
+      <nuclide name="Fe54" wo="0.051374579826632384"/>
+      <nuclide name="Fe56" wo="0.8363039118940184"/>
+      <nuclide name="Fe57" wo="0.019659354384439193"/>
+      <nuclide name="Fe58" wo="0.0026621538949101356"/>
+      <nuclide name="Cr50" wo="0.003756317960446482"/>
+      <nuclide name="Cr52" wo="0.07532942611621131"/>
+      <nuclide name="Cr53" wo="0.008706228136807666"/>
+      <nuclide name="Cr54" wo="0.0022080277865345528"/>
+    </material>
+    <material id="3" name="Be">
+      <density value="0.00018500000000000002" units="g/cm3"/>
+      <nuclide name="Be9" ao="1.0"/>
+    </material>
+    <material id="4" name="FLiBe">
+      <density value="0.000194" units="g/cm3"/>
+      <nuclide name="Li6" ao="1.3"/>
+      <nuclide name="Li7" ao="0.7"/>
+      <nuclide name="Be9" ao="1.0"/>
+      <nuclide name="F19" ao="4.0"/>
+    </material>
+    <material id="5" name="shield">
+      <density value="0.00156" units="g/cm3"/>
+      <nuclide name="W180" ao="0.0012"/>
+      <nuclide name="W182" ao="0.265"/>
+      <nuclide name="W183" ao="0.1431"/>
+      <nuclide name="W184" ao="0.3064"/>
+      <nuclide name="W186" ao="0.2843"/>
+      <nuclide name="C12" ao="0.988922"/>
+      <nuclide name="C13" ao="0.011078"/>
+    </material>
+    <material id="6" name="coil">
+      <density value="0.0008" units="g/cm3"/>
+      <nuclide name="Fe54" wo="0.039518907558947984"/>
+      <nuclide name="Fe56" wo="0.6433107014569371"/>
+      <nuclide name="Fe57" wo="0.015122580295722454"/>
+      <nuclide name="Fe58" wo="0.002047810688392412"/>
+      <nuclide name="Cr50" wo="0.007512635920892964"/>
+      <nuclide name="Cr52" wo="0.15065885223242262"/>
+      <nuclide name="Cr53" wo="0.01741245627361533"/>
+      <nuclide name="Cr54" wo="0.0044160555730691055"/>
+      <nuclide name="Ni58" wo="0.08063724635590787"/>
+      <nuclide name="Ni60" wo="0.03213115547907547"/>
+      <nuclide name="Ni61" wo="0.0014200309023560522"/>
+      <nuclide name="Ni62" wo="0.004601786764184604"/>
+      <nuclide name="Ni64" wo="0.0012097804984760039"/>
+    </material>
+    <material id="7" name="vacuum">
+      <density value="1e-16" units="g/cm3"/>
+      <nuclide name="H1" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="10000" fill="1" region="10000 -10001 10002 -10003 10004 -10005" universe="2"/>
+    <dagmc_universe id="1" filename="/Users/tkiker/Documents/GitHub/openmc/spf_prototype/data/quasr1075139_baseline_geom/quasr1075139.h5m"/>
+    <surface id="10000" type="x-plane" boundary="vacuum" coeffs="-803.8314819335938"/>
+    <surface id="10001" type="x-plane" boundary="vacuum" coeffs="872.7111206054688"/>
+    <surface id="10002" type="y-plane" boundary="vacuum" coeffs="-833.9979248046875"/>
+    <surface id="10003" type="y-plane" boundary="vacuum" coeffs="833.9979248046875"/>
+    <surface id="10004" type="z-plane" boundary="vacuum" coeffs="-291.6799011230469"/>
+    <surface id="10005" type="z-plane" boundary="vacuum" coeffs="291.6799011230469"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>200000</particles>
+    <batches>20</batches>
+    <inactive>0</inactive>
+    <max_lost_particles>10</max_lost_particles>
+    <rel_max_lost_particles>1e-06</rel_max_lost_particles>
+    <max_write_lost_particles>5</max_write_lost_particles>
+    <source type="compiled" strength="1.0" library="/Users/tkiker/Documents/GitHub/openmc/spf_prototype/src/build/libpolarized_fusion_source.so" parameters="a=0.3333333333333333,b=0.3333333333333333,c=0.3333333333333333,bmode=fieldmap,fieldmap=/Users/tkiker/Documents/GitHub/openmc/spf_prototype/data/quasr1075139_s6,shape=plasma,R0=608.2862839182881,aminor=144.84"/>
+  </settings>
+  <tallies>
+    <mesh id="1" type="cylindrical">
+      <r_grid>182.4858851754864 205.98245064937612 229.47901612326584 252.97558159715555 276.47214707104524 299.968712544935 323.4652780188247 346.96184349271437 370.4584089666041 393.95497444049386 417.45153991438355 440.94810538827323 464.444670862163 487.9412363360527 511.43780180994236 534.9343672838321 558.4309327577218 581.9274982316115 605.4240637055012 628.920629179391 652.4171946532807 675.9137601271703 699.4103256010601 722.9068910749498 746.4034565488395 769.9000220227292 793.396587496619 816.8931529705086 840.3897184443983 863.8862839182881</r_grid>
+      <phi_grid>0.0 0.19634954084936207 0.39269908169872414 0.5890486225480862 0.7853981633974483 0.9817477042468103 1.1780972450961724 1.3744467859455345 1.5707963267948966 1.7671458676442586 1.9634954084936207 2.1598449493429825 2.356194490192345 2.552544031041707 2.748893571891069 2.945243112740431 3.141592653589793 3.3379421944391554 3.5342917352885173 3.730641276137879 3.9269908169872414 4.123340357836604 4.319689898685965 4.516039439535327 4.71238898038469 4.908738521234052 5.105088062083414 5.301437602932776 5.497787143782138 5.6941366846315 5.890486225480862 6.086835766330224 6.283185307179586</phi_grid>
+      <z_grid>-255.60000000000002 -237.97241379310347 -220.34482758620692 -202.71724137931037 -185.0896551724138 -167.46206896551726 -149.8344827586207 -132.20689655172416 -114.5793103448276 -96.95172413793105 -79.3241379310345 -61.69655172413795 -44.068965517241395 -26.441379310344843 -8.81379310344829 8.813793103448234 26.441379310344814 44.068965517241395 61.69655172413792 79.32413793103444 96.95172413793102 114.5793103448276 132.20689655172413 149.83448275862065 167.46206896551723 185.0896551724138 202.71724137931034 220.34482758620686 237.97241379310344 255.60000000000002</z_grid>
+      <origin>0.0 0.0 0.0</origin>
+    </mesh>
+    <mesh id="2" type="cylindrical">
+      <r_grid>352.68628391828804 374.91237087480977 397.1384578313315 419.3645447878533 441.590631744375 463.81671870089673 486.0428056574185 508.26889261394024 530.494979570462 552.7210665269837 574.9471534835054 597.1732404400273 619.3993273965489 641.6254143530707 663.8515013095924 686.0775882661142 708.3036752226359 730.5297621791576 752.7558491356793 774.9819360922011 797.2080230487229 819.4341100052445 841.6601969617664 863.8862839182881</r_grid>
+      <phi_grid>0.0 0.39269908169872414 0.7853981633974483 1.1780972450961724 1.5707963267948966 1.9634954084936207 2.356194490192345 2.748893571891069 3.141592653589793 3.5342917352885173 3.9269908169872414 4.319689898685965 4.71238898038469 5.105088062083414 5.497787143782138 5.890486225480862 6.283185307179586</phi_grid>
+      <z_grid>-255.60000000000002 -233.3739130434783 -211.14782608695654 -188.9217391304348 -166.69565217391306 -144.46956521739133 -122.24347826086958 -100.01739130434783 -77.7913043478261 -55.56521739130437 -33.33913043478262 -11.113043478260863 11.113043478260863 33.33913043478259 55.56521739130437 77.7913043478261 100.01739130434783 122.24347826086955 144.46956521739128 166.69565217391306 188.9217391304348 211.1478260869565 233.3739130434783 255.60000000000002</z_grid>
+      <origin>0.0 0.0 0.0</origin>
+    </mesh>
+    <filter id="1" type="meshsurface">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="material">
+      <bins>1 2 3 4 5 6</bins>
+    </filter>
+    <filter id="3" type="material">
+      <bins>6</bins>
+    </filter>
+    <filter id="4" type="energy">
+      <bins>100000.0 20000000.0</bins>
+    </filter>
+    <filter id="5" type="mesh">
+      <bins>2</bins>
+    </filter>
+    <tally id="1" name="wall_current_phi">
+      <filters>1</filters>
+      <scores>current</scores>
+    </tally>
+    <tally id="2" name="cell_response">
+      <filters>2</filters>
+      <scores>heating damage-energy H3-production</scores>
+    </tally>
+    <tally id="3" name="coil_fast">
+      <filters>3 4</filters>
+      <scores>flux</scores>
+    </tally>
+    <tally id="4" name="firstwall_dir">
+      <filters>5 4</filters>
+      <scores>flux</scores>
+    </tally>
+  </tallies>
+</model>

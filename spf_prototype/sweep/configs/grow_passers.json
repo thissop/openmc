@@ -1,0 +1,1140 @@
+{
+  "_comment": "grow-the-law manifest: native pre-audit passers, production fidelity. C_preaudit/S_phi_preaudit are the cheap coils-only predictor; the sweep re-measures C and eta_source under transport.",
+  "_n": 187,
+  "defaults": {
+    "particles": 200000,
+    "batches": 20,
+    "streams": "free",
+    "blanket": "baseline",
+    "nR": 48,
+    "nphi": 96,
+    "nZ": 48,
+    "scale_retries": 3,
+    "lost_particle_max": 50,
+    "vr": false
+  },
+  "configs": [
+    {
+      "id": 1749479,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.4749,
+      "S_phi_preaudit": -0.063
+    },
+    {
+      "id": 1750013,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.4811,
+      "S_phi_preaudit": -0.1046
+    },
+    {
+      "id": 1908382,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.4989,
+      "S_phi_preaudit": -0.0804
+    },
+    {
+      "id": 2009661,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.5288,
+      "S_phi_preaudit": -0.1668
+    },
+    {
+      "id": 2009827,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.5382,
+      "S_phi_preaudit": -0.1754
+    },
+    {
+      "id": 2047634,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.5567,
+      "S_phi_preaudit": -0.0573
+    },
+    {
+      "id": 2044114,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.5783,
+      "S_phi_preaudit": -0.0642
+    },
+    {
+      "id": 2332383,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.5987,
+      "S_phi_preaudit": 0.0954
+    },
+    {
+      "id": 1675157,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6057,
+      "S_phi_preaudit": 0.0488
+    },
+    {
+      "id": 1801583,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6084,
+      "S_phi_preaudit": 0.08
+    },
+    {
+      "id": 2324457,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6315,
+      "S_phi_preaudit": 0.1524
+    },
+    {
+      "id": 2191634,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6398,
+      "S_phi_preaudit": 0.1819
+    },
+    {
+      "id": 1328582,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.64,
+      "S_phi_preaudit": 0.1289
+    },
+    {
+      "id": 2370233,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6432,
+      "S_phi_preaudit": 0.1736
+    },
+    {
+      "id": 2658231,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6478,
+      "S_phi_preaudit": 0.1209
+    },
+    {
+      "id": 1334841,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6493,
+      "S_phi_preaudit": 0.1166
+    },
+    {
+      "id": 2497905,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6498,
+      "S_phi_preaudit": 0.0038
+    },
+    {
+      "id": 2324337,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6573,
+      "S_phi_preaudit": 0.2371
+    },
+    {
+      "id": 1959020,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6587,
+      "S_phi_preaudit": 0.1447
+    },
+    {
+      "id": 1805154,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6745,
+      "S_phi_preaudit": 0.1735
+    },
+    {
+      "id": 1775068,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6755,
+      "S_phi_preaudit": 0.1827
+    },
+    {
+      "id": 2530913,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6756,
+      "S_phi_preaudit": 0.1817
+    },
+    {
+      "id": 2299426,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6777,
+      "S_phi_preaudit": 0.2878
+    },
+    {
+      "id": 2758415,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6818,
+      "S_phi_preaudit": 0.2051
+    },
+    {
+      "id": 2758411,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6818,
+      "S_phi_preaudit": 0.2053
+    },
+    {
+      "id": 2486769,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6851,
+      "S_phi_preaudit": 0.1976
+    },
+    {
+      "id": 2492217,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6901,
+      "S_phi_preaudit": 0.2245
+    },
+    {
+      "id": 1737668,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6903,
+      "S_phi_preaudit": 0.2229
+    },
+    {
+      "id": 1606492,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6941,
+      "S_phi_preaudit": 0.2202
+    },
+    {
+      "id": 1952399,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6956,
+      "S_phi_preaudit": 0.2372
+    },
+    {
+      "id": 1923154,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6969,
+      "S_phi_preaudit": 0.2325
+    },
+    {
+      "id": 2297082,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6971,
+      "S_phi_preaudit": 0.2776
+    },
+    {
+      "id": 1602619,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6989,
+      "S_phi_preaudit": 0.233
+    },
+    {
+      "id": 1883980,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.6992,
+      "S_phi_preaudit": 0.232
+    },
+    {
+      "id": 2532832,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7003,
+      "S_phi_preaudit": 0.239
+    },
+    {
+      "id": 2431074,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7023,
+      "S_phi_preaudit": 0.3513
+    },
+    {
+      "id": 1329537,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.703,
+      "S_phi_preaudit": 0.2451
+    },
+    {
+      "id": 1943031,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7035,
+      "S_phi_preaudit": 0.1555
+    },
+    {
+      "id": 2331080,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7055,
+      "S_phi_preaudit": 0.2911
+    },
+    {
+      "id": 2451281,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7062,
+      "S_phi_preaudit": 0.2754
+    },
+    {
+      "id": 1151583,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7098,
+      "S_phi_preaudit": 0.2787
+    },
+    {
+      "id": 1809808,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7124,
+      "S_phi_preaudit": 0.2708
+    },
+    {
+      "id": 2147970,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7135,
+      "S_phi_preaudit": 0.2745
+    },
+    {
+      "id": 2148208,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7162,
+      "S_phi_preaudit": 0.315
+    },
+    {
+      "id": 2497538,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7219,
+      "S_phi_preaudit": 0.2846
+    },
+    {
+      "id": 2531914,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7231,
+      "S_phi_preaudit": 0.3124
+    },
+    {
+      "id": 1515524,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7238,
+      "S_phi_preaudit": 0.3027
+    },
+    {
+      "id": 1438188,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7289,
+      "S_phi_preaudit": 0.3534
+    },
+    {
+      "id": 2012110,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7316,
+      "S_phi_preaudit": 0.3059
+    },
+    {
+      "id": 1871778,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7317,
+      "S_phi_preaudit": 0.3573
+    },
+    {
+      "id": 1954618,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7327,
+      "S_phi_preaudit": 0.3208
+    },
+    {
+      "id": 1741823,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7379,
+      "S_phi_preaudit": 0.3271
+    },
+    {
+      "id": 1586915,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.739,
+      "S_phi_preaudit": 0.3336
+    },
+    {
+      "id": 2155439,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7427,
+      "S_phi_preaudit": 0.3568
+    },
+    {
+      "id": 1750088,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7438,
+      "S_phi_preaudit": 0.3341
+    },
+    {
+      "id": 1777914,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7443,
+      "S_phi_preaudit": 0.3359
+    },
+    {
+      "id": 2473744,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7475,
+      "S_phi_preaudit": 0.3464
+    },
+    {
+      "id": 1587695,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7494,
+      "S_phi_preaudit": 0.3432
+    },
+    {
+      "id": 202213,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.751,
+      "S_phi_preaudit": 0.3842
+    },
+    {
+      "id": 1862130,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7515,
+      "S_phi_preaudit": 0.4302
+    },
+    {
+      "id": 1295366,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7597,
+      "S_phi_preaudit": 0.3734
+    },
+    {
+      "id": 2492423,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7719,
+      "S_phi_preaudit": 0.4017
+    },
+    {
+      "id": 1961367,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7758,
+      "S_phi_preaudit": 0.4103
+    },
+    {
+      "id": 2362117,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7806,
+      "S_phi_preaudit": 0.4406
+    },
+    {
+      "id": 2478703,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7881,
+      "S_phi_preaudit": 0.4632
+    },
+    {
+      "id": 1639488,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7901,
+      "S_phi_preaudit": 0.4525
+    },
+    {
+      "id": 2532270,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7936,
+      "S_phi_preaudit": 0.4528
+    },
+    {
+      "id": 2657809,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7948,
+      "S_phi_preaudit": 0.4552
+    },
+    {
+      "id": 2534726,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.7976,
+      "S_phi_preaudit": 0.4671
+    },
+    {
+      "id": 1673520,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8018,
+      "S_phi_preaudit": 0.4835
+    },
+    {
+      "id": 1673497,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8089,
+      "S_phi_preaudit": 0.5034
+    },
+    {
+      "id": 2160228,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8109,
+      "S_phi_preaudit": 0.5097
+    },
+    {
+      "id": 2535257,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8138,
+      "S_phi_preaudit": 0.5039
+    },
+    {
+      "id": 146760,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.8189,
+      "S_phi_preaudit": 0.5345
+    },
+    {
+      "id": 1776623,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8221,
+      "S_phi_preaudit": 0.5225
+    },
+    {
+      "id": 1298464,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8227,
+      "S_phi_preaudit": 0.5222
+    },
+    {
+      "id": 2359941,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8278,
+      "S_phi_preaudit": 0.561
+    },
+    {
+      "id": 1638462,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.83,
+      "S_phi_preaudit": 0.5439
+    },
+    {
+      "id": 1150659,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8314,
+      "S_phi_preaudit": 0.5421
+    },
+    {
+      "id": 1063718,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.8396,
+      "S_phi_preaudit": 0.5729
+    },
+    {
+      "id": 1626754,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8417,
+      "S_phi_preaudit": 0.5808
+    },
+    {
+      "id": 1927017,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8421,
+      "S_phi_preaudit": 0.569
+    },
+    {
+      "id": 1887045,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8468,
+      "S_phi_preaudit": 0.5809
+    },
+    {
+      "id": 2334466,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8473,
+      "S_phi_preaudit": 0.5875
+    },
+    {
+      "id": 2331975,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8542,
+      "S_phi_preaudit": 0.6067
+    },
+    {
+      "id": 1509160,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8544,
+      "S_phi_preaudit": 0.6167
+    },
+    {
+      "id": 2229465,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8557,
+      "S_phi_preaudit": 0.6223
+    },
+    {
+      "id": 127727,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.8571,
+      "S_phi_preaudit": 0.6192
+    },
+    {
+      "id": 162461,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.8586,
+      "S_phi_preaudit": 0.6224
+    },
+    {
+      "id": 1910927,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8643,
+      "S_phi_preaudit": 0.6283
+    },
+    {
+      "id": 2364205,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8743,
+      "S_phi_preaudit": 0.6617
+    },
+    {
+      "id": 2373150,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8761,
+      "S_phi_preaudit": 0.6694
+    },
+    {
+      "id": 2183075,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.8787,
+      "S_phi_preaudit": 0.6714
+    },
+    {
+      "id": 118128,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.8823,
+      "S_phi_preaudit": 0.676
+    },
+    {
+      "id": 889059,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.8824,
+      "S_phi_preaudit": 0.6745
+    },
+    {
+      "id": 153099,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.8838,
+      "S_phi_preaudit": 0.6801
+    },
+    {
+      "id": 1651816,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.9016,
+      "S_phi_preaudit": 0.7319
+    },
+    {
+      "id": 152625,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9066,
+      "S_phi_preaudit": 0.7407
+    },
+    {
+      "id": 126179,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9078,
+      "S_phi_preaudit": 0.7408
+    },
+    {
+      "id": 2300307,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.9082,
+      "S_phi_preaudit": 0.7424
+    },
+    {
+      "id": 362828,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9157,
+      "S_phi_preaudit": 0.7622
+    },
+    {
+      "id": 164776,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9176,
+      "S_phi_preaudit": 0.7671
+    },
+    {
+      "id": 2499504,
+      "symmetry_class": "QH",
+      "C_preaudit": 0.9236,
+      "S_phi_preaudit": 0.7798
+    },
+    {
+      "id": 897002,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9256,
+      "S_phi_preaudit": 0.7858
+    },
+    {
+      "id": 151772,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9288,
+      "S_phi_preaudit": 0.7993
+    },
+    {
+      "id": 1112543,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9296,
+      "S_phi_preaudit": 0.8035
+    },
+    {
+      "id": 896488,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9319,
+      "S_phi_preaudit": 0.8052
+    },
+    {
+      "id": 125152,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9336,
+      "S_phi_preaudit": 0.8105
+    },
+    {
+      "id": 1044457,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9351,
+      "S_phi_preaudit": 0.8121
+    },
+    {
+      "id": 896005,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.936,
+      "S_phi_preaudit": 0.8163
+    },
+    {
+      "id": 608417,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9389,
+      "S_phi_preaudit": 0.8247
+    },
+    {
+      "id": 125597,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9392,
+      "S_phi_preaudit": 0.8237
+    },
+    {
+      "id": 1053839,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9398,
+      "S_phi_preaudit": 0.8253
+    },
+    {
+      "id": 1053994,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.94,
+      "S_phi_preaudit": 0.8271
+    },
+    {
+      "id": 631226,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9423,
+      "S_phi_preaudit": 0.8318
+    },
+    {
+      "id": 170979,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9527,
+      "S_phi_preaudit": 0.864
+    },
+    {
+      "id": 114817,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9561,
+      "S_phi_preaudit": 0.8713
+    },
+    {
+      "id": 124279,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9567,
+      "S_phi_preaudit": 0.8724
+    },
+    {
+      "id": 606775,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9578,
+      "S_phi_preaudit": 0.8756
+    },
+    {
+      "id": 616837,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9581,
+      "S_phi_preaudit": 0.8769
+    },
+    {
+      "id": 63512,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9585,
+      "S_phi_preaudit": 0.8763
+    },
+    {
+      "id": 798536,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9604,
+      "S_phi_preaudit": 0.8846
+    },
+    {
+      "id": 945522,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9628,
+      "S_phi_preaudit": 0.8918
+    },
+    {
+      "id": 133418,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9652,
+      "S_phi_preaudit": 0.8974
+    },
+    {
+      "id": 20933,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9727,
+      "S_phi_preaudit": 0.9191
+    },
+    {
+      "id": 178713,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9736,
+      "S_phi_preaudit": 0.9217
+    },
+    {
+      "id": 11290,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9755,
+      "S_phi_preaudit": 0.9275
+    },
+    {
+      "id": 156515,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.976,
+      "S_phi_preaudit": 0.9283
+    },
+    {
+      "id": 156306,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9767,
+      "S_phi_preaudit": 0.9303
+    },
+    {
+      "id": 313344,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9786,
+      "S_phi_preaudit": 0.9359
+    },
+    {
+      "id": 814649,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9788,
+      "S_phi_preaudit": 0.9357
+    },
+    {
+      "id": 764088,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9794,
+      "S_phi_preaudit": 0.9381
+    },
+    {
+      "id": 352697,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9814,
+      "S_phi_preaudit": 0.9446
+    },
+    {
+      "id": 1075139,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.982,
+      "S_phi_preaudit": 0.9466
+    },
+    {
+      "id": 179220,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9821,
+      "S_phi_preaudit": 0.9459
+    },
+    {
+      "id": 929147,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9825,
+      "S_phi_preaudit": 0.9464
+    },
+    {
+      "id": 56078,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9826,
+      "S_phi_preaudit": 0.9468
+    },
+    {
+      "id": 605590,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9829,
+      "S_phi_preaudit": 0.9487
+    },
+    {
+      "id": 948144,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9832,
+      "S_phi_preaudit": 0.9493
+    },
+    {
+      "id": 1106127,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9843,
+      "S_phi_preaudit": 0.9522
+    },
+    {
+      "id": 772434,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9855,
+      "S_phi_preaudit": 0.9561
+    },
+    {
+      "id": 1083311,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9863,
+      "S_phi_preaudit": 0.9584
+    },
+    {
+      "id": 1098866,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9871,
+      "S_phi_preaudit": 0.9612
+    },
+    {
+      "id": 73515,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9875,
+      "S_phi_preaudit": 0.9616
+    },
+    {
+      "id": 655894,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9881,
+      "S_phi_preaudit": 0.9637
+    },
+    {
+      "id": 253153,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9886,
+      "S_phi_preaudit": 0.9656
+    },
+    {
+      "id": 614248,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9889,
+      "S_phi_preaudit": 0.9669
+    },
+    {
+      "id": 795372,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9889,
+      "S_phi_preaudit": 0.9665
+    },
+    {
+      "id": 813746,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9895,
+      "S_phi_preaudit": 0.9675
+    },
+    {
+      "id": 259106,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9896,
+      "S_phi_preaudit": 0.9688
+    },
+    {
+      "id": 257182,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9897,
+      "S_phi_preaudit": 0.9691
+    },
+    {
+      "id": 259064,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9902,
+      "S_phi_preaudit": 0.9705
+    },
+    {
+      "id": 945288,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9911,
+      "S_phi_preaudit": 0.9724
+    },
+    {
+      "id": 666184,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9936,
+      "S_phi_preaudit": 0.9798
+    },
+    {
+      "id": 187284,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9942,
+      "S_phi_preaudit": 0.9824
+    },
+    {
+      "id": 1091820,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9951,
+      "S_phi_preaudit": 0.9848
+    },
+    {
+      "id": 256838,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9961,
+      "S_phi_preaudit": 0.9877
+    },
+    {
+      "id": 662488,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9964,
+      "S_phi_preaudit": 0.9891
+    },
+    {
+      "id": 245449,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9978,
+      "S_phi_preaudit": 0.993
+    },
+    {
+      "id": 655056,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9982,
+      "S_phi_preaudit": 0.9943
+    },
+    {
+      "id": 829795,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9983,
+      "S_phi_preaudit": 0.9947
+    },
+    {
+      "id": 252211,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9984,
+      "S_phi_preaudit": 0.9953
+    },
+    {
+      "id": 671749,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9985,
+      "S_phi_preaudit": 0.9952
+    },
+    {
+      "id": 804212,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9988,
+      "S_phi_preaudit": 0.996
+    },
+    {
+      "id": 243699,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.999,
+      "S_phi_preaudit": 0.9968
+    },
+    {
+      "id": 654496,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.999,
+      "S_phi_preaudit": 0.997
+    },
+    {
+      "id": 644664,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.999,
+      "S_phi_preaudit": 0.997
+    },
+    {
+      "id": 67327,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9992,
+      "S_phi_preaudit": 0.9976
+    },
+    {
+      "id": 251182,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9993,
+      "S_phi_preaudit": 0.9978
+    },
+    {
+      "id": 670664,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9994,
+      "S_phi_preaudit": 0.998
+    },
+    {
+      "id": 676390,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9995,
+      "S_phi_preaudit": 0.9983
+    },
+    {
+      "id": 253933,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9995,
+      "S_phi_preaudit": 0.9983
+    },
+    {
+      "id": 828311,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9995,
+      "S_phi_preaudit": 0.9984
+    },
+    {
+      "id": 940385,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9995,
+      "S_phi_preaudit": 0.9982
+    },
+    {
+      "id": 81782,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9995,
+      "S_phi_preaudit": 0.9985
+    },
+    {
+      "id": 243125,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9996,
+      "S_phi_preaudit": 0.9987
+    },
+    {
+      "id": 81684,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9996,
+      "S_phi_preaudit": 0.9988
+    },
+    {
+      "id": 251430,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9996,
+      "S_phi_preaudit": 0.9988
+    },
+    {
+      "id": 252883,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9996,
+      "S_phi_preaudit": 0.9988
+    },
+    {
+      "id": 827912,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9996,
+      "S_phi_preaudit": 0.9988
+    },
+    {
+      "id": 670125,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9996,
+      "S_phi_preaudit": 0.9989
+    },
+    {
+      "id": 234221,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9997,
+      "S_phi_preaudit": 0.999
+    },
+    {
+      "id": 251273,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9997,
+      "S_phi_preaudit": 0.9991
+    },
+    {
+      "id": 252666,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9997,
+      "S_phi_preaudit": 0.9991
+    },
+    {
+      "id": 261059,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9998,
+      "S_phi_preaudit": 0.9992
+    },
+    {
+      "id": 251798,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9998,
+      "S_phi_preaudit": 0.9995
+    },
+    {
+      "id": 251756,
+      "symmetry_class": "QA",
+      "C_preaudit": 0.9999,
+      "S_phi_preaudit": 0.9996
+    }
+  ]
+}

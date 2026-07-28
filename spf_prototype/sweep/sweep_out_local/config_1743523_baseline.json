@@ -1,0 +1,45 @@
+{
+  "id": 1743523,
+  "stem": "quasr1743523",
+  "blanket": "baseline",
+  "status": "geometry_folded",
+  "warnings": [
+    "geometry fold at scale=6.42: ['sol', 'W', 'steel', 'Be', 'FLiBe', 'shield', 'coil']",
+    "geometry fold at scale=8.98: ['sol', 'W', 'steel', 'Be', 'FLiBe', 'shield', 'coil']",
+    "geometry fold at scale=12.57: ['sol', 'W', 'steel', 'Be', 'FLiBe', 'shield', 'coil']"
+  ],
+  "nfp": 4,
+  "iota": 2.3,
+  "aspect": 11.999999384,
+  "symmetry_class": "QH",
+  "total_coil_length": 86.4000107326,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 1.0563322460430247e-05,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.051404694327155324,
+      "passed": true,
+      "max": 0.2737053859069035
+    },
+    "passed": true
+  },
+  "C": 0.7340904692408969,
+  "tensor_evals": [
+    0.6508835883686416,
+    0.2803772211591723,
+    0.06873919047218245
+  ],
+  "anisotropy": 0.3705063672094693,
+  "lambda_phi": 0.30975198817916694,
+  "S_phi": -0.035372017731249594,
+  "reversal_frac": 0.008633043958261451,
+  "angular_std_deg": 44.8999460778698,
+  "C_lab": 0.5742998502039033,
+  "tau": 13.476
+}

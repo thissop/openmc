@@ -1,0 +1,51 @@
+{
+  "id": 2478703,
+  "stem": "quasr2478703",
+  "blanket": "baseline",
+  "status": "error",
+  "warnings": [
+    "geometry fold at scale=2.99: ['shield', 'coil']"
+  ],
+  "nfp": 3,
+  "iota": 2.1,
+  "aspect": 8.0001528589,
+  "symmetry_class": "QH",
+  "total_coil_length": 98.3997585029,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 0.0005783073017527204,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.03362599921246942,
+      "passed": true,
+      "max": 0.13123061720772894
+    },
+    "passed": true
+  },
+  "C": 0.7880828061066552,
+  "tensor_evals": [
+    0.6432947342713681,
+    0.18755988704908894,
+    0.16914537867955856
+  ],
+  "anisotropy": 0.45573484722227914,
+  "lambda_phi": 0.6421453835942426,
+  "S_phi": 0.46321807539136384,
+  "reversal_frac": 0.0,
+  "angular_std_deg": 38.38526365311354,
+  "C_lab": 0.03978632986738965,
+  "tau": 13.476,
+  "scale": 4.192754038539066,
+  "built_minor_cm": 238.55999999999997,
+  "dagmc": {
+    "volumes": 6,
+    "tris": 86016
+  },
+  "error": "RuntimeError: Maximum number of lost particles has been reached.",
+  "traceback": "Traceback (most recent call last):\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/sweep.py\", line 368, in run_config\n    vals, lost = run_transport(\n                 ^^^^^^^^^^^^^^\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/sweep.py\", line 190, in run_transport\n    sp = model.run(cwd=str(cwd), output=False)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/openmc/model/model.py\", line 871, in run\n    openmc.run(particles, threads, geometry_debug, restart_file,\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/openmc/executor.py\", line 314, in run\n    _run(args, output, cwd)\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/openmc/executor.py\", line 125, in _run\n    raise RuntimeError(error_msg)\nRuntimeError: Maximum number of lost particles has been reached.\n"
+}

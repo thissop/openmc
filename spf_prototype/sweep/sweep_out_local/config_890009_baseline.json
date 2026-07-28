@@ -1,0 +1,49 @@
+{
+  "id": 890009,
+  "stem": "quasr890009",
+  "blanket": "baseline",
+  "status": "error",
+  "warnings": [],
+  "nfp": 2,
+  "iota": 0.7,
+  "aspect": 9.9999855754,
+  "symmetry_class": "QA",
+  "total_coil_length": 65.9998979342,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 0.0013347516061816228,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.0036316676814567026,
+      "passed": true,
+      "max": 0.020206797801724824
+    },
+    "passed": true
+  },
+  "C": 0.7695036235990443,
+  "tensor_evals": [
+    0.6645184885077738,
+    0.20094602347896032,
+    0.13453548801326703
+  ],
+  "anisotropy": 0.46357246502881355,
+  "lambda_phi": 0.5636121492343567,
+  "S_phi": 0.345418223851535,
+  "reversal_frac": 0.0035434792677974713,
+  "angular_std_deg": 40.90099847927285,
+  "C_lab": 0.32689703581383545,
+  "tau": 13.476,
+  "scale": 6.7702048533048025,
+  "built_minor_cm": 250.0,
+  "dagmc": {
+    "volumes": 6,
+    "tris": 86016
+  },
+  "error": "ValueError: Unable to set \"rel_max_lost_particles\" to \"1.0\" since it is greater than or equal to \"1\"",
+  "traceback": "Traceback (most recent call last):\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/sweep.py\", line 362, in run_config\n    vals, lost = run_transport(\n                 ^^^^^^^^^^^^^^\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/sweep.py\", line 179, in run_transport\n    model, mats = rc.build_model(abc, h5m, fmap, R0_cm, a_cm,\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/python/run_conformal.py\", line 114, in build_model\n    s.rel_max_lost_particles = float(_os.environ.get(\"SPF_REL_MAX_LOST\", 1e-6))\n    ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/openmc/settings.py\", line 531, in rel_max_lost_particles\n    cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/openmc/checkvalue.py\", line 241, in check_less_than\n    raise ValueError(msg)\nValueError: Unable to set \"rel_max_lost_particles\" to \"1.0\" since it is greater than or equal to \"1\"\n"
+}

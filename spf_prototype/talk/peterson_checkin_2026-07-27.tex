@@ -1,0 +1,138 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{default}
+\usecolortheme{dove}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}
+\beamertemplatenavigationsymbolsempty
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage[most]{tcolorbox}
+
+\graphicspath{{figs/}}
+
+\definecolor{key}{rgb}{0.10,0.35,0.65}
+\setbeamercolor{frametitle}{fg=key}
+
+\newcommand{\kb}[1]{\begin{tcolorbox}[colback=key!5,colframe=key!60,boxsep=2pt,left=4pt,right=4pt,top=3pt,bottom=3pt]#1\end{tcolorbox}}
+
+\title{SPF Stellarator Neutronics: Adjoint Magnet Shielding}
+\author{Thaddaeus Kiker}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}[plain]\titlepage\end{frame}
+
+\begin{frame}{Work Summary}
+  \begin{itemize}
+    \item Adjoint coil-importance map built and reciprocity-validated on two devices.
+    \item Adaptive shield placement test, adjoint-placed versus uniform, running in direct transport.
+    \item Angular order $P_0$ versus $P_1$: scalar suffices for placement, not for deep magnitude.
+    \item Zoo generalization through the Kappel magnetic-gradient-scale-length standoff spine.
+    \item Engineering-relevance blanket-fit filter and reactor-scale harmonization.
+    \item Pipeline hardened with pre-flight gates and a local worker; conformal-offset recovery.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Adjoint Coil-Importance Map I}
+  \small
+  \begin{itemize}
+    \item Adjoint source is the coil kerma response, about 1\,m of blanket and shield from the plasma; solved backward with OpenMC's random-ray solver.
+    \item The heating response is direction-blind, so the response source is isotropic.
+  \end{itemize}
+  \vspace{0.6em}
+  \kb{\centering\large Contributon:\quad $\displaystyle C(r)=S(r)\,\psi^\dagger(r)$}
+\end{frame}
+
+\begin{frame}{Adjoint Coil-Importance Map II}
+  \begin{center}
+    \includegraphics[height=0.82\textheight]{coil_source}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Reciprocity Validation}
+  \small
+  \kb{\centering $\displaystyle \int S\,\psi^\dagger \quad\longleftrightarrow\quad \text{Forward Per-Coil Flux}$}
+  \vspace{0.4em}
+  \begin{itemize}
+    \item QH (Landreman--Paul, 20 coils): Spearman $\rho = +0.76$.
+    \item QA (precise reactor, 16 coils): Spearman $\rho = +0.83$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Angular Order: $P_0$ Versus $P_1$}
+  \small
+  \begin{itemize}
+    \item On the real coil through the shield, $P_1/P_0 \approx 1.006$ and the location of peak importance is unchanged, so scalar $P_0$ is sufficient for where to place shield.
+    \item In a pure scattering slab, $P_1/P_0$ reaches about $1.7$ at five mean-free-paths deep, so angular order matters for through-shield magnitude, not placement.
+    \item Reaching $P_1$ needed an \texttt{mgxs.Library legendre\_order} patch; transport-corrected $P_0$ gave negative cross sections, so \texttt{correction=None} with the explicit $P_1$ matrix.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Adaptive Shielding: Placed Versus Uniform}
+  \small
+  Two DAGMC builds at equal material budget, identical source:
+  \begin{itemize}
+    \item Placed: breeder and shield traded per the contributon, concentrating shield at the coil-20 hotspot.
+    \item Uniform: the same extra shield spread evenly. Compare peak coil fast flux.
+  \end{itemize}
+  \vspace{0.3em}
+  Two potential outcomes:
+  \begin{itemize}
+    \item Placed $<$ Uniform beyond noise: attribution-guided placement works.
+    \item Placed $\approx$ Uniform: leak-around wins.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Magnetic Gradient Scale Length Spine}
+  \begin{columns}[c]
+    \begin{column}{0.56\textwidth}
+      \includegraphics[width=\textwidth]{kappel_spine}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item $L_{\nabla B}$ is the magnetic gradient scale length, a cheap local measure of how fast the coil field varies (Kappel et al.\ 2024).
+        \item It predicts the minimum achievable plasma-coil separation, $R^2 = 0.94$ over 45 reactor configurations.
+        \item Our precise QH and QA sit on the line (QA marked).
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Engineering Relevance: Blanket-Fit}
+  \begin{columns}[c]
+    \begin{column}{0.54\textwidth}
+      \includegraphics[width=\textwidth]{blanket_fit}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item Keep devices where a roughly 1.16\,m radial build physically fits between plasma and coils.
+        \item Harmonized every analysis, the conformal sweep, the Kappel spine, and this filter, to one reactor scale, ARIES-CS ($a = 1.704$\,m).
+        \item Selection effect?
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Conformal-Offset Recovery}
+  \small
+  \begin{itemize}
+    \item The deep-shield conformal sweep lost about 38\% of devices to non-watertight geometry.
+    \item The naive normal offset inverts on concave-inboard cross-sections, so adjacent shells intersect.
+    \item A morphological offset repairs the fold-limited devices; the remainder are compact devices whose inboard blanket crosses the machine axis, which no offset can fix.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Meeting With Jack: Angular Adjoint Random Ray}
+  \small
+  \begin{itemize}
+    \item His angular adjoint source would let me do coil adjoint importance directly in the plasma with the polarized SPF source, down the road.
+    \item His adjoint-biased forward Monte Carlo source could make a search over many devices tractable, replacing the deep coil-dose runs that kept crashing at tens of millions of neutrons.
+  \end{itemize}
+\end{frame}
+
+\end{document}

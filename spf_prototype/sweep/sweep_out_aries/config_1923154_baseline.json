@@ -1,0 +1,78 @@
+{
+  "id": 1923154,
+  "stem": "quasr1923154",
+  "blanket": "baseline",
+  "status": "done",
+  "warnings": [],
+  "nfp": 4,
+  "iota": 1.6,
+  "aspect": 7.9999980511,
+  "symmetry_class": "QH",
+  "total_coil_length": 73.6000529986,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 1.8463101729714902e-05,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.005258627427972548,
+      "passed": true,
+      "max": 0.019740708948613916
+    },
+    "passed": true
+  },
+  "C": 0.6968875849616515,
+  "tensor_evals": [
+    0.5089340040343171,
+    0.2578968908141949,
+    0.2331691051514903
+  ],
+  "anisotropy": 0.2510371132201222,
+  "lambda_phi": 0.48832462493573575,
+  "S_phi": 0.2324869374036036,
+  "reversal_frac": 0.0,
+  "angular_std_deg": 46.071718326165794,
+  "C_lab": 0.07496879650700485,
+  "tau": 13.476,
+  "scale": 3.9211397959211634,
+  "built_minor_cm": 170.4,
+  "dagmc": {
+    "volumes": 6,
+    "tris": 86016
+  },
+  "lost_particles": 0,
+  "delta_free_perpendicular": -0.02699821410005111,
+  "delta_free_perpendicular_sd": 0.0006873571285688023,
+  "delta_free_parallel": 0.027242108147745633,
+  "delta_free_parallel_sd": 0.0009369411101393423,
+  "observables_raw": {
+    "coil_fast__free__unpolarized": [
+      28.32914995911587,
+      0.014325541149061892
+    ],
+    "wall_dir__free__unpolarized": [
+      -0.07505811586300999,
+      0.0001986584169486628
+    ],
+    "coil_fast__free__perpendicular": [
+      27.564313503247206,
+      0.013597012408659327
+    ],
+    "wall_dir__free__perpendicular": [
+      -0.07473870998321064,
+      0.000196251038600934
+    ],
+    "coil_fast__free__parallel": [
+      29.10089572603581,
+      0.022089875068057475
+    ],
+    "wall_dir__free__parallel": [
+      -0.07602527121295485,
+      0.0001986858116699841
+    ]
+  }
+}

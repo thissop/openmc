@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" name="Be">
+      <density value="0.0001" units="g/cm3"/>
+      <nuclide name="H1" ao="1.0"/>
+    </material>
+    <material id="2" name="FLiBe">
+      <density value="0.0001" units="g/cm3"/>
+      <nuclide name="H1" ao="1.0"/>
+    </material>
+    <material id="3" name="W">
+      <density value="0.0001" units="g/cm3"/>
+      <nuclide name="H1" ao="1.0"/>
+    </material>
+    <material id="4" name="coil">
+      <density value="0.0001" units="g/cm3"/>
+      <nuclide name="H1" ao="1.0"/>
+    </material>
+    <material id="5" name="shield">
+      <density value="0.0001" units="g/cm3"/>
+      <nuclide name="H1" ao="1.0"/>
+    </material>
+    <material id="6" name="steel">
+      <density value="0.0001" units="g/cm3"/>
+      <nuclide name="H1" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" fill="1" region="-1" universe="2"/>
+    <dagmc_universe id="1" auto_geom_ids="true" filename="/Users/tkiker/Documents/GitHub/openmc/spf_prototype/data/_offtest/h5m_quasr2296767/quasr2296767.h5m"/>
+    <surface id="1" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 1163.7770385742188"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>20000</particles>
+    <batches>1</batches>
+    <max_lost_particles>40</max_lost_particles>
+    <rel_max_lost_particles>0.001</rel_max_lost_particles>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>0.0 0.0 0.0</parameters>
+      </space>
+      <angle type="isotropic"/>
+      <energy type="discrete">
+        <parameters>14060000.0 1.0</parameters>
+      </energy>
+    </source>
+    <output>
+      <summary>false</summary>
+      <tallies>false</tallies>
+    </output>
+  </settings>
+  </model>

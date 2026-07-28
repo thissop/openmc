@@ -1,0 +1,49 @@
+{
+  "id": 2370233,
+  "stem": "quasr2370233",
+  "blanket": "baseline",
+  "status": "error",
+  "warnings": [],
+  "nfp": 2,
+  "iota": 0.98,
+  "aspect": 6.0000208768,
+  "symmetry_class": "QH",
+  "total_coil_length": 105.6000084789,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 1.884691374425567e-05,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.012145963961055807,
+      "passed": true,
+      "max": 0.06623988159601486
+    },
+    "passed": true
+  },
+  "C": 0.6431520418538872,
+  "tensor_evals": [
+    0.4569167743342988,
+    0.35952868882105465,
+    0.18355453684465592
+  ],
+  "anisotropy": 0.09738808551324413,
+  "lambda_phi": 0.44905480195849895,
+  "S_phi": 0.1735822029377484,
+  "reversal_frac": 0.030364929996410536,
+  "angular_std_deg": 50.704505160124775,
+  "C_lab": 0.1506423284027914,
+  "tau": 13.476,
+  "scale": 3.2658002256527188,
+  "built_minor_cm": 250.0,
+  "dagmc": {
+    "volumes": 6,
+    "tris": 86016
+  },
+  "error": "RuntimeError: Maximum number of lost particles has been reached.",
+  "traceback": "Traceback (most recent call last):\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/sweep.py\", line 362, in run_config\n    vals, lost = run_transport(\n                 ^^^^^^^^^^^^^^\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/sweep.py\", line 184, in run_transport\n    sp = model.run(cwd=str(cwd), output=False)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/openmc/model/model.py\", line 871, in run\n    openmc.run(particles, threads, geometry_debug, restart_file,\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/openmc/executor.py\", line 314, in run\n    _run(args, output, cwd)\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/openmc/executor.py\", line 125, in _run\n    raise RuntimeError(error_msg)\nRuntimeError: Maximum number of lost particles has been reached.\n"
+}

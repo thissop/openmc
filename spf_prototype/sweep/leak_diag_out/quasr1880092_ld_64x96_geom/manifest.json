@@ -1,0 +1,77 @@
+{
+  "stem": "quasr1880092_ld",
+  "nfp": 4,
+  "scale": 11.350052432672797,
+  "layers": [
+    {
+      "name": "sol",
+      "inner_offset_cm": 0.0,
+      "outer_offset_cm": 5.0,
+      "stl": "sol.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 266019340.4298904
+    },
+    {
+      "name": "W",
+      "inner_offset_cm": 5.0,
+      "outer_offset_cm": 5.2,
+      "stl": "W.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 266750973.46034512
+    },
+    {
+      "name": "steel",
+      "inner_offset_cm": 5.2,
+      "outer_offset_cm": 9.0,
+      "stl": "steel.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 280879153.3627375
+    },
+    {
+      "name": "Be",
+      "inner_offset_cm": 9.0,
+      "outer_offset_cm": 11.0,
+      "stl": "Be.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 288488395.1892352
+    },
+    {
+      "name": "FLiBe",
+      "inner_offset_cm": 11.0,
+      "outer_offset_cm": 61.0,
+      "stl": "FLiBe.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 517585012.834215
+    },
+    {
+      "name": "shield",
+      "inner_offset_cm": 61.0,
+      "outer_offset_cm": 101.0,
+      "stl": "shield.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 754697961.575026
+    },
+    {
+      "name": "coil",
+      "inner_offset_cm": 101.0,
+      "outer_offset_cm": 116.0,
+      "stl": "coil.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 855958352.9039551
+    }
+  ]
+}

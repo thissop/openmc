@@ -1,0 +1,45 @@
+{
+  "id": 1805154,
+  "stem": "quasr1805154",
+  "blanket": "baseline",
+  "status": "geometry_folded",
+  "warnings": [
+    "geometry fold at scale=2.43: ['FLiBe', 'shield', 'coil']",
+    "geometry fold at scale=3.40: ['FLiBe', 'shield', 'coil']",
+    "geometry fold at scale=4.76: ['shield', 'coil']"
+  ],
+  "nfp": 3,
+  "iota": 1.7,
+  "aspect": 6.0001604345,
+  "symmetry_class": "QH",
+  "total_coil_length": 88.2114653761,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 4.685482516473782e-06,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.005351953725869459,
+      "passed": true,
+      "max": 0.018920148990495576
+    },
+    "passed": true
+  },
+  "C": 0.6745241376501134,
+  "tensor_evals": [
+    0.47835836710797713,
+    0.26264547143576034,
+    0.25899616145626286
+  ],
+  "anisotropy": 0.2157128956722168,
+  "lambda_phi": 0.44902528320313534,
+  "S_phi": 0.17353792480470298,
+  "reversal_frac": 0.0016877648238019824,
+  "angular_std_deg": 47.88781421320637,
+  "C_lab": 0.1399984734881091,
+  "tau": 13.476
+}

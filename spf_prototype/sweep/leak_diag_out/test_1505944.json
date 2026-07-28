@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1505944,
+    "res": [
+      64,
+      96
+    ],
+    "verdict": "EXCEPTION",
+    "error": "ModuleNotFoundError: No module named 'rtree'",
+    "tb": [
+      "  File \"/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/trimesh/util.py\", line 1821, in bounds_tree",
+      "    import rtree",
+      "ModuleNotFoundError: No module named 'rtree'"
+    ]
+  }
+]

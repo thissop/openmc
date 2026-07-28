@@ -1,0 +1,77 @@
+{
+  "stem": "quasr134412_ld",
+  "nfp": 1,
+  "scale": 4.930921474538069,
+  "layers": [
+    {
+      "name": "sol",
+      "inner_offset_cm": 0.0,
+      "outer_offset_cm": 5.0,
+      "stl": "sol.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 231723049.04156098
+    },
+    {
+      "name": "W",
+      "inner_offset_cm": 5.0,
+      "outer_offset_cm": 5.2,
+      "stl": "W.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 232431469.85988164
+    },
+    {
+      "name": "steel",
+      "inner_offset_cm": 5.2,
+      "outer_offset_cm": 9.0,
+      "stl": "steel.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 246029538.87632498
+    },
+    {
+      "name": "Be",
+      "inner_offset_cm": 9.0,
+      "outer_offset_cm": 11.0,
+      "stl": "Be.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 253291809.84686163
+    },
+    {
+      "name": "FLiBe",
+      "inner_offset_cm": 11.0,
+      "outer_offset_cm": 61.0,
+      "stl": "FLiBe.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 458514164.35802966
+    },
+    {
+      "name": "shield",
+      "inner_offset_cm": 61.0,
+      "outer_offset_cm": 101.0,
+      "stl": "shield.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 655558198.939675
+    },
+    {
+      "name": "coil",
+      "inner_offset_cm": 101.0,
+      "outer_offset_cm": 116.0,
+      "stl": "coil.stl",
+      "watertight": true,
+      "simple_cross_section": true,
+      "n_self_intersecting_phi": 0,
+      "enclosed_volume_cm3": 737007280.9870399
+    }
+  ]
+}

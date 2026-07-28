@@ -1,0 +1,81 @@
+{
+  "id": 1675157,
+  "stem": "quasr1675157",
+  "blanket": "baseline",
+  "status": "done",
+  "warnings": [
+    "geometry fold at scale=4.19: ['shield', 'coil']",
+    "geometry fold at scale=5.87: ['shield', 'coil']"
+  ],
+  "nfp": 4,
+  "iota": 2.3,
+  "aspect": 6.0001861729,
+  "symmetry_class": "QH",
+  "total_coil_length": 78.401102155,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 4.1251339764073036e-07,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.03235860050395789,
+      "passed": true,
+      "max": 0.12541254882547556
+    },
+    "passed": true
+  },
+  "C": 0.6057393467650012,
+  "tensor_evals": [
+    0.4485934307952554,
+    0.28700996317625016,
+    0.2643966060284874
+  ],
+  "anisotropy": 0.16158346761900522,
+  "lambda_phi": 0.36589149547904176,
+  "S_phi": 0.04883724321856264,
+  "reversal_frac": 0.01222825365580175,
+  "angular_std_deg": 53.57065690800242,
+  "C_lab": 0.18185856421361415,
+  "tau": 13.476,
+  "scale": 8.216166668874619,
+  "built_minor_cm": 489.9999999999999,
+  "dagmc": {
+    "volumes": 6,
+    "tris": 86016
+  },
+  "lost_particles": 0,
+  "delta_free_perpendicular": -0.055309101187696115,
+  "delta_free_perpendicular_sd": 0.0009564255365018106,
+  "delta_free_parallel": 0.05562912815100516,
+  "delta_free_parallel_sd": 0.0010650528024080403,
+  "observables_raw": {
+    "coil_fast__free__unpolarized": [
+      21.167620650831612,
+      0.01541514741010919
+    ],
+    "wall_dir__free__unpolarized": [
+      -0.08112482484751656,
+      0.00019868875349572066
+    ],
+    "coil_fast__free__perpendicular": [
+      19.996858578352,
+      0.014064224815552912
+    ],
+    "wall_dir__free__perpendicular": [
+      -0.08244216596769072,
+      0.00019830915390732788
+    ],
+    "coil_fast__free__parallel": [
+      22.345156932668587,
+      0.015603218864088799
+    ],
+    "wall_dir__free__parallel": [
+      -0.08025961099019135,
+      0.00020019086913144655
+    ]
+  }
+}
