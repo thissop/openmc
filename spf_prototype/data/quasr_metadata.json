@@ -1,0 +1,222 @@
+{
+  "1052272": {
+    "nfp": 2,
+    "iota": 0.2,
+    "iota_kind": "mean",
+    "iota_edge": 0.2011462125,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 4.0,
+    "qs_error": -2.4420104725
+  },
+  "1090019": {
+    "nfp": 3,
+    "iota": 0.9,
+    "iota_kind": "mean",
+    "iota_edge": 0.8999985374,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 20.0,
+    "qs_error": -3.9045776914
+  },
+  "112734": {
+    "nfp": 1,
+    "iota": 0.1,
+    "iota_kind": "mean",
+    "iota_edge": 0.0844334476,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 2.8571,
+    "qs_error": -2.6722686231
+  },
+  "11357": {
+    "nfp": 2,
+    "iota": 0.2,
+    "iota_kind": "mean",
+    "iota_edge": 0.1988820607,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 5.0,
+    "qs_error": -2.4602138092
+  },
+  "1642553": {
+    "nfp": 5,
+    "iota": 1.3,
+    "iota_kind": "mean",
+    "iota_edge": 1.3073504969,
+    "qs_type": "QH",
+    "helicity": 1,
+    "aspect": 8.0,
+    "qs_error": -2.4967355603
+  },
+  "180790": {
+    "nfp": 2,
+    "iota": 0.4,
+    "iota_kind": "mean",
+    "iota_edge": 0.3989673237,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 10.0,
+    "qs_error": -2.5107285189
+  },
+  "1841479": {
+    "nfp": 3,
+    "iota": 2.1,
+    "iota_kind": "mean",
+    "iota_edge": 2.0999996814,
+    "qs_type": "QH",
+    "helicity": 1,
+    "aspect": 24.0,
+    "qs_error": -3.7925118779
+  },
+  "1854549": {
+    "nfp": 5,
+    "iota": 1.5,
+    "iota_kind": "mean",
+    "iota_edge": 1.5000002467,
+    "qs_type": "QH",
+    "helicity": 1,
+    "aspect": 24.0,
+    "qs_error": -3.3730765261
+  },
+  "1960314": {
+    "nfp": 5,
+    "iota": 1.1,
+    "iota_kind": "mean",
+    "iota_edge": 1.153115555,
+    "qs_type": "QH",
+    "helicity": 1,
+    "aspect": 7.0233,
+    "qs_error": -0.5330580469
+  },
+  "1983464": {
+    "nfp": 7,
+    "iota": 2.9,
+    "iota_kind": "mean",
+    "iota_edge": 2.9000001591,
+    "qs_type": "QH",
+    "helicity": 1,
+    "aspect": 24.0,
+    "qs_error": -3.6956129287
+  },
+  "24285": {
+    "nfp": 2,
+    "iota": 0.5,
+    "iota_kind": "mean",
+    "iota_edge": 0.4965286546,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 6.6667,
+    "qs_error": -4.059884882
+  },
+  "262171": {
+    "nfp": 5,
+    "iota": 0.5,
+    "iota_kind": "mean",
+    "iota_edge": 0.4996900713,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 20.0001,
+    "qs_error": -2.174180035
+  },
+  "2659427": {
+    "nfp": 6,
+    "iota": 2.6,
+    "iota_kind": "mean",
+    "iota_edge": 2.8736265349,
+    "qs_type": "QH",
+    "helicity": 1,
+    "aspect": 5.9985,
+    "qs_error": -1.3023479207
+  },
+  "59509": {
+    "nfp": 3,
+    "iota": 0.1,
+    "iota_kind": "mean",
+    "iota_edge": 0.1016635856,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 6.6667,
+    "qs_error": -2.1564404209
+  },
+  "657580": {
+    "nfp": 3,
+    "iota": 0.7,
+    "iota_kind": "mean",
+    "iota_edge": 0.7000000361,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 20.0037,
+    "qs_error": -3.8004557465
+  },
+  "665963": {
+    "nfp": 4,
+    "iota": 0.6,
+    "iota_kind": "mean",
+    "iota_edge": 0.6664751605,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 4.0012,
+    "qs_error": -1.2347909721
+  },
+  "66633": {
+    "nfp": 4,
+    "iota": 0.2,
+    "iota_kind": "mean",
+    "iota_edge": 0.1999964449,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 20.0,
+    "qs_error": -2.4105851258
+  },
+  "803097": {
+    "nfp": 3,
+    "iota": 0.1,
+    "iota_kind": "mean",
+    "iota_edge": 0.0856513157,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 10.0,
+    "qs_error": -3.6982242236
+  },
+  "883496": {
+    "nfp": 2,
+    "iota": 0.1,
+    "iota_kind": "mean",
+    "iota_edge": 0.0838907094,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 3.3333,
+    "qs_error": -2.58558044
+  },
+  "886079": {
+    "nfp": 2,
+    "iota": 0.4,
+    "iota_kind": "mean",
+    "iota_edge": 0.3017375852,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 3.4116,
+    "qs_error": -0.8570933966
+  },
+  "932746": {
+    "nfp": 3,
+    "iota": 0.1,
+    "iota_kind": "mean",
+    "iota_edge": 0.0883923763,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 5.0001,
+    "qs_error": -2.121856902
+  },
+  "948374": {
+    "nfp": 4,
+    "iota": 0.1,
+    "iota_kind": "mean",
+    "iota_edge": 0.0999997062,
+    "qs_type": "QA",
+    "helicity": 0,
+    "aspect": 20.0,
+    "qs_error": -3.3637606603
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": 1790799,
+  "stem": "quasr1790799",
+  "blanket": "baseline",
+  "status": "audit_failed",
+  "warnings": [],
+  "nfp": 2,
+  "iota": 1.2,
+  "aspect": 5.9999984835,
+  "symmetry_class": "QH",
+  "total_coil_length": 86.00001445,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 5.685628856884928e-05,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.046326465985963176,
+      "passed": false,
+      "max": 0.3683072477861247
+    },
+    "passed": false
+  }
+}

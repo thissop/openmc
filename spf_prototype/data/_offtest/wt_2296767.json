@@ -1,0 +1,14 @@
+{
+  "stage": "dagmc_watertight",
+  "h5m": "data/_offtest/h5m_quasr2296767/quasr2296767.h5m",
+  "status": "go",
+  "n_lost": 0,
+  "particles": 20000,
+  "lost_frac": 0.0,
+  "rel_max_lost": 0.001,
+  "center": [
+    0.0,
+    0.0,
+    0.0
+  ]
+}

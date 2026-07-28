@@ -1,0 +1,14 @@
+magic spf_fieldmap_v1
+ndim 3
+nR 48
+nphi 96
+nZ 48
+R_min 30.04236922185666
+R_max 173.85225065154216
+phi_min 0.0
+period 6.283185307179586
+Z_min -70.10136062186784
+Z_max 70.10136062186783
+nfp 2
+endian little
+source biotsavart:quasr1862130

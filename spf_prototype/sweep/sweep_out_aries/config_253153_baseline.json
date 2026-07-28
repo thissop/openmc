@@ -1,0 +1,81 @@
+{
+  "id": 253153,
+  "stem": "quasr253153",
+  "blanket": "baseline",
+  "status": "done",
+  "warnings": [
+    "geometry fold at scale=4.54: ['shield', 'coil']",
+    "geometry fold at scale=6.35: ['coil']"
+  ],
+  "nfp": 5,
+  "iota": 0.3,
+  "aspect": 3.3350503998,
+  "symmetry_class": "QA",
+  "total_coil_length": 45.0000049838,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 9.218070276813967e-07,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.024989345553567535,
+      "passed": true,
+      "max": 0.14251965121993182
+    },
+    "passed": true
+  },
+  "C": 0.9885817621423162,
+  "tensor_evals": [
+    0.9774508878383434,
+    0.01268014441861216,
+    0.009868967743052038
+  ],
+  "anisotropy": 0.9647707434197312,
+  "lambda_phi": 0.9770992460053585,
+  "S_phi": 0.9656488690080378,
+  "reversal_frac": 0.0,
+  "angular_std_deg": 8.676750812092873,
+  "C_lab": 0.020075761462918285,
+  "tau": 13.476,
+  "scale": 8.891600173727868,
+  "built_minor_cm": 333.984,
+  "dagmc": {
+    "volumes": 6,
+    "tris": 86016
+  },
+  "lost_particles": 0,
+  "delta_free_perpendicular": -0.035806372631051096,
+  "delta_free_perpendicular_sd": 0.0005863778159708555,
+  "delta_free_parallel": 0.034376917247216685,
+  "delta_free_parallel_sd": 0.0007508624530281408,
+  "observables_raw": {
+    "coil_fast__free__unpolarized": [
+      25.202245137967502,
+      0.012657590235222081
+    ],
+    "wall_dir__free__unpolarized": [
+      -0.07814088701558872,
+      0.0002038871217984662
+    ],
+    "coil_fast__free__perpendicular": [
+      24.29984415741834,
+      0.008333294473178036
+    ],
+    "wall_dir__free__perpendicular": [
+      -0.07379116869885523,
+      0.00019721375195562167
+    ],
+    "coil_fast__free__parallel": [
+      26.06862063351948,
+      0.013662961406499032
+    ],
+    "wall_dir__free__parallel": [
+      -0.0814394163775542,
+      0.0002054374759083796
+    ]
+  }
+}

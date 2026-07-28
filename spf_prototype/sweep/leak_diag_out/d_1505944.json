@@ -1,0 +1,128 @@
+[
+  {
+    "id": 1505944,
+    "res": [
+      64,
+      96
+    ],
+    "nfp": 2,
+    "a_native_cm": 90.631,
+    "scale": 2.7584,
+    "scale_retry_folds": [],
+    "boundaries": [
+      {
+        "watertight": true,
+        "winding_consistent": true,
+        "naked_edges": 0,
+        "nonmanifold_edges": 0,
+        "degenerate_faces": 0,
+        "n_faces": 12288,
+        "n_verts": 6144,
+        "euler": 0,
+        "volume": 13828598.95072562,
+        "boundary": "W_inner"
+      },
+      {
+        "watertight": true,
+        "winding_consistent": true,
+        "naked_edges": 0,
+        "nonmanifold_edges": 0,
+        "degenerate_faces": 0,
+        "n_faces": 12288,
+        "n_verts": 6144,
+        "euler": 0,
+        "volume": 13921219.840506403,
+        "boundary": "W_outer"
+      },
+      {
+        "watertight": true,
+        "winding_consistent": true,
+        "naked_edges": 0,
+        "nonmanifold_edges": 0,
+        "degenerate_faces": 0,
+        "n_faces": 12288,
+        "n_verts": 6144,
+        "euler": 0,
+        "volume": 15756787.02294057,
+        "boundary": "steel_outer"
+      },
+      {
+        "watertight": true,
+        "winding_consistent": true,
+        "naked_edges": 0,
+        "nonmanifold_edges": 0,
+        "degenerate_faces": 0,
+        "n_faces": 12288,
+        "n_verts": 6144,
+        "euler": 0,
+        "volume": 16780718.292293157,
+        "boundary": "Be_outer"
+      },
+      {
+        "watertight": true,
+        "winding_consistent": true,
+        "naked_edges": 0,
+        "nonmanifold_edges": 0,
+        "degenerate_faces": 0,
+        "n_faces": 12288,
+        "n_verts": 6144,
+        "euler": 0,
+        "volume": 55379730.4436034,
+        "boundary": "FLiBe_outer"
+      },
+      {
+        "watertight": true,
+        "winding_consistent": true,
+        "naked_edges": 0,
+        "nonmanifold_edges": 0,
+        "degenerate_faces": 0,
+        "n_faces": 12288,
+        "n_verts": 6144,
+        "euler": 0,
+        "volume": 104341825.12098472,
+        "boundary": "shield_outer"
+      },
+      {
+        "watertight": true,
+        "winding_consistent": true,
+        "naked_edges": 0,
+        "nonmanifold_edges": 0,
+        "degenerate_faces": 0,
+        "n_faces": 12288,
+        "n_verts": 6144,
+        "euler": 0,
+        "volume": 126868019.20097129,
+        "boundary": "coil_outer"
+      }
+    ],
+    "all_boundaries_watertight": true,
+    "adjacent_intersections": [
+      {
+        "pair": "W_inner->W_outer",
+        "inner_verts_outside_outer": 0.14713541666666666
+      },
+      {
+        "pair": "W_outer->steel_outer",
+        "inner_verts_outside_outer": 0.15234375
+      },
+      {
+        "pair": "steel_outer->Be_outer",
+        "inner_verts_outside_outer": 0.15104166666666666
+      },
+      {
+        "pair": "Be_outer->FLiBe_outer",
+        "inner_verts_outside_outer": 0.3756510416666667
+      },
+      {
+        "pair": "FLiBe_outer->shield_outer",
+        "inner_verts_outside_outer": 0.3570963541666667
+      },
+      {
+        "pair": "shield_outer->coil_outer",
+        "inner_verts_outside_outer": 0.19108072916666666
+      }
+    ],
+    "worst_shell_crossing_frac": 0.37565,
+    "verdict": "boundaries_wt_but_shells_intersect"
+  }
+]

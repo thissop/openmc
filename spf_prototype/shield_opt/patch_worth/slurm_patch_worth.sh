@@ -35,7 +35,7 @@ BASE_DAGMC=$WORK/dagmc_qh_step1_uniform.h5m            # baseline (delta=0 refer
 LI6=60
 N_TOR=4; N_POL=4; DELTA_CM=20.0
 BATCHES=12; PARTICLES=4000000                          # match kill-shot (48M no-WW, seed=1)
-FWD_BATCHES=20                                         # mesh flux spread over voxels -> 80M
+FWD_BATCHES=12                                         # 48M no-WW (~16h, safe under 24h wall)
 
 act_transport() {
   source /burg/opt/anaconda3-2023.09/etc/profile.d/conda.sh
@@ -66,7 +66,7 @@ fi
 
 if [ "$MODE" = "base" ]; then
   # Tier-2 finite-difference BASELINE: uniform (delta=0) coil-20 dose with the SAME
-  # settings (WW, 20x2M, seed) as the patches -> apples-to-apples Delta R.
+  # settings (no-WW, 12x4M, seed) as the patches -> apples-to-apples Delta R.
   cd "$WORK"
   act_transport
   # OPTIONAL: usually skip -- coil_step1b_uniform.npz (kill-shot, 12x4M no-WW seed=1) is already
