@@ -1,92 +1,154 @@
 #!/usr/bin/env python
 """Tier-0 prerequisite: forward flux phi(x) on the SAME mesh as the adjoint psi_dagger,
-so patch_worth.py can form the contributon C = phi*psi_dagger in the shield.
+so patch_worth.py can form the contributon C = phi*psi_dagger in the shield band.
 
-Runs the QH StellaratorSource (uniform emissivity, to match the forward per-coil runs and
-the plasma source S used for attribution) on the BASELINE 8-layer DAGMC, tallying neutron
-flux on a RegularMesh whose extent/dimension are read straight from the adjoint npz -> the
-forward and adjoint fields are co-located voxel-for-voxel. Uses the FW-CADIS weight windows
-so the deep-shield flux is resolved cheaply. Writes qh_fwd_meshflux.npz with key 'flux'
-(shape = adjoint 'dimension', flattened C-order to match psi.reshape in patch_worth.py).
+REWRITTEN to match the REAL cluster recipe (coil_run_v3.py), NOT the CompiledSource
+assumption of the first draft:
+  * source   = openmc.StellaratorSource(fluxmap=..., polarization=unpol, field_model="fluxmap")
+  * materials = built IN-CODE (build_materials, copied verbatim from coil_run_v3.py) so the
+               forward flux is physically identical to the per-coil dose runs
+  * geometry = DAGMC baseline (uniform) wrapped in a vacuum sphere (same as coil_run_v3)
+  * mesh     = RegularMesh read straight from the adjoint npz (lower_left/upper_right/dimension)
+               -> forward and adjoint fields are co-located voxel-for-voxel
+  * WW       = optional FW-CADIS weight windows (fwcadis/weight_windows.h5)
 
-NOTE: the SOURCE block below must match the existing forward per-coil runs
-(percoil_unpol_corr_w35f) -- same StellaratorSource params, same energy, uniform emissivity.
-Edit SOURCE_LIB/params to point at spf_work/openmc_src's StellaratorSource if the API differs.
+Usage (positional, coil_run_v3 style):
+  python fwd_meshflux.py BATCHES PARTICLES DAGMC ADJOINT_NPZ OUT_NPZ LI6 [WW_FILE]
+
+Writes OUT_NPZ with key 'flux' (shape = adjoint 'dimension', C-order to match psi.reshape).
+Env: conda activate spf-stellarator; PYTHONPATH=$SRC; LD_PRELOAD=$SRC/build/lib/libopenmc.so.
 """
-import argparse
 import os
+import sys
+import time
 
 import numpy as np
 import openmc
 
+BASE = "/burg-archive/home/tjk2147/pstl_test"
+os.chdir(os.path.join(BASE, "corrected"))
 
-def build(args):
-    da = np.load(args.adjoint)
-    ll = np.asarray(da["lower_left"], float)
-    ur = np.asarray(da["upper_right"], float)
-    dim = [int(v) for v in np.asarray(da["dimension"])]
+BATCHES   = int(sys.argv[1])
+PARTICLES = int(sys.argv[2])
+DAGMC     = sys.argv[3]
+ADJOINT   = sys.argv[4]
+OUT_NPZ   = sys.argv[5]
+LI6       = float(sys.argv[6]) if len(sys.argv) > 6 else 60.0
+WW_FILE   = sys.argv[7] if len(sys.argv) > 7 else None
 
-    model = openmc.Model()
-    # --- geometry: baseline DAGMC (same materials as step1 build) ---
-    dag = openmc.DAGMCUniverse(args.dagmc).bounded_universe()
-    model.geometry = openmc.Geometry(dag)
-    # materials.xml is reused from the baseline run dir (must match the DAGMC tags)
-    model.materials = openmc.Materials.from_xml(args.materials)
-
-    # --- source: MATCH the forward per-coil runs (uniform emissivity DT source) ---
-    src = openmc.CompiledSource(library=args.source_lib, parameters=args.source_params)
-    settings = openmc.Settings()
-    settings.source = src
-    settings.run_mode = "fixed source"
-    settings.particles = args.particles
-    settings.batches = args.batches
-    settings.seed = args.seed
-    if args.weight_windows and os.path.exists(args.weight_windows):
-        ww = openmc.hdf5_to_wws(args.weight_windows)
-        settings.weight_windows = ww
-        settings.weight_windows_on = True
-    model.settings = settings
-
-    # --- mesh flux tally on the ADJOINT mesh (co-located with psi_dagger) ---
-    mesh = openmc.RegularMesh()
-    mesh.lower_left = ll.tolist()
-    mesh.upper_right = ur.tolist()
-    mesh.dimension = dim
-    t = openmc.Tally(name="fwd_meshflux")
-    t.filters = [openmc.MeshFilter(mesh)]
-    t.scores = ["flux"]
-    model.tallies = openmc.Tallies([t])
-    return model, dim
+# clear stale XML so OpenMC loads THIS geometry, not a leftover model.xml
+for f in ("model.xml", "geometry.xml", "materials.xml", "settings.xml", "tallies.xml"):
+    try: os.remove(f)
+    except FileNotFoundError: pass
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--adjoint", required=True, help="adjoint npz (for the mesh extent)")
-    ap.add_argument("--dagmc", required=True, help="baseline dagmc_qh_step1_*.h5m")
-    ap.add_argument("--materials", required=True, help="baseline materials.xml")
-    ap.add_argument("--source-lib", required=True, help="libstellarator_source.so path")
-    ap.add_argument("--source-params", default="emissivity=uniform",
-                    help="StellaratorSource params (MATCH the forward per-coil runs)")
-    ap.add_argument("--weight-windows", default=None, help="FW-CADIS weight_windows.h5")
-    ap.add_argument("--particles", type=int, default=4_000_000)
-    ap.add_argument("--batches", type=int, default=20)
-    ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--out", default="qh_fwd_meshflux.npz")
-    args = ap.parse_args()
+def build_materials(li6):
+    """VERBATIM copy of coil_run_v3.build_materials -> forward flux matches the dose runs."""
+    w = openmc.Material(); w.add_element("W", 1.0); w.set_density("g/cm3", 19.3)
+    rafm = openmc.Material()
+    rafm.add_element("Fe", 0.885, "wo"); rafm.add_element("Cr", 0.09, "wo")
+    rafm.add_element("W", 0.011, "wo"); rafm.add_element("Mn", 0.006, "wo")
+    rafm.add_element("V", 0.002, "wo"); rafm.add_element("C", 0.006, "wo")
+    rafm.set_density("g/cm3", 7.9)
+    fW, fR = 0.2 / 3.2, 3.0 / 3.2
+    fw = openmc.Material.mix_materials([w, rafm], [fW, fR], "vo"); fw.name = "first_wall"
 
-    model, dim = build(args)
-    sp_path = model.run()
-    with openmc.StatePoint(sp_path) as sp:
-        t = sp.get_tally(name="fwd_meshflux")
-        flux = t.mean.ravel()            # C-order, matches psi.reshape(dim) in patch_worth
-        err = t.std_dev.ravel()
-    np.savez(args.out, flux=flux.reshape(dim), err=err.reshape(dim),
-             dimension=np.array(dim))
-    rel = err[flux > 0] / flux[flux > 0]
-    print(f"wrote {args.out}  mesh={dim}  nonzero voxels={int((flux>0).sum())}  "
-          f"median relerr={np.median(rel):.3f}  p90 relerr={np.percentile(rel,90):.3f}")
+    mult = openmc.Material(name="multiplier")
+    mult.add_element("Be", 1.0); mult.set_density("g/cm3", 1.85)
+
+    br = openmc.Material(name="breeder")
+    br.add_element("Li", 2.0, enrichment=li6, enrichment_target="Li6", enrichment_type="ao")
+    br.add_element("Be", 1.0); br.add_element("F", 4.0); br.set_density("g/cm3", 1.94)
+
+    bw = openmc.Material(name="back_wall")
+    bw.add_element("Fe", 0.885, "wo"); bw.add_element("Cr", 0.09, "wo")
+    bw.add_element("W", 0.011, "wo"); bw.add_element("Mn", 0.006, "wo")
+    bw.add_element("V", 0.002, "wo"); bw.add_element("C", 0.006, "wo")
+    bw.set_density("g/cm3", 7.9)
+
+    sh = openmc.Material(name="shield")
+    sh.add_element("W", 1.0); sh.add_element("C", 1.0); sh.set_density("g/cm3", 15.6)
+
+    gap = openmc.Material(name="gap")
+    gap.add_nuclide("H1", 1.0); gap.set_density("g/cm3", 1e-8)
+
+    vv = openmc.Material(name="vac_vessel")
+    vv.add_element("Fe", 0.62, "wo"); vv.add_element("Cr", 0.16, "wo")
+    vv.add_element("Ni", 0.11, "wo"); vv.add_element("Mo", 0.02, "wo")
+    vv.add_element("Mn", 0.015, "wo"); vv.add_element("B", 0.03, "wo")
+    vv.add_element("O", 0.03, "wo"); vv.add_element("H", 0.005, "wo")
+    vv.set_density("g/cm3", 7.9)
+
+    ts = openmc.Material(name="thermal_shield")
+    ts.add_element("Fe", 0.89, "wo"); ts.add_element("Cr", 0.09, "wo")
+    ts.add_element("Mn", 0.02, "wo"); ts.set_density("g/cm3", 7.9)
+
+    mg = openmc.Material(name="magnets")
+    mg.add_element("Cu", 0.58, "wo"); mg.add_element("Fe", 0.30, "wo")
+    mg.add_element("Cr", 0.04, "wo"); mg.add_element("Ni", 0.03, "wo")
+    mg.add_element("Y", 0.02, "wo"); mg.add_element("Ba", 0.02, "wo")
+    mg.add_element("O", 0.01, "wo"); mg.set_density("g/cm3", 8.5)
+
+    vac = openmc.Material(name="Vacuum")
+    vac.add_nuclide("H1", 1.0); vac.set_density("g/cm3", 1e-10)
+
+    return openmc.Materials([fw, mult, br, bw, sh, gap, vv, ts, mg, vac])
 
 
-if __name__ == "__main__":
-    main()
+# --- mesh from adjoint npz (co-located with psi_dagger) ---
+da = np.load(ADJOINT)
+ll = np.asarray(da["lower_left"], float)
+ur = np.asarray(da["upper_right"], float)
+dim = [int(v) for v in np.asarray(da["dimension"])]
+
+mats = build_materials(LI6)
+
+dag = openmc.DAGMCUniverse(DAGMC, auto_geom_ids=True)
+bb = dag.bounding_box
+lo, hi = np.array(bb.lower_left), np.array(bb.upper_right)
+ext = float(np.max(np.abs(np.concatenate([lo, hi]))))
+sph = openmc.Sphere(r=ext * 1.5 + 10.0, boundary_type="vacuum")
+root = openmc.Cell(region=-sph, fill=dag)
+geom = openmc.Geometry([root])
+
+# --- source: SAME as coil_run_v3 (unpol, fluxmap field model, 14.06 MeV) ---
+src = openmc.StellaratorSource(
+    fluxmap=f"{BASE}/qh_fluxmap", polarization=(1/3, 1/3, 1/3), field_model="fluxmap",
+    energy=openmc.stats.Discrete([14.06e6], [1.0]), strength=1.0)
+
+s = openmc.Settings()
+s.run_mode = "fixed source"; s.source = [src]
+s.batches = BATCHES; s.particles = PARTICLES
+s.photon_transport = False
+s.max_lost_particles = 100
+s.rel_max_lost_particles = 1e-4
+s.output = {"summary": True, "tallies": False}
+if WW_FILE and os.path.exists(WW_FILE):
+    s.weight_windows = openmc.hdf5_to_wws(WW_FILE)
+    s.weight_windows_on = True
+    print("Using weight windows from", WW_FILE, flush=True)
+
+mesh = openmc.RegularMesh()
+mesh.lower_left = ll.tolist()
+mesh.upper_right = ur.tolist()
+mesh.dimension = dim
+t = openmc.Tally(name="fwd_meshflux")
+t.filters = [openmc.MeshFilter(mesh)]
+t.scores = ["flux"]
+
+model = openmc.Model(geometry=geom, materials=mats, settings=s, tallies=openmc.Tallies([t]))
+print(f"=== fwd_meshflux DAGMC={os.path.basename(DAGMC)} mesh={dim} "
+      f"batches={BATCHES} particles={PARTICLES} LI6={LI6} ===", flush=True)
+t0 = time.time()
+sp_path = model.run(output=True, threads=int(os.environ.get("OMP_NUM_THREADS", 32)))
+print(f"RUN_WALL_SECONDS {time.time()-t0:.1f}", flush=True)
+
+with openmc.StatePoint(sp_path) as sp:
+    tf = sp.get_tally(name="fwd_meshflux")
+    flux = tf.mean.ravel()          # C-order, matches psi.reshape(dim) in patch_worth
+    err = tf.std_dev.ravel()
+np.savez(OUT_NPZ, flux=flux.reshape(dim), err=err.reshape(dim), dimension=np.array(dim))
+rel = err[flux > 0] / flux[flux > 0]
+print(f"WROTE {OUT_NPZ}  mesh={dim}  nonzero voxels={int((flux>0).sum())}  "
+      f"median relerr={np.median(rel):.3f}  p90 relerr={np.percentile(rel,90):.3f}", flush=True)
+print("DONE_fwd_meshflux", flush=True)
