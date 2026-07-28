@@ -131,7 +131,10 @@ def main():
     ap.add_argument("--pick-corners", action="store_true")
     ap.add_argument("--patches-out", default=os.path.join(HERE, "patches.txt"))
     ap.add_argument("--finite-diff", action="store_true")
-    ap.add_argument("--baseline", help="baseline coil npz (cells, flux)")
+    ap.add_argument("--baseline",
+                    default="/burg-archive/home/tjk2147/pstl_test/corrected/coil_step1b_uniform.npz",
+                    help="baseline coil npz (coil_cells, coil_fast_flux); default = kill-shot "
+                         "uniform (12x4M no-WW seed=1, correlated with the patch doses)")
     ap.add_argument("--patch-glob", default=None, help="coil_patch_*.npz glob")
     ap.add_argument("--cell", type=int, default=20)
     ap.add_argument("--fig", default=os.path.join(HERE, "patch_worth_tier2.png"))
