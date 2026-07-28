@@ -26,11 +26,16 @@ WORK=/burg-archive/home/tjk2147/pstl_test/corrected
 PW=$WORK/patch_worth
 SRC=/ginsburg/astro/users/tjk2147/spf_work/openmc_src   # transport tree (StellaratorSource)
 ADJ=/burg-archive/home/tjk2147/adjoint_test/recip_w35f_coil20_flat/adjoint_importance_flat_P0.npz
-WW=/burg-archive/home/tjk2147/pstl_test/fwcadis/weight_windows.h5
+# NO weight windows: the fwcadis WW over-splits on this geom (2M primaries -> 68M+ secondary
+# tracks, batch 1 never finishes). The kill-shot proved brute-force no-WW resolves the deep
+# coil dose to 0.5-2.4% relerr, so we match it exactly -> the patch doses become CORRELATED
+# with the existing kill-shot uniform baseline (coil_step1b_uniform.npz), same seed=1.
+WW=""
 BASE_DAGMC=$WORK/dagmc_qh_step1_uniform.h5m            # baseline (delta=0 reference)
 LI6=60
 N_TOR=4; N_POL=4; DELTA_CM=20.0
-BATCHES=20; PARTICLES=2000000                          # match slurm_step1_dose_ww (WW, 40M)
+BATCHES=12; PARTICLES=4000000                          # match kill-shot (48M no-WW, seed=1)
+FWD_BATCHES=20                                         # mesh flux spread over voxels -> 80M
 
 act_transport() {
   source /burg/opt/anaconda3-2023.09/etc/profile.d/conda.sh
@@ -52,9 +57,9 @@ act_build() {
 if [ "$MODE" = "fwd" ]; then
   cd "$WORK"
   act_transport
-  echo "=== Tier-0: forward mesh flux (co-located with adjoint) $(date) ==="
-  python -u "$PW/fwd_meshflux.py" "$BATCHES" "$PARTICLES" "$BASE_DAGMC" "$ADJ" \
-      "$WORK/qh_fwd_meshflux.npz" "$LI6" "$WW"
+  echo "=== Tier-0: forward mesh flux (co-located with adjoint, NO WW) $(date) ==="
+  python -u "$PW/fwd_meshflux.py" "$FWD_BATCHES" "$PARTICLES" "$BASE_DAGMC" "$ADJ" \
+      "$WORK/qh_fwd_meshflux.npz" "$LI6"
   echo "=== DONE fwd meshflux rc=$? -> $WORK/qh_fwd_meshflux.npz $(date) ==="
   exit 0
 fi
@@ -64,9 +69,11 @@ if [ "$MODE" = "base" ]; then
   # settings (WW, 20x2M, seed) as the patches -> apples-to-apples Delta R.
   cd "$WORK"
   act_transport
-  echo "=== Tier-2 baseline: uniform coil-20 dose (WW) $(date) ==="
+  # OPTIONAL: usually skip -- coil_step1b_uniform.npz (kill-shot, 12x4M no-WW seed=1) is already
+  # a correlated baseline at identical settings. Run this only to refresh it.
+  echo "=== Tier-2 baseline: uniform coil-20 dose (NO WW) $(date) ==="
   python -u "$WORK/coil_run_v3.py" unpol "$BATCHES" "$PARTICLES" \
-      "$BASE_DAGMC" "patchbase" "$LI6" "$WORK/cells_step1_uniform.npz" "$WW"
+      "$BASE_DAGMC" "patchbase" "$LI6" "$WORK/cells_step1_uniform.npz"
   echo "=== DONE baseline rc=$? -> coil_patchbase.npz $(date) ==="
   exit 0
 fi
@@ -87,12 +94,12 @@ echo "=== Tier-2 patch ($I_TOR,$J_POL): magnet cells (pymoab) $(date) ==="
 python -u "$WORK/step1_cells.py" "$WORK/dagmc_qh_patch_${TAG}.h5m" "$WORK/cells_patch_${TAG}.npz" \
     || { echo "CELLS_FAIL"; exit 1; }
 
-echo "=== Tier-2 patch ($I_TOR,$J_POL): coil-20 dose (WW, transport env) $(date) ==="
+echo "=== Tier-2 patch ($I_TOR,$J_POL): coil-20 dose (NO WW, transport env) $(date) ==="
 cd "$RUNDIR"                                            # per-task cwd -> no HDF5 race
 act_transport
 python -u "$WORK/coil_run_v3.py" unpol "$BATCHES" "$PARTICLES" \
     "$WORK/dagmc_qh_patch_${TAG}.h5m" "patch_${TAG}" "$LI6" \
-    "$WORK/cells_patch_${TAG}.npz" "$WW" || { echo "DOSE_FAIL"; exit 1; }
+    "$WORK/cells_patch_${TAG}.npz" || { echo "DOSE_FAIL"; exit 1; }
 # coil_run_v3 writes coil_patch_${TAG}.npz in cwd -> move to WORK for analysis
 mv -f "coil_patch_${TAG}.npz" "$WORK/" 2>/dev/null || true
 echo "=== DONE patch ($I_TOR,$J_POL) -> coil_patch_${TAG}.npz $(date) ==="
