@@ -66,17 +66,24 @@ def pick_corners(tier1_csv, out, n_per_corner=2):
         print(f"  ({i},{j})  {name}   A={key[(i,j)][0]:.3e}  W={key[(i,j)][1]:.3e}")
 
 
+def _coil_R(npz_path, cell):
+    """Fast flux at the target coil cell from a coil_run_v3 output npz.
+    Keys: 'coil_cells' (magnet cell ids [11..30]) and 'coil_fast_flux'."""
+    d = np.load(npz_path)
+    cs = [int(c) for c in d["coil_cells"]]
+    return float(d["coil_fast_flux"][cs.index(cell)])
+
+
 def finite_diff(tier1_csv, baseline_npz, patch_glob, cell=20, out_fig=None):
     key = load_tier1(tier1_csv)
-    base = np.load(baseline_npz)
-    cells = list(int(c) for c in base["cells"]); R0 = float(base["flux"][cells.index(cell)])
+    R0 = _coil_R(baseline_npz, cell)                    # baseline delta=0 coil-20 fast flux
+    delta_dir = os.path.dirname(os.path.abspath(patch_glob))
     rows = []
     for p in sorted(glob.glob(patch_glob)):
         tag = os.path.basename(p).split("coil_patch_")[1].split(".npz")[0]  # tIpJ
         i = int(tag.split("t")[1].split("p")[0]); j = int(tag.split("p")[1])
-        d = np.load(p)
-        cs = list(int(c) for c in d["cells"]); Rp = float(d["flux"][cs.index(cell)])
-        dd = np.load(p.replace("coil_patch_", "delta_qh_patch_"))
+        Rp = _coil_R(p, cell)
+        dd = np.load(os.path.join(delta_dir, f"delta_qh_patch_{tag}.npz"))
         added = float(dd["added_cells"]) * float(dd["delta_cm"])
         W_FD = -(Rp - R0) / added                       # worth = response drop per unit added shield
         A, W = key[(i, j)]
