@@ -28,7 +28,9 @@ DELTA_CM = float(sys.argv[5]) if len(sys.argv) > 5 else 20.0   # extra shield in
 BE_CM = 2.0
 OUTNAME = f"qh_patch_t{I_TOR}p{J_POL}"
 
-export_dir = "/burg-archive/home/tjk2147/pstl_test/corrected"
+# export_dir: 6th arg (per-task RUNDIR) so PARALLEL builds don't clobber each other's
+# intermediate STEP/gmsh files in a shared dir. Default = the shared corrected dir (serial).
+export_dir = sys.argv[6] if len(sys.argv) > 6 else "/burg-archive/home/tjk2147/pstl_test/corrected"
 
 # ---- grid (MUST match build_step1.py) ----
 toroidal_angles = list(np.linspace(0.0, 90.0, 13))    # one period, nfp=4
