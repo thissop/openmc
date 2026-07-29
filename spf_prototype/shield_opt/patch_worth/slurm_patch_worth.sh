@@ -85,10 +85,15 @@ TAG="t${I_TOR}p${J_POL}"
 RUNDIR="$WORK/patchrun_${TAG}"
 mkdir -p "$RUNDIR"
 
-echo "=== Tier-2 patch ($I_TOR,$J_POL): build DAGMC (pstl env) $(date) ==="
+echo "=== Tier-2 patch ($I_TOR,$J_POL): build DAGMC (pstl env, isolated to RUNDIR) $(date) ==="
 cd "$RUNDIR"
 act_build
-python -u "$PW/build_patch.py" "$I_TOR" "$J_POL" "$N_TOR" "$N_POL" "$DELTA_CM" || { echo "BUILD_FAIL"; exit 1; }
+# export to RUNDIR (6th arg) -> parallel builds don't clobber shared STEP/gmsh intermediates
+python -u "$PW/build_patch.py" "$I_TOR" "$J_POL" "$N_TOR" "$N_POL" "$DELTA_CM" "$RUNDIR" \
+    || { echo "BUILD_FAIL"; exit 1; }
+# move the two final products to WORK (uniquely named per patch)
+mv -f "$RUNDIR/dagmc_qh_patch_${TAG}.h5m" "$RUNDIR/delta_qh_patch_${TAG}.npz" "$WORK/" \
+    || { echo "MOVE_FAIL"; exit 1; }
 
 echo "=== Tier-2 patch ($I_TOR,$J_POL): magnet cells (pymoab) $(date) ==="
 python -u "$WORK/step1_cells.py" "$WORK/dagmc_qh_patch_${TAG}.h5m" "$WORK/cells_patch_${TAG}.npz" \
