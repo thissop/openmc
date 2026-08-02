@@ -78,6 +78,30 @@ if [ "$MODE" = "base" ]; then
   exit 0
 fi
 
+if [ "$MODE" = "doseonly" ]; then
+  # Re-dose an ALREADY-BUILT patch DAGMC in an ISOLATED cwd (coil_run_iso.py chdir's to
+  # $DOSE_CWD) so concurrent doses do NOT collide on OpenMC's default statepoint.12.h5 in
+  # the shared WORK -- the race that made two different patches return identical flux.
+  IDX="${SLURM_ARRAY_TASK_ID:-0}"
+  read -r I_TOR J_POL < <(sed -n "$((IDX+1))p" "$PW/patches_dose.txt")
+  TAG="t${I_TOR}p${J_POL}"
+  RUNDIR="$WORK/doserun_${TAG}"; mkdir -p "$RUNDIR"
+  export DOSE_CWD="$RUNDIR"
+  act_transport
+  echo "=== doseonly ($I_TOR,$J_POL): isolated coil-20 dose (NO WW) $(date) ==="
+  # coil_run_iso can exit non-zero on the benign teardown double-free -> key on the npz, not rc.
+  python -u "$WORK/coil_run_iso.py" unpol "$BATCHES" "$PARTICLES" \
+      "$WORK/dagmc_qh_patch_${TAG}.h5m" "patch_${TAG}" "$LI6" \
+      "$WORK/cells_patch_${TAG}.npz" || echo "coil_run rc=$? (may be benign exit double-free)"
+  if [ -f "$RUNDIR/coil_patch_${TAG}.npz" ]; then
+    mv -f "$RUNDIR/coil_patch_${TAG}.npz" "$WORK/"
+    echo "=== DONE doseonly ($I_TOR,$J_POL) -> coil_patch_${TAG}.npz $(date) ==="
+  else
+    echo "DOSE_TRULY_FAILED ($I_TOR,$J_POL)"; exit 1
+  fi
+  exit 0
+fi
+
 # ---- Tier-2: one patch per array task. SLURM_ARRAY_TASK_ID -> line of patches.txt ("I J") ----
 IDX="${SLURM_ARRAY_TASK_ID:-0}"
 read -r I_TOR J_POL < <(sed -n "$((IDX+1))p" "$PW/patches.txt")
