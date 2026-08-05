@@ -1,0 +1,486 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage[colorlinks=true,linkcolor=teal,urlcolor=teal,citecolor=teal]{hyperref}
+
+\setlist{nosep,leftmargin=1.4em}
+\definecolor{kbbg}{RGB}{244,247,247}
+\definecolor{kbrule}{RGB}{40,110,110}
+\definecolor{accent}{RGB}{20,80,80}
+
+% Key-fact box
+\newtcolorbox{key}[1][]{colback=kbbg,colframe=kbrule,boxrule=0.6pt,left=6pt,right=6pt,
+  top=4pt,bottom=4pt,arc=1.5pt,fonttitle=\bfseries,#1}
+
+\newcommand{\Bhat}{\hat{\mathbf{B}}}
+\newcommand{\uu}{\hat{\mathbf{u}}}
+\newcommand{\psid}{\psi^{\dagger}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\R}{\mathcal{R}}
+
+\title{\vspace{-2.5em}\textbf{Spin-Polarized Fusion $\times$ Adjoint Magnet Shielding}\\[0.3em]
+\large A working primer on the directional source, the importance method, and where the project goes}
+\author{}
+\date{\small Internal note --- QH/QA stellarator neutronics --- compiled \today}
+
+\begin{document}
+\maketitle
+\vspace{-2.5em}
+
+\begin{key}
+\textbf{The one-paragraph version.} We are building two coupled capabilities. (1) A
+\emph{spin-polarized fusion} (SPF) neutron source for OpenMC whose \emph{birth directions} are
+steered by the fuel polarization relative to the local magnetic field $\Bhat$ --- physics from
+Schwartz~(2025). (2) An \emph{adjoint importance / contributon} method that identifies, for a
+given magnet, \emph{which} neutrons and \emph{which} shield locations set its radiation load ---
+and then re-partitions blanket material (breeder $\leftrightarrow$ shield, at fixed machine
+envelope) to protect it. The scientific payoff is a distinction nobody has published:
+\emph{where the responsible neutrons are born} (attribution) is \emph{not} \emph{where blocking
+them helps} (worth). Everything below builds that claim from the physics up.
+\end{key}
+
+\tableofcontents
+\medskip
+\hrule
+
+%==============================================================================
+\section{The project in one page}
+
+\textbf{Motivation.} In a compact stellarator reactor the superconducting coils are the most
+neutron-sensitive, most expensive, and least replaceable components. Fusion neutrons born in the
+plasma stream outward; a fraction reach the coils and cause heating, insulation damage, and flux
+that quenches superconductivity. Two levers reduce that load: change \emph{which} neutrons are
+born going \emph{where} (the SPF source), and change \emph{where} the shield sits (nonuniform
+blanket design). This project develops both and---crucially---the adjoint machinery that tells
+you \emph{where} to spend either lever.
+
+\textbf{Two papers.} The work splits cleanly:
+\begin{itemize}
+\item \textbf{Paper A --- SPF directional source $\times$ adjoint magnet importance.} Couple the
+  polarization-steered birth distribution to the coil importance map: does aligning the emission
+  lobe away from a coil measurably lower its load? Strongest novelty (no one has crossed SPF
+  directionality with magnet adjoints).
+\item \textbf{Paper B --- adjoint-informed nonuniform magnet shielding.} At fixed outer envelope,
+  trade tritium-breeder thickness for neutron-shield thickness, \emph{locally}, guided by the
+  adjoint. The headline is not the optimizer (others have nonuniform-blanket tools) but the
+  \emph{experiment}: attribution $\neq$ actionability, validated by finite difference.
+\end{itemize}
+
+\begin{key}
+\textbf{Read this framing first.} The tooling (compiled source, ParaStell geometry, random-ray
+adjoint) is largely prior art we build \emph{on}. Our defensible contribution is a
+\emph{scientific result}: the importance map everyone uses as a placement lever is the wrong
+quantity, and here is the right one, validated on hardware.
+\end{key}
+
+%==============================================================================
+\section{The SPF directional source: physics}
+\label{sec:physics}
+
+\subsection{Why polarization steers neutrons}
+In D--T fusion the dominant reaction proceeds through a $J^\pi=3/2^+$ resonance. When the
+deuteron and triton spins are \emph{polarized} relative to a quantization axis (the local field
+$\Bhat$), the angular distribution of the emitted neutron is no longer isotropic: it acquires a
+$\sin^2\theta$ or $\cos^2\theta$ character in $\theta$, the angle between the neutron direction
+$\uu$ and $\Bhat$. Aligning the fuel thus both changes the \emph{total} rate and \emph{steers}
+the emission --- the physics we exploit.
+
+\subsection{Mode parameterization (Schwartz 2025, Eq.~1)}
+Let deuteron spin-projection fractions be $d_+,d_0,d_-$ and triton fractions $t_+,t_-$. Group the
+collision channels into three mode fractions:
+\begin{equation}
+a = d_+t_+ + d_-t_-,\qquad b = d_0,\qquad c = d_+t_- + d_-t_+,\qquad a+b+c=1 .
+\end{equation}
+Unpolarized fuel is $a=b=c=\tfrac13$. Note $b$ is simply the deuteron transverse ($m=0$)
+fraction. This $(a,b,c)$ grouping is \emph{not} the naive ``$S=3/2$ aligned / mixed / $S=1/2$''
+split, and a common error (mode $c$ ``is isotropic'') is wrong---see below.
+
+\subsection{Differential cross section (Schwartz 2025, Eq.~2) --- authoritative}
+\begin{equation}
+\boxed{\;\frac{\dd\sigma}{\dd\Omega} = \frac{\sigma_0}{2\pi}\left[\tfrac34\,a\,\sin^2\theta
+ \;+\; \Big(\tfrac23 b + \tfrac13 c\Big)\Big(\tfrac14 + \tfrac34\cos^2\theta\Big)\right]\;}
+\label{eq:dsdo}
+\end{equation}
+with $\theta=\angle(\uu,\Bhat)$ and $\sigma_0$ the $S=3/2$ combined-spin cross section.
+Integrating \eqref{eq:dsdo} over $4\pi$ (do it in sympy; uses
+$\int\sin^2\theta\,\dd\Omega=8\pi/3$ and $\int(\tfrac14+\tfrac34\cos^2\theta)\,\dd\Omega=2\pi$):
+\begin{equation}
+\sigma_{\rm tot} = \sigma_0\Big[a + \tfrac23 b + \tfrac13 c\Big].
+\label{eq:stot}
+\end{equation}
+
+\begin{table}[h]\centering
+\begin{tabular}{lccl}
+\toprule
+Mode & $(a,b,c)$ & $\sigma_{\rm tot}/\sigma_0$ & Angular shape \\
+\midrule
+Unpolarized & $(\tfrac13,\tfrac13,\tfrac13)$ & $2/3$ & isotropic \\
+\textbf{A} & $(1,0,0)$ & $1$ (\textbf{+50\%}) & $\sin^2\theta$ --- peaks $\perp\Bhat$, zero along $\Bhat$ \\
+\textbf{B} & $(0,1,0)$ & $2/3$ & $\tfrac14+\tfrac34\cos^2\theta$ --- peaks $\parallel\Bhat$ \\
+\textbf{C} & $(0,0,1)$ & $1/3$ (\textbf{half}) & \emph{same shape as B}, not isotropic \\
+\bottomrule
+\end{tabular}
+\caption{Corner values --- your oracle. Verify each from \eqref{eq:stot} before trusting any
+sampler. Non-polarized is $2\sigma_0/3$, \emph{not} $\sigma_0$.}
+\end{table}
+
+\begin{key}
+\textbf{The correction to remember.} Setting $a=0$ in \eqref{eq:dsdo}, both the $b$ and $c$ terms
+multiply the \emph{same} function $\tfrac14+\tfrac34\cos^2\theta$. So \textbf{B and C share
+directionality} and differ \emph{only} in total rate ($2/3$ vs.\ $1/3$). Mode C is \emph{not}
+isotropic. Pure A ($\propto\sin^2\theta$) is the only qualitatively different lobe: it emits
+\emph{perpendicular} to $\Bhat$ and vanishes along it.
+\end{key}
+
+\subsection{Separate direction from rate}
+Because the $b,c$ terms share an angular function, the birth-\emph{direction} pdf depends on only
+two effective weights:
+\begin{equation}
+w_\perp = \tfrac34 a \quad(\text{the }\sin^2\theta\text{ piece}),\qquad
+w_\parallel = \tfrac23 b + \tfrac13 c \quad(\text{the }\tfrac14+\tfrac34\cos^2\theta\text{ piece}).
+\end{equation}
+The unnormalized intensity is $I(\theta)=w_\perp\sin^2\theta+w_\parallel(\tfrac14+\tfrac34\cos^2\theta)$,
+azimuthally symmetric about $\Bhat$; the pdf is $p(\theta,\phi)=I/\!\int I\dd\Omega$ with
+$\phi\sim U[0,2\pi)$. The overall total-rate factor
+\begin{equation}
+\eta = a + \tfrac23 b + \tfrac13 c
+\end{equation}
+is a \emph{separate scalar} that multiplies the spatial source strength.
+
+\begin{key}
+\textbf{Design decision that mirrors Schwartz.} \emph{Direction} needs only
+$(w_\perp,w_\parallel)$; \emph{rate} is the scalar $\eta$. Keep them apart in code: A-mode and
+C-mode produce different \emph{numbers} of neutrons but each produces correctly \emph{shaped}
+directions. For pure-shape verification you normalize $\eta$ out; for absolute wall loads it
+multiplies the strength.
+\end{key}
+
+\subsection{The pdfs you actually sample}
+In $\mu=\cos\theta$ (absorbing the $\sin\theta$ Jacobian), the two normalized shapes on
+$[-1,1]$ are
+\begin{equation}
+p_A(\mu) = \tfrac34(1-\mu^2)\quad(\text{vanishes at }\mu=\pm1),\qquad
+p_{BC}(\mu) = \tfrac14 + \tfrac34\mu^2\quad(\text{peaks at }\mu=\pm1).
+\end{equation}
+Energy is decoupled to leading order: emit monoenergetic $14.06$ MeV for the analytic checks, or
+a Ballabio-broadened Gaussian ($\approx 14.08$ MeV, width $\approx 177\sqrt{T_i[\text{keV}]}$ keV)
+behind a flag.
+
+%==============================================================================
+\section{The SPF directional source: computation}
+\label{sec:sampling}
+
+\subsection{Stratified angular sampling (exact)}
+Sample the mixture by \emph{stratifying} over the two shapes:
+\begin{enumerate}
+\item With probability $P_\perp = W_\perp/(W_\perp+W_\parallel)$ pick the $\sin^2$ shape, else the
+  $\tfrac14+\tfrac34\cos^2$ shape. Here $W_\perp=w_\perp\cdot\tfrac{8\pi}{3}$ and
+  $W_\parallel=w_\parallel\cdot 2\pi$ are the \emph{solid-angle-integrated} weights (derive the
+  constants; do not paste them).
+\item Draw $\mu=\cos\theta$ from the chosen shape by \textbf{inverse-CDF}: each CDF is a cubic in
+  $\mu$; solve the depressed cubic (trig method) and pick the root in $[-1,1]$. Cross-check with a
+  \textbf{rejection} sampler (envelope $\propto\sin\theta$) in a unit test --- ``inverse-CDF vs.\
+  rejection'' catches a wrong root selection.
+\item $\phi\sim U[0,2\pi)$.
+\end{enumerate}
+This yields exact samples for \emph{any} $(a,b,c)$ and makes per-mode $\chi^2$ verification
+trivial.
+
+\subsection{Local $\to$ global frame rotation (no gimbal trap)}
+Sample in the $\Bhat$-aligned local frame ($\hat z_{\rm loc}\parallel\Bhat$), then rotate. Do
+\emph{not} build the basis from $\Bhat\times\hat z_{\rm world}$ (degenerate when
+$\Bhat\parallel\hat z$). Use least-aligned reference axis $+$ Gram--Schmidt:
+\[
+\text{ref}=\arg\min_{\hat e\in\{\hat x,\hat y,\hat z\}}|\Bhat\!\cdot\!\hat e|,\quad
+\hat x_{\rm loc}=\widehat{\text{ref}-(\text{ref}\!\cdot\!\Bhat)\Bhat},\quad
+\hat y_{\rm loc}=\Bhat\times\hat x_{\rm loc}.
+\]
+Assert $|\uu|-1<10^{-12}$. Unit-test the degenerate $\Bhat=\pm\hat z$ branch explicitly.
+
+\subsection{OpenMC integration and hard rules}
+\begin{itemize}
+\item Implemented as a \texttt{CompiledSource} (\texttt{PolarizedFusionSource} /
+  \texttt{StellaratorSource}) whose \texttt{sample(seed)} returns a \texttt{SourceSite}
+  ($\mathbf{r},\uu,E,\text{wgt},\dots$).
+\item \textbf{RNG:} only \texttt{openmc::prn(seed)}. Never \texttt{rand()} or \texttt{<random>}.
+\item \textbf{Thread safety:} \texttt{sample()} runs concurrently per-thread; \emph{any} mutable
+  member is a data race. All state is set in the constructor and \texttt{const} thereafter.
+\item \textbf{Gate on invariants (assert), warn only on user input.} Renormalizing $a+b+c$ warns;
+  ``selection probabilities sum to 1'' asserts.
+\end{itemize}
+
+\begin{key}
+\textbf{Verification ladder.} (T1) direction sampler alone: $\chi^2$ of sampled $\cos\theta$ vs.\
+$p(\mu)$ for each mode; rotation isotropy; inverse-CDF vs.\ rejection KS test. (T2) full-stack
+neutron-wall-load vs.\ the Schwartz analytic square-torus (scattering off). Do not start T$n{+}1$
+until T$n$ passes.
+\end{key}
+
+%==============================================================================
+\section{The adjoint / importance / contributon method}
+\label{sec:adjoint}
+
+This is the conceptual heart of the magnet-shielding side and the part most worth internalizing.
+
+\subsection{Forward, adjoint, and reciprocity}
+Let $L$ be the transport operator, $q$ the source (neutrons born in the plasma), and $\phi$ the
+forward flux: $L\phi=q$. A \emph{response} (e.g.\ fast-neutron flux or kerma in coil~$k$) is
+\begin{equation}
+\R_k = \langle \Sigma_k,\phi\rangle = \int \Sigma_k(x)\,\phi(x)\dd x ,
+\end{equation}
+where $\Sigma_k$ is the response function supported on coil~$k$ and $x=(\mathbf r,E,\hat\Omega)$.
+Define the \emph{adjoint} (importance) field by driving the transport \emph{backward} from the
+detector:
+\begin{equation}
+L^\dagger \psid_k = \Sigma_k .
+\end{equation}
+Then reciprocity gives
+\begin{equation}
+\boxed{\;\R_k = \langle \Sigma_k,\phi\rangle = \langle L^\dagger\psid_k,\phi\rangle
+ = \langle \psid_k, L\phi\rangle = \langle \psid_k, q\rangle = \int q(x)\,\psid_k(x)\dd x.\;}
+\label{eq:recip}
+\end{equation}
+
+\begin{key}
+\textbf{What $\psid_k$ means.} $\psid_k(x)$ is the \emph{expected contribution to $\R_k$ of one
+particle introduced at phase-space point $x$} --- the \emph{importance} of $x$ to coil~$k$.
+Equation~\eqref{eq:recip} says the coil load is the plasma source folded against importance. Solve
+the adjoint \emph{once} (we use OpenMC's random-ray solver, adjoint source $=\Sigma_k$) and you
+get importance \emph{everywhere} on a mesh.
+\end{key}
+
+\subsection{The contributon}
+Define the (angle-integrated, scalar) \emph{contributon density}
+\begin{equation}
+C_k(x) = \phi(x)\,\psid_k(x).
+\end{equation}
+It is the density of the ``flow'' of particles that both \emph{get born} (via $\phi$ tracing back
+to $q$) and \emph{reach} coil~$k$ (via $\psid_k$). Its streamlines trace the corridor from plasma
+to coil. Two projections of the \emph{same} field answer two different questions.
+
+\subsection{Attribution vs.\ worth --- the same field, different regions}
+\textbf{Attribution.} Restrict the reciprocity integrand $q\,\psid_k$ to the \emph{plasma}: it maps
+\emph{where the neutrons responsible for coil~$k$'s load are born}. This is ``source attribution.''
+
+\textbf{Worth.} Add a thin absorber $\delta\Sigma$ at a \emph{shield} location; first-order transport
+perturbation theory gives
+\begin{equation}
+\delta\R_k \;\approx\; -\!\int \delta\Sigma(x)\,\phi(x)\,\psid_k(x)\dd x
+ \;=\; -\!\int \delta\Sigma(x)\,C_k(x)\dd x .
+\label{eq:worth}
+\end{equation}
+So the \emph{shielding worth} of adding material at $x$ --- the actionable design quantity
+$W_k(x)=-\partial\R_k/\partial m$ --- is proportional to the contributon $C_k$ \emph{in the
+shield}.
+
+\begin{key}
+\textbf{One field, two regions.}
+\[
+\underbrace{q\,\psid_k \text{ in the \emph{plasma}}}_{\text{attribution: where born}}
+\qquad\text{vs.}\qquad
+\underbrace{\phi\,\psid_k \text{ in the \emph{shield}}}_{\text{worth: where blocking helps}}.
+\]
+They differ because transport \emph{carries} the contributon from plasma to shield along
+streaming paths --- so the hottest birth region and the best shield patch need not line up. That
+gap is the whole experiment.
+\end{key}
+
+\subsection{The three-way distinction (do not conflate)}
+\begin{table}[h]\centering
+\begin{tabular}{p{3.1cm}p{5.2cm}p{5.6cm}}
+\toprule
+Quantity & Formula / meaning & Purpose \\
+\midrule
+\textbf{Attribution} & $C_k=q\,\psid_k$ in plasma; where responsible neutrons are born &
+Diagnostic --- explains the load \\
+\textbf{VR importance} & $\psid_k$ used to bias transport (CADIS/FW-CADIS weight windows) &
+Compute the deep response cheaply --- \emph{not} a design lever \\
+\textbf{Shielding worth} & $W_k=-\partial\R_k/\partial m \propto \phi\,\psid_k$ in shield &
+Actionable --- what to build where \\
+\bottomrule
+\end{tabular}
+\caption{Three uses of the adjoint that share $\psid_k$ but answer different questions.
+Conflating them is the biggest reviewer risk; the caveat below matters.}
+\end{table}
+
+\begin{key}
+\textbf{Scalar-worth caveat.} $\phi\,\psid$ is the \emph{leading-order scalar} worth. Exact
+anisotropic worth needs angular flux moments (an angular random-ray tally). So $W$ is a heuristic
+we \emph{validate against finite difference}, not a quantity we claim is exact. This is precisely
+why Tier~2 (rebuild geometry with real added shield, re-tally, difference) exists.
+\end{key}
+
+%==============================================================================
+\section{The stellarator neutronics computation stack}
+\label{sec:stack}
+
+\begin{itemize}
+\item \textbf{Configurations.} QH (Landreman--Paul quasi-helical, $n_{\rm fp}=4$, 20 coils) is the
+  workhorse; QA (quasi-axisymmetric) as a cross-check. Plasma boundary from a VMEC \texttt{wout}.
+\item \textbf{Geometry.} \textbf{ParaStell} lofts an 8-layer radial build outward from the plasma
+  and writes a watertight \textbf{DAGMC} \texttt{.h5m}. Layers (cm): first wall $3.2$, Be
+  multiplier $2$, breeder $50$, back wall $4$, shield $40$, gap $2$, vacuum vessel $25$, thermal
+  shield $3$. Coils are added as filament-swept solids.
+\item \textbf{Source.} \texttt{StellaratorSource} (\S\ref{sec:sampling}) with a fluxmap field
+  model supplies the DT birth sites and (optionally polarized) directions.
+\item \textbf{Response.} Per-coil fast-flux / kerma tallies (cells 11--30 for QH's 20 coils).
+\end{itemize}
+
+\subsection{The design variable: fixed-envelope breeder-for-shield trade}
+On a per-field-period $13\times19$ ($\phi\times\theta$) grid, a \emph{delta} field re-partitions
+material \emph{without moving the coils or growing the machine}:
+\begin{equation}
+t_{\rm shield}=T_{\rm SH0}+\delta,\qquad t_{\rm breeder}=T_{\rm BR0}-\delta,\qquad
+t_{\rm shield}+t_{\rm breeder}=\text{const (envelope conserved)},
+\end{equation}
+with a breeder floor ($t_{\rm breeder}\ge 15$ cm) so tritium breeding is not destroyed. $\delta$
+is stellarator-symmetric: defined per period, repeated $n_{\rm fp}$ times. Attribution and worth
+must therefore be measured in the \emph{period frame} ($\phi \bmod 2\pi/n_{\rm fp}$) to match the
+design knob.
+
+\begin{key}
+\textbf{Weight-window lesson (hard-won).} FW-CADIS weight windows \emph{over-split} on this
+geometry: 2M source particles spawned $6.8\times10^{7}$ secondary tracks and batch~1 never
+finished. The fix is brute-force \emph{no}-WW sampling (the deep coil dose still resolves to
+0.5--2.4\% relative error at $\sim$48M histories). Matching settings across runs also makes them
+\emph{correlated} (shared seed), which shrinks finite-difference variance for free.
+\end{key}
+
+%==============================================================================
+\section{Recent developments and results}
+\label{sec:results}
+
+\subsection{Kill-shot: informed placement works, but the peak migrates}
+Using the coil-20 attribution map to place a nonuniform shield (fixed envelope) versus a uniform
+reference, at matched settings:
+\begin{center}
+\begin{tabular}{lccl}
+\toprule
+Metric & placed/uniform & reduction & note \\
+\midrule
+Peak coil fast flux & $0.240$ & $\mathbf{4.2\times}$ & uniform peak = coil 20 \\
+Coil-20 (adjoint target) & $0.215$ & $4.7\times$ & \\
+Mean over coils & $0.441$ & $2.3\times$ & \\
+\bottomrule
+\end{tabular}
+\end{center}
+At fixed envelope the informed shield cuts peak coil flux to 24\% of uniform. \textbf{But the
+peak migrated coil 20 $\to$ coil 25}: single-coil attribution over-protects its own target and
+leaves a different, unprotected coil as the new binding constraint. This is direct evidence that
+attribution is not, by itself, the right design lever --- and it motivates both multi-coil
+importance and the patch-worth test.
+
+\subsection{Multi-coil importance (zero new transport)}
+All 20 per-coil adjoint maps already exist and share one mesh, so a multi-coil importance
+$\psid_{\rm multi}$ is pure post-processing: $\sum_k \psid_k$ (total dose), $\max_k \psid_k$
+(envelope), or flux-weighted $\sum_k R_k\psid_k$ (peak-driven). The flux-weighted map reveals the
+uniform hot region is the coil 17--20 \emph{cluster} with coil~25 secondary --- explaining the
+migration. This feeds the \emph{existing} placement allocator unchanged; only the field it
+consumes changes.
+
+\subsection{Patch-worth: the decisive experiment}
+Partition the shield into $\sim16$ $(\theta,\phi)$ patches (period frame). For each, compute
+attribution $A=q\psid$ (plasma) and scalar worth $W=\phi\psid$ (shield band), and rank-correlate.
+
+\textbf{Tier 1 (done).} $A$ and $W$ are \emph{near-independent}, robustly across binnings:
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+grid & Spearman $\rho$ & $p$ & Chatterjee $\xi$ \\
+\midrule
+$4\times4$ & $+0.26$ & $0.33$ & $0.15$ \\
+$5\times5$ & $+0.11$ & $0.61$ & $0.01$ \\
+$6\times6$ & $+0.13$ & $0.46$ & $0.004$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Underpowered per binning (16--36 patches), but the \emph{consistency} plus $\xi\approx0$ points
+one way: \textbf{where neutrons are born $\neq$ where blocking helps}.
+
+\textbf{Tier 2 (in progress).} Finite-difference validation: pick disagreement corners
+--- e.g.\ patch $(2,1)$ has near-zero $A$ but the \emph{highest} $W$; $(2,3)$ the highest $A$ but
+modest $W$ --- rebuild each with $+20$ cm real shield, re-tally coil-20 dose, and difference
+against the (correlated) baseline to get $W_{\rm FD}=-\Delta\R/\Delta m$. The verdict:
+\begin{itemize}
+\item $W_{\rm FD}\!\sim\!W$ and $W_{\rm FD}\!\not\sim\!A$ $\Rightarrow$ \emph{attribution is not
+  the lever; worth is} (the novel result).
+\item $W_{\rm FD}\!\sim\!W\!\sim\!A$ $\Rightarrow$ attribution is a validated cheap proxy.
+\item $W_{\rm FD}\!\not\sim\!W$ $\Rightarrow$ scalar worth inadequate; need angular moments.
+\end{itemize}
+
+\begin{key}
+\textbf{Engineering lesson from Tier 2.} Concurrent doses must run in \emph{separate working
+directories}: OpenMC writes a default \texttt{statepoint.N.h5}, so two jobs sharing a cwd clobber
+each other and return bit-identical (wrong) results. Isolate the cwd per task; key success on the
+output file, not the exit code (a benign teardown double-free can exit non-zero after a valid
+write).
+\end{key}
+
+%==============================================================================
+\section{Direction, scope, and novelty}
+\label{sec:direction}
+
+\subsection{Prior art (what is already taken)}
+\begin{itemize}
+\item \textbf{Bae et al.\ (2025)} --- polarized source in OpenMC. Takes the ``SPF-source-in-OpenMC''
+  flag; so Paper~A's novelty is the \emph{coupling to magnet importance}, not the source.
+\item \textbf{Bogaarts \& Warmer (2026)} --- differentiable stellarator geometry $+$ deterministic
+  transport $+$ FW-CADIS $+$ nonuniform blanket optimization. Owns ``nonuniform stellarator shield
+  optimizer''; do \emph{not} claim that phrase. But it never tests attribution $\neq$ worth and
+  never targets magnets at fixed envelope.
+\item \textbf{ParaStell (Moreno 2024)} --- manual radial-build sweep; names automated optimization
+  as future work (the door we walk through).
+\item \textbf{CFS IAEA (2025)} --- contributon/adjoint, but for a \emph{diagnostic detector},
+  deterministic, tokamak. Not a magnet, not a stellarator.
+\end{itemize}
+
+\subsection{The defensible claim}
+\begin{key}
+\textbf{Compete on the physics, not the tool.} The importance map everyone treats as a placement
+lever (attribution / VR importance) is \emph{not} the shielding worth. We demonstrate the gap
+(Tier 1), validate the worth against finite difference (Tier 2), and use it to fix the
+peak-migration failure (multi-coil placement). Paper~A adds the orthogonal SPF-directionality
+$\times$ magnet-importance coupling. None of the prior art performs this experiment.
+\end{key}
+
+\subsection{Outlook}
+(1) Finish Tier 2 $\to$ the $W_{\rm FD}$ vs $W$ vs $A$ figure (the paper's spine). (2) Feed the
+winning field (worth, or validated-attribution) to the existing allocator, now \emph{multi-coil},
+and show the migrated peak is fixed with a second-round reduction. (3) Cross with the SPF source
+for Paper~A. Downstream, our objective-correction is exactly what a differentiable optimizer (\`a
+la Bogaarts \& Warmer) should consume.
+
+%==============================================================================
+\section{Symbol \& concept cheat-sheet}
+
+\newcommand{\gi}[2]{\textbf{#1} & #2 \\}
+\begin{tabular}{@{}p{3.2cm}p{12.2cm}@{}}
+\gi{$a,b,c$}{Collision-mode fractions, $a+b+c=1$; unpolarized $=(\tfrac13,\tfrac13,\tfrac13)$. $a$=A (aligned $\perp$ lobe), $b,c$ share the $\parallel$ lobe.}
+\gi{$\theta$}{Angle between neutron direction $\uu$ and local field $\Bhat$.}
+\gi{$\sigma_0$}{$S=3/2$ combined-spin cross section; $\sigma_{\rm tot}=\sigma_0(a+\tfrac23 b+\tfrac13 c)$.}
+\gi{$w_\perp,w_\parallel$}{Angular weights $\tfrac34 a$ and $\tfrac23 b+\tfrac13 c$; set the birth-\emph{direction} pdf.}
+\gi{$\eta$}{Total-rate factor $a+\tfrac23 b+\tfrac13 c$; scales source \emph{strength}, separate from direction.}
+\gi{$q$}{Forward source (neutron births in plasma). $L\phi=q$.}
+\gi{$\phi$}{Forward flux; $\R_k=\langle\Sigma_k,\phi\rangle$ is coil-$k$ load.}
+\gi{$\psid_k$}{Adjoint/importance for coil $k$: $L^\dagger\psid_k=\Sigma_k$; $\R_k=\langle q,\psid_k\rangle$.}
+\gi{$C_k$}{Contributon $\phi\,\psid_k$: flow of particles born \emph{and} reaching coil $k$.}
+\gi{Attribution $A$}{$q\,\psid_k$ in the \emph{plasma} --- where responsible neutrons are born.}
+\gi{Worth $W$}{$-\partial\R_k/\partial m \propto \phi\,\psid_k$ in the \emph{shield} --- where blocking helps.}
+\gi{$W_{\rm FD}$}{Finite-difference worth $-\Delta\R_k/\Delta m$ from a real rebuilt-and-retallied patch.}
+\gi{$\delta$}{Per-period shield-thickness increment traded against breeder at fixed envelope.}
+\gi{$n_{\rm fp}$}{Field periods (QH $=4$); fold $\phi\bmod 2\pi/n_{\rm fp}$ to match the design knob.}
+\end{tabular}
+
+\vfill
+\begin{center}\small\itshape
+Physics per Schwartz (2025), Eqs.~1--2, re-derived here. Numbers from the QH corrected 8-layer
+build; Tier-2 finite difference in progress.
+\end{center}
+
+\end{document}
