@@ -17,6 +17,29 @@ FIELD_DRIVER = BUILDDIR / "spf_field_driver"
 sys.path.insert(0, str(PYDIR))
 
 
+def _stale_or_unrunnable(binary: Path, sources) -> bool:
+    """True if `binary` must be (re)built: missing, older than any source, or not executable on
+    THIS platform. The last check is the important one -- a build/ synced from another machine
+    (e.g. a Linux-ELF binary on macOS, or vice versa) exists but raises OSError 'Exec format
+    error' at run time, and the old `if not exists` guard silently reused it."""
+    if not binary.exists():
+        return True
+    bmt = binary.stat().st_mtime
+    if any(Path(s).exists() and Path(s).stat().st_mtime > bmt for s in sources):
+        return True
+    try:
+        subprocess.run([str(binary)], capture_output=True)  # no check: usage exit is non-zero
+    except OSError:
+        return True  # wrong architecture / not a runnable executable here
+    return False
+
+
+_DRIVER_SRC = [SRCDIR / "standalone_driver.cpp", SRCDIR / "spf_sampler.hpp",
+               REPO / "src" / "random_lcg.cpp", REPO / "include" / "openmc" / "random_lcg.h"]
+_FIELD_SRC = [SRCDIR / "spf_field_driver.cpp", SRCDIR / "spf_field.hpp",
+              SRCDIR / "spf_fieldmap.hpp"]
+
+
 def _build_driver() -> Path:
     BUILDDIR.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -44,7 +67,7 @@ def _build_field_driver() -> Path:
 
 @pytest.fixture(scope="session")
 def driver() -> Path:
-    if not DRIVER.exists():
+    if _stale_or_unrunnable(DRIVER, _DRIVER_SRC):
         _build_driver()
     return DRIVER
 
@@ -66,7 +89,7 @@ def run_driver(driver):
 
 @pytest.fixture(scope="session")
 def field_driver() -> Path:
-    if not FIELD_DRIVER.exists():
+    if _stale_or_unrunnable(FIELD_DRIVER, _FIELD_SRC):
         _build_field_driver()
     return FIELD_DRIVER
 
