@@ -26,7 +26,9 @@ import os
 import numpy as np
 
 import adjoint_placement as apl
+import attenuation_surrogate as att
 import bayes_optimizer as bo
+import placement_allocator as pa
 from thickness_field import ThicknessField
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -60,9 +62,38 @@ def run_case(name, baseline_field, tf, basis, seed=0):
                 sacrificed=sac, tbr=res["tbr"], design=res["best_design"], problem=p)
 
 
+def greedy_case(name, baseline_field, tf, budget_frac=0.3):
+    """Direct greedy placement (no GP): allocate a fixed material budget on the priority field.
+    Same fixed-envelope trade + breeder floor as the optimizer, but O(1) and deterministic --
+    the fast policy for the multi-coil map. Reports the same peak-dose story as run_case."""
+    P = baseline_field / (baseline_field.max() + 1e-300)
+    delta = pa.greedy_allocate(P, tf, budget_frac=budget_frac)
+    k = att.trade_k()
+    peak0 = float(baseline_field.max())                       # exp(0) = 1
+    peak1 = float((baseline_field * np.exp(-k * delta)).max())
+    sac = float(np.mean(delta) / tf.t_b0)                     # breeder area-averaged sacrifice
+    tf.trade(delta)                                           # asserts envelope + floor hold
+    print(f"[{name:16s}] peak dose {peak0:.4f} -> {peak1:.4f}  "
+          f"({100*(1-peak1/peak0):+.1f}%)   breeder sacrificed {100*sac:.1f}%   "
+          f"(greedy, budget {budget_frac:.2f})")
+    return dict(name=name, peak0=peak0, peak1=peak1, reduction=1 - peak1 / peak0,
+                sacrificed=sac, delta=delta)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--map", default=DEF_MAP)
+    ap.add_argument("--map", default=DEF_MAP,
+                    help="single coil adjoint map (back-compat); ignored if --maps given")
+    ap.add_argument("--maps", nargs="+", default=None,
+                    help="multiple per-coil adjoint maps -> combined multi-coil priority "
+                         "(protects the whole coil set; fixes single-coil peak migration)")
+    ap.add_argument("--combine", default="sum", choices=["sum", "max", "weighted"],
+                    help="how to merge per-coil priorities when --maps is used")
+    ap.add_argument("--policy", default="bayes", choices=["bayes", "greedy"],
+                    help="bayes = GP optimizer (standoff+shield); greedy = direct budgeted "
+                         "allocator on the priority field")
+    ap.add_argument("--budget-frac", type=float, default=0.3,
+                    help="greedy material budget (fraction of max addable shield)")
     ap.add_argument("--fluxmap", default=DEF_FLUX)
     ap.add_argument("--coil-centroid", type=float, nargs=3, default=[-891.95, -743.44, -74.47])
     ap.add_argument("--nfp", type=int, default=4)
@@ -85,13 +116,23 @@ def main():
     # (~55% vs ~19% realistic on QH coil-15). The adjoint psi_dagger is reactivity-
     # independent; only this S(r) weighting changes.
     print(f"reactivity profile (S(r) weighting): {args.emissivity}")
-    field = apl.contributon(args.map, args.fluxmap, scale=100.0, emissivity=args.emissivity)
-    res = apl.placement_priority(field, tor, pol)
-    P = res["priority"]                                # (n_tor, n_pol) in [0,1]
-    cphi, _ = apl.coil_angles(args.coil_centroid, res["R0"])
-    dphi = ((res["phi0_deg"] - cphi + 180) % 360) - 180
-    print(f"adjoint placement target phi0={res['phi0_deg']:.0f} deg "
-          f"(coil phi={cphi:.0f}, |dphi|={abs(dphi):.0f}); R0={res['R0']:.0f} cm\n")
+    maps = args.maps if args.maps else [args.map]
+    if len(maps) == 1:
+        field = apl.contributon(maps[0], args.fluxmap, scale=100.0, emissivity=args.emissivity)
+        res = apl.placement_priority(field, tor, pol)
+        P = res["priority"]                            # (n_tor, n_pol) in [0,1]
+        cphi, _ = apl.coil_angles(args.coil_centroid, res["R0"])
+        dphi = ((res["phi0_deg"] - cphi + 180) % 360) - 180
+        print(f"adjoint placement target phi0={res['phi0_deg']:.0f} deg "
+              f"(coil phi={cphi:.0f}, |dphi|={abs(dphi):.0f}); R0={res['R0']:.0f} cm\n")
+    else:
+        # MULTI-COIL: build each coil's priority, combine -> protect the whole set.
+        per_coil = []
+        for m in maps:
+            fld = apl.contributon(m, args.fluxmap, scale=100.0, emissivity=args.emissivity)
+            per_coil.append(apl.placement_priority(fld, tor, pol)["priority"])
+        P = pa.combine_priorities(per_coil, mode=args.combine)
+        print(f"multi-coil priority: combined {len(maps)} coil maps (mode={args.combine})\n")
 
     # baseline coil-dose field: adjoint-informed (the priority) vs uniform (flat guess).
     # Scale both to the same PEAK so the comparison is about the SHAPE (localization),
@@ -103,17 +144,32 @@ def main():
                         t_breeder0=80.0, t_shield0=20.0, t_breeder_min=10.0)
     basis = tf.fourier_basis(M=3, N=2)
 
-    print("closed-loop shield optimization (surrogate objective, fixed envelope + TBR floor):")
-    a = run_case("adjoint-informed", adj_field, tf, basis, seed=args.seed)
-    u = run_case("uniform (naive)", uni_field, tf, basis, seed=args.seed)
+    print(f"closed-loop shield placement (policy={args.policy}, fixed envelope + TBR floor):")
+    if args.policy == "greedy":
+        a = greedy_case("adjoint-informed", adj_field, tf, budget_frac=args.budget_frac)
+        # No-info baseline: without the map you cannot target, so spread the SAME budget UNIFORMLY
+        # over the true load (adj_field). (Greedy on a flat priority is degenerate bang-bang and
+        # would unfairly leave hot cells unshielded; uniform spread is the honest naive strategy.)
+        k = att.trade_k(); du = args.budget_frac * tf.delta_max
+        peak_u = float((adj_field * np.exp(-k * du)).max()) / (adj_field.max() + 1e-300)
+        u = dict(name="uniform (naive)", reduction=1.0 - peak_u, sacrificed=du / tf.t_b0)
+        print(f"[{'uniform (naive)':16s}] peak dose 1.0000 -> {peak_u:.4f}  "
+              f"({100*(1-peak_u):+.1f}%)   breeder sacrificed {100*du/tf.t_b0:.1f}%   "
+              f"(uniform spread, budget {args.budget_frac:.2f})")
+    else:
+        a = run_case("adjoint-informed", adj_field, tf, basis, seed=args.seed)
+        u = run_case("uniform (naive)", uni_field, tf, basis, seed=args.seed)
 
     print(f"\nHEADLINE: adjoint-informed cuts peak coil dose {100*a['reduction']:.1f}% "
           f"vs {100*u['reduction']:.1f}% for the uniform guess "
           f"(breeder sacrificed {100*a['sacrificed']:.1f}% vs {100*u['sacrificed']:.1f}%).")
 
-    if args.fig:
+    if args.fig and args.policy == "bayes":
         _figure(a, tf, basis, P, tor, pol, args.fig, args.emissivity)
         print("  wrote", args.fig)
+    elif args.fig:
+        print("  (figure only implemented for --policy bayes; "
+              "use multicoil_placement_demo.py --fig for the greedy field)")
     return a, u
 
 
