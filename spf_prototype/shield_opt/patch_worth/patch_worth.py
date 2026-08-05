@@ -36,6 +36,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))  # shield_opt/
 from adjoint_placement import _voxel_centers, contributon, importance_angles  # noqa: E402
+import plasma_geometry as pg  # noqa: E402
 
 
 def _fold_tor(phi, nfp):
@@ -71,13 +72,18 @@ def attribution_patches(adjoint, fluxmap, tor_edges, pol_edges, R0=None,
 
 
 def worth_patches(adjoint, fwd, R0, tor_edges, pol_edges,
-                  a_minor=None, band_cm=(59.0, 99.0), nfp=4):
+                  a_minor=None, band_cm=None, nfp=4):
     """W(patch) = sum over SHIELD-band voxels of phi_fwd*psi_dagger, binned by (phi,theta).
 
     Shield band = minor-radius-like distance rho = hypot(R-R0, Z) in
     [a_minor + band_cm[0], a_minor + band_cm[1]]  (breeder_out..shield_out beyond LCFS).
-    a_minor auto-estimated as the 98th-pct rho of nonzero-source voxels if None.
+    band_cm defaults to the ACTUAL radial-build offsets (plasma_geometry.shield_band_offsets:
+    FW+mult+breeder+back_wall -> +shield), so the band tracks the real build. a_minor should be
+    the geometry-derived LCFS minor radius (plasma_geometry.axis_minor_from_fluxmap); if None it
+    falls back to a crude 5th-pct-rho voxel heuristic (kept only so the function runs standalone).
     Removal XS is a constant prefactor -> omitted (cancels in the A-vs-W ranking)."""
+    if band_cm is None:
+        band_cm = pg.shield_band_offsets()
     da = np.load(adjoint)
     psi = da["importance"].astype(float)
     ll, ur, dim = da["lower_left"], da["upper_right"], da["dimension"]
@@ -131,23 +137,37 @@ def main():
     ap.add_argument("--n-tor", type=int, default=4)
     ap.add_argument("--n-pol", type=int, default=4)
     ap.add_argument("--nfp", type=int, default=4, help="field periods (QH=4)")
-    ap.add_argument("--R0", type=float, default=None)
-    ap.add_argument("--a-minor", type=float, default=None, help="plasma minor radius (cm)")
-    ap.add_argument("--band", type=float, nargs=2, default=(59.0, 99.0),
-                    help="shield band beyond LCFS (cm): breeder_out shield_out")
+    ap.add_argument("--R0", type=float, default=None,
+                    help="magnetic-axis major radius (cm); default = geometry-derived from fluxmap")
+    ap.add_argument("--a-minor", type=float, default=None,
+                    help="LCFS minor radius (cm); default = geometry-derived from fluxmap")
+    ap.add_argument("--band", type=float, nargs=2, default=None,
+                    help="shield band beyond LCFS (cm); default = actual radial-build offsets")
     ap.add_argument("--emissivity", default="uniform")
     ap.add_argument("--out", default=os.path.join(HERE, "patch_worth_tier1.csv"))
     args = ap.parse_args()
 
+    # Physically-grounded R0 / a_minor from the plasma boundary (replaces the voxel heuristics).
+    # Falls back gracefully if the fluxmap lacks R/Z.
+    R0_geo = a_geo = None
+    try:
+        R0_geo, a_geo, _amax = pg.axis_minor_from_fluxmap(args.fluxmap)
+        print(f"plasma geometry (fluxmap): R0={R0_geo:.1f} cm  a_minor={a_geo:.1f} cm")
+    except Exception as e:  # noqa: BLE001
+        print(f"NOTE: could not derive R0/a_minor from fluxmap ({e}); using voxel heuristics.")
+    R0_used = args.R0 if args.R0 is not None else R0_geo
+    a_used = args.a_minor if args.a_minor is not None else a_geo
+
     tor_e, pol_e = define_patches(args.n_tor, args.n_pol, nfp=args.nfp)
     A, R0 = attribution_patches(args.adjoint, args.fluxmap, tor_e, pol_e,
-                                R0=args.R0, emissivity=args.emissivity, nfp=args.nfp)
+                                R0=R0_used, emissivity=args.emissivity, nfp=args.nfp)
     print(f"R0 = {R0:.1f} cm   patches = {args.n_tor}x{args.n_pol} = {A.size}  "
           f"(toroidal folded to 1/{args.nfp} period)")
 
     if args.fwd and os.path.exists(args.fwd):
+        band = tuple(args.band) if args.band is not None else None
         W, meta = worth_patches(args.adjoint, args.fwd, R0, tor_e, pol_e,
-                                a_minor=args.a_minor, band_cm=tuple(args.band), nfp=args.nfp)
+                                a_minor=a_used, band_cm=band, nfp=args.nfp)
         print(f"shield band rho in [{meta['r_in']:.0f}, {meta['r_out']:.0f}] cm "
               f"(a={meta['a_minor']:.0f}), {meta['n_shield_vox']} voxels")
         a, w = A.ravel(), W.ravel()
