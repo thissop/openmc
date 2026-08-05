@@ -123,6 +123,9 @@ def finite_diff(tier1_csv, baseline_npz, patch_glob, cell=20, out_fig=None):
         fig.tight_layout(); fig.savefig(out_fig, dpi=150); plt.close(fig)
         print(f"wrote {out_fig}")
 
+    return dict(R0=R0, rows=rows, rWFD_W=float(rWFD_W), pW=float(pW),
+                rWFD_A=float(rWFD_A), pA=float(pA), sign_W=sign_W)
+
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
