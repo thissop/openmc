@@ -292,6 +292,22 @@ def _unscale(U, lo, hi):
     return lo + np.asarray(U, float) * (hi - lo)
 
 
+def _select_best(X, Y, problem, tol=1e-6):
+    """Pick the reported optimum. The TBR-floor penalty is SOFT (it guides the search), so the
+    raw argmin(Y) can be a design that traded past the floor -- a big dose win can outweigh a
+    finite penalty. A constrained optimum must be FEASIBLE, so we return the best observation with
+    TBR >= floor - tol. Only if nothing feasible was seen (should not happen: a near-zero-shield
+    design is always feasible) do we fall back to the global argmin, flagged infeasible.
+
+    Returns (index, feasible_flag)."""
+    Y = np.asarray(Y, float)
+    feas = np.array([problem.tbr_of(x) >= problem.tbr_floor - tol for x in X], bool)
+    if feas.any():
+        idxs = np.flatnonzero(feas)
+        return int(idxs[np.argmin(Y[idxs])]), True
+    return int(np.argmin(Y)), False
+
+
 # ==============================================================================================
 # The optimizer
 # ==============================================================================================
@@ -333,9 +349,9 @@ def optimize(problem: OptProblem, n_bootstrap=30, n_verify=10, n_init=8,
 
     # skopt path: it manages its own GP+EI; we still stage bootstrap vs verify by swapping the
     # objective callable partway through via a mutable phase counter.
-    if chosen == "skopt":  # pragma: no cover - skopt not installed in this env
+    if chosen == "skopt":
         return _optimize_skopt(problem, n_bootstrap, n_verify, n_init, mc_evaluate,
-                               surrogate_obj, lo, hi, seed, verbose)
+                               surrogate_obj, lo, hi, seed, verbose, x0=x0)
 
     # -- self-contained GP + EI ----------------------------------------------------------------
     history = []
@@ -363,8 +379,10 @@ def optimize(problem: OptProblem, n_bootstrap=30, n_verify=10, n_init=8,
         phase = "bootstrap" if step < n_bootstrap else "verify"
         Us = _scale(np.array(X), lo, hi)
         gp = _GP().fit(Us, np.array(Y))
-        y_best = min(Y)
-        best_idx = int(np.argmin(Y))
+        # Anchor EI on the best FEASIBLE incumbent (constrained BO): improving over an infeasible
+        # incumbent is meaningless, and it keeps the search from chasing the floor-violating basin.
+        best_idx, _feas = _select_best(X, Y, problem)
+        y_best = float(Y[best_idx])
         incU = _scale(X[best_idx], lo, hi)
         # Candidate set for the inner EI maximization (standard practice to give EI a rich pool in
         # >10-D, where a single uniform draw rarely proposes a coherent multi-lever move):
@@ -391,7 +409,7 @@ def optimize(problem: OptProblem, n_bootstrap=30, n_verify=10, n_init=8,
         if verbose and (step % 10 == 0 or step == total - 1):
             print(f"  [{phase:9s}] iter {it:3d}  best J = {min(Y):.4f}")
 
-    best_i = int(np.argmin(Y))
+    best_i, feasible = _select_best(X, Y, problem)
     best = X[best_i]
     return dict(
         best_design=best,
@@ -399,13 +417,14 @@ def optimize(problem: OptProblem, n_bootstrap=30, n_verify=10, n_init=8,
         peak_dose=peak_dose(best, problem),
         min_magnet_lifetime=magnet_lifetime(best, problem),
         tbr=problem.tbr_of(best),
+        feasible=feasible,
         backend="gp_ei",
         history=history,
     )
 
 
 def _optimize_skopt(problem, n_bootstrap, n_verify, n_init, mc_evaluate, surrogate_obj,
-                    lo, hi, seed, verbose):  # pragma: no cover - skopt not installed here
+                    lo, hi, seed, verbose, x0=None):
     space = [_SkReal(float(l), float(h)) for l, h in zip(lo, hi)]
     phase = {"n": 0}
     history = []
@@ -417,13 +436,24 @@ def _optimize_skopt(problem, n_bootstrap, n_verify, n_init, mc_evaluate, surroga
         phase["n"] += 1
         return v
 
-    res = _skopt_gp_minimize(f, space, n_calls=n_init + n_bootstrap + n_verify,
+    # Seed skopt with the caller's start point so the (feasible) baseline is in the observation set
+    # -- otherwise the reported best-feasible can be worse than x0, since skopt does not take x0 on
+    # its own. Clip into bounds; skopt evaluates it as one of the n_calls.
+    x0_list = None
+    if x0 is not None:
+        x0_list = [list(np.clip(np.asarray(x0, float), lo, hi))]
+    res = _skopt_gp_minimize(f, space, x0=x0_list, n_calls=n_init + n_bootstrap + n_verify,
                              n_initial_points=n_init, random_state=seed, acq_func="EI")
-    best = np.asarray(res.x, float)
-    return dict(best_design=best, best_value=float(res.fun),
+    # feasibility-filtered reporting (same rule as the gp_ei path): skopt's res.x minimizes the
+    # penalized objective and may sit past the TBR floor, so pick the best feasible observation.
+    Xh = [h["design"] for h in history] or [np.asarray(res.x, float)]
+    Yh = [h["value"] for h in history] or [float(res.fun)]
+    bi, feasible = _select_best(Xh, Yh, problem)
+    best = np.asarray(Xh[bi], float)
+    return dict(best_design=best, best_value=float(Yh[bi]),
                 peak_dose=peak_dose(best, problem),
                 min_magnet_lifetime=magnet_lifetime(best, problem),
-                tbr=problem.tbr_of(best), backend="skopt", history=history)
+                tbr=problem.tbr_of(best), feasible=feasible, backend="skopt", history=history)
 
 
 # ==============================================================================================
