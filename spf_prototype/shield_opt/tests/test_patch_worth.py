@@ -130,6 +130,38 @@ def test_worth_band_defaults_to_radial_build():
     import plasma_geometry as pg
     # band_cm=None -> the actual build offsets (59.2, 99.2)
     assert pg.shield_band_offsets() == (pytest.approx(59.2), pytest.approx(99.2))
+    assert pg.breeder_band_offsets() == (pytest.approx(5.2), pytest.approx(55.2))
+
+
+def _signed_setup(tmp_path, rho_blob):
+    """psi*flux=6 blob at (phi=30,theta=90,rho=rho_blob). Returns (adj, fwd, R0, a)."""
+    ll, ur, dim = _mesh(); R0, a = 120.0, 40.0
+    ijk = _blob_at(30, 90, rho_blob, R0, ll, ur, dim)
+    psi = np.zeros(dim); psi[ijk] = 3.0
+    flux = np.zeros(dim); flux[ijk] = 2.0
+    adj = tmp_path / "adj.npz"; fwd = tmp_path / "fwd.npz"
+    np.savez(adj, importance=psi, lower_left=ll, upper_right=ur,
+             dimension=np.array(dim), coil_cells=np.array([1]))
+    np.savez(fwd, flux=flux)
+    return str(adj), str(fwd), R0, a
+
+
+def test_signed_worth_positive_when_blob_in_shield_band(tmp_path):
+    # blob in the shield band (a+70 -> rho 110) -> only the +sigma_sh term fires -> W_signed > 0
+    adj, fwd, R0, a = _signed_setup(tmp_path, 70.0 + 40.0)   # a_minor=40, offset 70 -> in [59,99]? use band args
+    te, pe = pw.define_patches(4, 4, nfp=4)
+    Ws, meta = pw.signed_worth_patches(adj, fwd, R0, te, pe, a_minor=a,
+                                       shield_band=(60.0, 100.0), breeder_band=(5.0, 55.0), nfp=4)
+    assert Ws.sum() > 0 and np.isclose(Ws.sum(), (1.0 / 8.0) * 6.0)   # sigma_sh * (phi*psi=6)
+
+
+def test_signed_worth_negative_when_blob_in_breeder_band(tmp_path):
+    # blob in the breeder band (rho ~ a+30 = 70) -> only the -sigma_br term fires -> W_signed < 0
+    adj, fwd, R0, a = _signed_setup(tmp_path, 30.0 + 40.0)
+    te, pe = pw.define_patches(4, 4, nfp=4)
+    Ws, meta = pw.signed_worth_patches(adj, fwd, R0, te, pe, a_minor=a,
+                                       shield_band=(60.0, 100.0), breeder_band=(5.0, 55.0), nfp=4)
+    assert Ws.sum() < 0 and np.isclose(Ws.sum(), -(1.0 / 17.0) * 6.0)  # -sigma_br * 6 (the sign flip)
 
 
 # ---- attribution_patches: localization + conservation (in-memory dicts) ------------------------
