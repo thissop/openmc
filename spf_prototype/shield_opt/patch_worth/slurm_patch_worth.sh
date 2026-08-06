@@ -104,7 +104,7 @@ fi
 
 # ---- Tier-2: one patch per array task. SLURM_ARRAY_TASK_ID -> line of patches.txt ("I J") ----
 IDX="${SLURM_ARRAY_TASK_ID:-0}"
-read -r I_TOR J_POL < <(sed -n "$((IDX+1))p" "$PW/patches.txt")
+read -r I_TOR J_POL < <(sed -n "$((IDX+1))p" "${PATCHFILE:-$PW/patches.txt}")
 TAG="t${I_TOR}p${J_POL}"
 RUNDIR="$WORK/patchrun_${TAG}"
 mkdir -p "$RUNDIR"
@@ -123,12 +123,17 @@ echo "=== Tier-2 patch ($I_TOR,$J_POL): magnet cells (pymoab) $(date) ==="
 python -u "$WORK/step1_cells.py" "$WORK/dagmc_qh_patch_${TAG}.h5m" "$WORK/cells_patch_${TAG}.npz" \
     || { echo "CELLS_FAIL"; exit 1; }
 
-echo "=== Tier-2 patch ($I_TOR,$J_POL): coil-20 dose (NO WW, transport env) $(date) ==="
-cd "$RUNDIR"                                            # per-task cwd -> no HDF5 race
+echo "=== Tier-2 patch ($I_TOR,$J_POL): coil-20 dose (NO WW, ISOLATED) $(date) ==="
+cd "$RUNDIR"
+export DOSE_CWD="$RUNDIR"                               # coil_run_iso chdir's here -> no statepoint race
 act_transport
-python -u "$WORK/coil_run_v3.py" unpol "$BATCHES" "$PARTICLES" \
+# coil_run_iso can exit non-zero on the benign teardown double-free -> key on the npz, not rc.
+python -u "$WORK/coil_run_iso.py" unpol "$BATCHES" "$PARTICLES" \
     "$WORK/dagmc_qh_patch_${TAG}.h5m" "patch_${TAG}" "$LI6" \
-    "$WORK/cells_patch_${TAG}.npz" || { echo "DOSE_FAIL"; exit 1; }
-# coil_run_v3 writes coil_patch_${TAG}.npz in cwd -> move to WORK for analysis
-mv -f "coil_patch_${TAG}.npz" "$WORK/" 2>/dev/null || true
-echo "=== DONE patch ($I_TOR,$J_POL) -> coil_patch_${TAG}.npz $(date) ==="
+    "$WORK/cells_patch_${TAG}.npz" || echo "coil_run rc=$? (may be benign exit double-free)"
+if [ -f "$RUNDIR/coil_patch_${TAG}.npz" ]; then
+  mv -f "$RUNDIR/coil_patch_${TAG}.npz" "$WORK/"
+  echo "=== DONE patch ($I_TOR,$J_POL) -> coil_patch_${TAG}.npz $(date) ==="
+else
+  echo "DOSE_TRULY_FAILED ($I_TOR,$J_POL)"; exit 1
+fi
