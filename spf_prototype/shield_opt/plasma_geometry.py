@@ -33,6 +33,15 @@ def shield_band_offsets(build=RADIAL_BUILD_CM):
     return float(d_in), float(d_out)
 
 
+def breeder_band_offsets(build=RADIAL_BUILD_CM):
+    """(d_in, d_out) cm: radial distance from the LCFS to the BREEDER layer's inner/outer face.
+    The fixed-envelope trade thins the breeder as it thickens the shield, so the signed worth
+    must debit the breeder band (shallower -> higher flux) against the shield band's benefit."""
+    d_in = build["first_wall"] + build["multiplier"]
+    d_out = d_in + build["breeder"]
+    return float(d_in), float(d_out)
+
+
 def _boundary(arr):
     """Return the outermost flux surface as a 2-D (n_theta, n_phi) array. Accepts a 2-D boundary
     already, or a 3-D (n_rho, n_theta, n_phi) fluxmap volume (LCFS = last rho index)."""

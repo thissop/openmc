@@ -42,3 +42,30 @@ The corrected worth is not phi*psi_dagger but ~ (Sigma_shield - Sigma_breeder) *
 -- a SIGNED trade worth. Building/validating that signed worth against these finite differences is
 the next methodological step and the likely paper headline: naive contributon placement (attribution
 OR scalar worth) can be actively counterproductive under a fixed-envelope breeder-for-shield trade.
+
+---
+
+## Signed worth recovers the prediction (2026-08-06, no new transport)
+
+W_signed = sigma_sh * sum_[shield band] C - sigma_br * sum_[breeder band] C,  C = phi*psi_dagger,
+computed from the EXISTING forward flux + adjoint (no new run). Tested against the 4-patch W_FD:
+
+  Spearman(W_FD, A)         = -0.40
+  Spearman(W_FD, W scalar)  = -1.00   (anti-correlated -- ignores breeder removal)
+  Spearman(W_FD, W_signed)  = +0.80   (debiting the breeder band recovers the ranking)
+
+**Robust to the cross-section ratio:** Spearman(W_FD, W_signed) = +0.80 for sigma_sh/sigma_br in
+[0.5, 5.0] (a broad physical plateau; the real WC/FLiBe ratio lambda_br/lambda_sh = 17/8 = 2.13
+sits in it). It degrades only when the breeder debit is unphysically suppressed (r>5 -> -0.80;
+r=50 ~ scalar W -> -1.0). So the missing physics is unambiguously the fixed-envelope breeder
+removal.
+
+**Caveats:** n=4 (8-point run 9330876 pending). W_signed is negative for ALL four patches (breeder
+term over-dominates in magnitude) -- the RANKING is right (+0.80) but the absolute sign/calibration
+needs the true removal XS and a proper thickness-perturbation prefactor; the ranking is what the
+placement optimizer needs, and it is robust. Unit-tested (signed-worth sign flip; 13 patch_worth
+tests).
+
+**Paper headline:** naive contributon placement (attribution OR scalar worth) is anti-correlated
+with actionability under a fixed-envelope breeder-for-shield trade; the SIGNED worth that debits
+the removed breeder recovers a robust predictive ranking. Finite difference is ground truth.

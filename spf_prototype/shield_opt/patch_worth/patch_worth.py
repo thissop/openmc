@@ -109,6 +109,52 @@ def worth_patches(adjoint, fwd, R0, tor_edges, pol_edges,
     return W, dict(a_minor=a_minor, r_in=r_in, r_out=r_out, n_shield_vox=int(shield.sum()))
 
 
+def signed_worth_patches(adjoint, fwd, R0, tor_edges, pol_edges, a_minor,
+                         sigma_shield=1.0 / 8.0, sigma_breeder=1.0 / 17.0,
+                         shield_band=None, breeder_band=None, nfp=4):
+    """SIGNED trade worth: the fixed-envelope trade ADDS shield AND REMOVES breeder, so the
+    leading-order response change is the shield band's blocking benefit MINUS the breeder band's
+    lost attenuation:
+
+        W_signed(patch) = sigma_shield * sum_[shield band] phi*psi_dagger
+                          - sigma_breeder * sum_[breeder band] phi*psi_dagger
+
+    binned by (phi,theta). Unlike the scalar worth (shield band only, always >=0), this can flip
+    SIGN per patch: where the shallower, higher-flux breeder-band contributon dominates, removing
+    breeder hurts coil-20 more than the added shield helps -> W_signed < 0 (dose goes UP). That is
+    the effect the Tier-2 finite differences show and the scalar worth cannot. sigma_* are removal
+    XS (1/lambda; WC shield 1/8, FLiBe breeder 1/17 cm^-1 by default)."""
+    if shield_band is None:
+        shield_band = pg.shield_band_offsets()
+    if breeder_band is None:
+        breeder_band = pg.breeder_band_offsets()
+    da = np.load(adjoint)
+    psi = da["importance"].astype(float)
+    ll, ur, dim = da["lower_left"], da["upper_right"], da["dimension"]
+    phi_f = np.load(fwd)["flux"].astype(float).reshape(psi.shape)
+
+    xc, yc, zc = _voxel_centers(ll, ur, dim)
+    X, Y, Z = np.meshgrid(xc, yc, zc, indexing="ij")
+    R = np.hypot(X, Y)
+    rho = np.hypot(R - R0, Z)
+    C = phi_f * psi
+    phi_ang_all = _fold_tor(np.arctan2(Y, X), nfp)
+    theta_ang_all = np.arctan2(Z, R - R0)
+
+    def _band(band, weight):
+        m = (rho >= a_minor + band[0]) & (rho <= a_minor + band[1])
+        return weight * _bin2d(phi_ang_all[m], theta_ang_all[m], C[m], tor_edges, pol_edges)
+
+    W_sh = _band(shield_band, sigma_shield)
+    W_br = _band(breeder_band, sigma_breeder)
+    Wsig = W_sh - W_br
+    return Wsig, dict(shield_term=W_sh, breeder_term=W_br,
+                      n_sh=int(((rho >= a_minor + shield_band[0]) &
+                                (rho <= a_minor + shield_band[1])).sum()),
+                      n_br=int(((rho >= a_minor + breeder_band[0]) &
+                                (rho <= a_minor + breeder_band[1])).sum()))
+
+
 def spearman(x, y):
     from scipy.stats import spearmanr
     r, p = spearmanr(x, y)
