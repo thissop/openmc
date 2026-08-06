@@ -57,6 +57,16 @@ sel_j = np.where(j_of == J_POL)[0]
 delta[np.ix_(sel_i, sel_j)] = DELTA_CM
 assert sel_i.size and sel_j.size, f"empty patch ({I_TOR},{J_POL}) for {N_TOR}x{N_POL}"
 
+# Toroidal-seam periodicity. Grid columns 0 (phi=0) and -1 (phi=90) are the SAME physical
+# location: phi=90 of one field period == phi=0 of the next (repeat=3, nfp=4). A boundary patch
+# (I_TOR=0 or N_TOR-1) sets delta on only ONE of the two seam columns -> a sharp step at the seam
+# that cad_to_dagmc cannot mesh (fails with '29 material_tags vs 28 triangle sets'; interior
+# patches never touch the seam, which is why only I_TOR in {0, N_TOR-1} failed). Make the seam
+# continuous by giving both edge columns the same (max) value.
+seam = np.maximum(delta[0, :], delta[-1, :])
+delta[0, :] = seam
+delta[-1, :] = seam
+
 t_shield = T_SH0 + delta
 t_breeder = T_BR0 - delta
 assert np.all(t_breeder >= 15.0 - 1e-9), f"breeder below floor: {t_breeder.min():.3f}"
@@ -65,7 +75,7 @@ assert np.allclose(t_shield + t_breeder, T_SH0 + T_BR0), "envelope not conserved
 # added-mass proxy for W_FD normalization: delta-volume-weighted (grid cells * DELTA_CM).
 # Exact mass needs cell areas; the per-patch added shield VOLUME is proportional to
 # (n grid cells in patch) * DELTA_CM at fixed poloidal/toroidal cell size -> report it.
-added_cells = int(sel_i.size * sel_j.size)
+added_cells = int(np.count_nonzero(delta))   # counts the seam-extended cells (unchanged for interior patches)
 print(f"VARIANT=patch({I_TOR},{J_POL}) of {N_TOR}x{N_POL}  OUTNAME={OUTNAME}", flush=True)
 print(f"delta=DELTA_CM={DELTA_CM} on {added_cells} grid cells "
       f"(tor cols {sel_i.tolist()}, pol rows {sel_j.tolist()})", flush=True)
