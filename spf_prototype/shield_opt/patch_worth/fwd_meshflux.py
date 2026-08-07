@@ -34,7 +34,11 @@ DAGMC     = sys.argv[3]
 ADJOINT   = sys.argv[4]
 OUT_NPZ   = sys.argv[5]
 LI6       = float(sys.argv[6]) if len(sys.argv) > 6 else 60.0
-WW_FILE   = sys.argv[7] if len(sys.argv) > 7 else None
+WW_FILE   = sys.argv[7] if len(sys.argv) > 7 and sys.argv[7] else None
+# FAST (argv[8] = "1"): tally only the fast group (0.1-25 MeV), matching coil_run's coil_fast_flux
+# response -> a spectrally-consistent forward flux for the contributon (first step toward the
+# multigroup signed worth; see SIGNED_WORTH_ANALYSIS.md). Default: total flux.
+FAST      = len(sys.argv) > 8 and sys.argv[8] == "1"
 
 # clear stale XML so OpenMC loads THIS geometry, not a leftover model.xml
 for f in ("model.xml", "geometry.xml", "materials.xml", "settings.xml", "tallies.xml"):
@@ -134,7 +138,10 @@ mesh.upper_right = ur.tolist()
 mesh.dimension = dim
 t = openmc.Tally(name="fwd_meshflux")
 t.filters = [openmc.MeshFilter(mesh)]
+if FAST:
+    t.filters.append(openmc.EnergyFilter([0.1e6, 25.0e6]))   # fast group == coil_fast_flux tally
 t.scores = ["flux"]
+print(f"=== forward flux group: {'FAST (0.1-25 MeV)' if FAST else 'TOTAL'} ===", flush=True)
 
 model = openmc.Model(geometry=geom, materials=mats, settings=s, tallies=openmc.Tallies([t]))
 print(f"=== fwd_meshflux DAGMC={os.path.basename(DAGMC)} mesh={dim} "

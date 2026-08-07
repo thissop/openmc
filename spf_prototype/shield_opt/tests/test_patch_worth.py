@@ -155,6 +155,18 @@ def test_signed_worth_positive_when_blob_in_shield_band(tmp_path):
     assert Ws.sum() > 0 and np.isclose(Ws.sum(), (1.0 / 8.0) * 6.0)   # sigma_sh * (phi*psi=6)
 
 
+def test_first_order_dr_is_always_dose_down(tmp_path):
+    # first-order single-group perturbation predicts dR <= 0 for ANY positive-contributon patch
+    # (sigma_sh > sigma_br) -> it structurally cannot flip sign. A blob in the trade zone -> dR<0.
+    adj, fwd, R0, a = _signed_setup(tmp_path, 47.0 + 40.0)   # rho ~ a+47 -> inside trade band
+    te, pe = pw.define_patches(4, 4, nfp=4)
+    dR, C = pw.first_order_dr_patches(adj, fwd, R0, te, pe, a_minor=a,
+                                      trade_band=(35.0, 60.0), nfp=4)
+    assert C.max() > 0                                   # positive contributon in the trade zone
+    assert dR.max() <= 1e-12                             # ...yet dR predicted <= 0 everywhere
+    assert np.isclose(dR.sum(), -(1.0 / 8.0 - 1.0 / 17.0) * 6.0)  # -(sig_sh-sig_br)*C
+
+
 def test_signed_worth_negative_when_blob_in_breeder_band(tmp_path):
     # blob in the breeder band (rho ~ a+30 = 70) -> only the -sigma_br term fires -> W_signed < 0
     adj, fwd, R0, a = _signed_setup(tmp_path, 30.0 + 40.0)
