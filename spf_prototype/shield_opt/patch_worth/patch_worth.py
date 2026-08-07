@@ -155,6 +155,30 @@ def signed_worth_patches(adjoint, fwd, R0, tor_edges, pol_edges, a_minor,
                                 (rho <= a_minor + breeder_band[1])).sum()))
 
 
+def first_order_dr_patches(adjoint, fwd, R0, tor_edges, pol_edges, a_minor,
+                           sigma_shield=1.0 / 8.0, sigma_breeder=1.0 / 17.0,
+                           trade_band=(35.2, 59.2), nfp=4):
+    """First-order SINGLE-GROUP prediction of the response change dR for the breeder->shield swap:
+
+        dR_pred(patch) = -(sigma_shield - sigma_breeder) * sum_[trade zone] phi*psi_dagger .
+
+    Since sigma_shield > sigma_breeder and the contributon phi*psi_dagger >= 0, this predicts
+    dR <= 0 (dose DOWN) for EVERY patch -- it structurally cannot produce the observed sign flip.
+    Provided to demonstrate that the trade sign is a multigroup (moderation) effect, not a
+    prefactor calibration (see SIGNED_WORTH_ANALYSIS.md). Returns (dR_pred grid, contributon grid)."""
+    da = np.load(adjoint)
+    psi = da["importance"].astype(float)
+    ll, ur, dim = da["lower_left"], da["upper_right"], da["dimension"]
+    phi_f = np.load(fwd)["flux"].astype(float).reshape(psi.shape)
+    xc, yc, zc = _voxel_centers(ll, ur, dim)
+    X, Y, Z = np.meshgrid(xc, yc, zc, indexing="ij")
+    R = np.hypot(X, Y); rho = np.hypot(R - R0, Z); C = phi_f * psi
+    m = (rho >= a_minor + trade_band[0]) & (rho <= a_minor + trade_band[1])
+    Cz = _bin2d(_fold_tor(np.arctan2(Y, X)[m], nfp), np.arctan2(Z, R - R0)[m], C[m],
+                tor_edges, pol_edges)
+    return -(sigma_shield - sigma_breeder) * Cz, Cz
+
+
 def spearman(x, y):
     from scipy.stats import spearmanr
     r, p = spearmanr(x, y)

@@ -69,3 +69,21 @@ tests).
 **Paper headline:** naive contributon placement (attribution OR scalar worth) is anti-correlated
 with actionability under a fixed-envelope breeder-for-shield trade; the SIGNED worth that debits
 the removed breeder recovers a robust predictive ranking. Finite difference is ground truth.
+
+---
+
+## Sign calibration -> it's a MULTIGROUP effect (2026-08-07, no new transport)
+
+Attempted to calibrate W_signed's absolute sign. The physics says you can't with single-group data:
+first-order perturbation theory dR = -(Sigma_sh - Sigma_br) * INT_[trade zone] phi*psi_dagger
+predicts dose-DOWN for EVERY patch (contributon >= 0, Sigma_sh > Sigma_br), yet patch t2p3 measured
+dose-UP (+41%) and has the LARGEST trade-zone contributon (1.33e7). So single-group perturbation
+gets the SIGN wrong exactly where it is most confident.
+
+Cause: the coil response is FAST flux; the breeder MODERATES fast neutrons (down-scatter), so
+thinning it RELEASES fast flux -- a positive dR term absent from any total-XS removal model. The
+full-band signed worth RANKS correctly (+0.80) because the breeder-band contributon proxies "how
+much moderation the breeder does here"; its VALUE is not ab-initio. A quantitative signed worth
+needs a 2-group (fast/thermal) forward + adjoint with the moderation source term.
+Full derivation + empirical proof: SIGNED_WORTH_ANALYSIS.md. first_order_dr_patches() +
+fwd_meshflux.py --fast (spectrally-consistent forward flux) prepped for the multigroup step.
