@@ -18,7 +18,7 @@ from simsopt import save                                  # noqa: E402
 from simsopt.geo import CurveXYZFourier                   # noqa: E402
 from simsopt.field import Current, Coil, BiotSavart       # noqa: E402
 
-from gil_to_makegrid import gil_to_makegrid               # noqa: E402
+from gil_to_makegrid import gil_to_makegrid, coil_set_major_radius, resolve_scale   # noqa: E402
 
 
 def _ring_coil(R, phi0, npts_dofs=1):
@@ -73,8 +73,8 @@ def test_roundtrip_geometry_and_format(tmp_path):
     save(bs, jpath)
 
     out = str(tmp_path / "coils_synth")
-    n = gil_to_makegrid(jpath, out, nfp=1, scale=1.0)
-    assert n == 5
+    n, s = gil_to_makegrid(jpath, out, nfp=1, scale=1.0)
+    assert n == 5 and s == pytest.approx(1.0)
 
     periods, coils = _parse_makegrid(out)
     assert periods == 1
@@ -112,3 +112,28 @@ def test_nfp_written_to_periods(tmp_path):
     gil_to_makegrid(jpath, out, nfp=4, scale=1.0)
     periods, _ = _parse_makegrid(out)
     assert periods == 4
+
+
+def test_major_radius_measured_from_centroids():
+    # _ring_coil centres each filament on a ring of major radius Rmaj=3.0 (see helper)
+    bs = _synth_biotsavart(ncoils=6, R=1.0)
+    assert coil_set_major_radius(bs.coils) == pytest.approx(3.0, rel=1e-6)
+
+
+def test_target_major_radius_autoscales(tmp_path):
+    # measured R0 = 3.0 m; ask for ARIES-CS-like R0 = 7.75 m -> multiplier 7.75/3.0
+    bs = _synth_biotsavart(ncoils=4, R=1.0)
+    jpath = str(tmp_path / "bs.json"); save(bs, jpath)
+    out = str(tmp_path / "coils_aries")
+    n, s = gil_to_makegrid(jpath, out, target_major_radius=7.75)
+    assert s == pytest.approx(7.75 / 3.0, rel=1e-6)
+    # and the written geometry indeed sits at the requested major radius
+    _, coils = _parse_makegrid(out)
+    r0_out = np.mean([np.hypot(*a[:-1, :2].mean(axis=0)) for a, _ in coils])
+    assert r0_out == pytest.approx(7.75, rel=1e-6)
+
+
+def test_scale_and_target_are_mutually_exclusive(tmp_path):
+    bs = _synth_biotsavart(ncoils=2, R=1.0)
+    with pytest.raises(ValueError):
+        resolve_scale(bs.coils, scale=2.0, target_major_radius=7.0)
