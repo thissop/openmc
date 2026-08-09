@@ -32,12 +32,21 @@ from thickness_field import ThicknessField
 # x a toroidal lobe at phi_c), and its dose baseline shares that footprint. Real runs replace
 # `coil_fields` with adjoint_placement.placement_priority(map_c) per coil.
 # ----------------------------------------------------------------------------------------------
-def coil_fields(tf, n_coils=5, hot=1.6, tor_width_deg=22.0, hotness=None):
+def coil_fields(tf, n_coils=5, hot=1.6, tor_width_deg=22.0, hotness=None, phi_c_deg=None):
     """Return (priorities, baselines, phi_c_deg): each (K, nTor, nPol). priorities are placement
     priorities per coil; baselines are per-coil surrogate dose footprints (same shape). `hotness`
-    (len K, default all 1) scales each coil's baseline dose -> a non-uniform peak set."""
+    (len K, default all 1) scales each coil's baseline dose -> a non-uniform peak set.
+
+    `phi_c_deg` (optional): real per-coil toroidal angles in degrees (e.g. from a Gil MAKEGRID
+    layout via read_makegrid.coil_centroids). When given it OVERRIDES the evenly-spaced ring and
+    sets n_coils = len(phi_c_deg), so the surrogate runs on a real coil arrangement. The dose model
+    itself stays synthetic -- only the coil POSITIONS become real."""
     TOR, POL = tf.TOR, tf.POL                                   # radians, (nTor, nPol)
-    phi_c = np.linspace(0.0, 2 * np.pi, n_coils, endpoint=False)
+    if phi_c_deg is not None:
+        phi_c = np.radians(np.asarray(phi_c_deg, float)) % (2 * np.pi)
+        n_coils = len(phi_c)
+    else:
+        phi_c = np.linspace(0.0, 2 * np.pi, n_coils, endpoint=False)
     sig = np.radians(tor_width_deg)
     hotness = np.ones(n_coils) if hotness is None else np.asarray(hotness, float)
 
@@ -105,8 +114,23 @@ def main():
     ap.add_argument("--budget-frac", type=float, default=0.3,
                     help="material budget as a fraction of the max addable shield volume")
     ap.add_argument("--combine", default="sum", choices=["sum", "max", "weighted"])
+    ap.add_argument("--gil-coils", default=None,
+                    help="a MAKEGRID coils file (e.g. from gil_to_makegrid); use its real coil "
+                         "count + toroidal angles instead of an evenly-spaced synthetic ring")
     ap.add_argument("--fig", default=None)
     args = ap.parse_args()
+
+    phi_c_deg = None
+    if args.gil_coils:
+        import os as _os, sys as _sys
+        _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), "..", "coil_design"))
+        from read_makegrid import coil_centroids
+        lay = coil_centroids(args.gil_coils)
+        phi_c_deg = np.degrees(lay["phi"])
+        args.n_coils = lay["n_coils"]
+        print(f"using REAL coil layout from {_os.path.basename(args.gil_coils)}: "
+              f"{lay['n_coils']} coils, periods={lay['periods']}, "
+              f"phi = {np.round(phi_c_deg, 1)} deg\n")
 
     tor = np.linspace(0, 360, args.n_tor, endpoint=False)
     pol = np.linspace(0, 360, args.n_pol, endpoint=False)
@@ -116,7 +140,7 @@ def main():
 
     # make one coil genuinely hottest so a naive single-coil placement has an obvious target
     hotness = np.ones(args.n_coils); hotness[0] = 1.35
-    P, B, phi_c = coil_fields(tf, n_coils=args.n_coils, hotness=hotness)
+    P, B, phi_c = coil_fields(tf, n_coils=args.n_coils, hotness=hotness, phi_c_deg=phi_c_deg)
     base = base_radial_build(tf)
 
     no_shield_peak = peak_coil_dose(B, np.zeros(tf.shape), tf.k)
