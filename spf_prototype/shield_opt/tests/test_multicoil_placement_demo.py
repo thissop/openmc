@@ -27,6 +27,20 @@ def test_fields_shapes_and_normalization(tf):
     assert np.allclose([p.max() for p in P], 1.0)          # each priority normalized
 
 
+def test_real_layout_override_sets_count_and_angles(tf):
+    # phi_c_deg overrides the evenly-spaced ring -> K = len(phi_c_deg), and each coil's dose
+    # lobe peaks at its own toroidal angle (the layout is real; the dose model stays synthetic).
+    phis = [10.0, 40.0, 200.0]                              # non-uniform, wraps handled mod 360
+    P, B, phi = demo.coil_fields(tf, n_coils=99, phi_c_deg=phis)  # n_coils ignored when phi given
+    assert len(phi) == 3 and P.shape[0] == 3
+    np.testing.assert_allclose(np.sort(phi % 360), sorted(phis), atol=1e-6)
+    # each baseline's toroidal peak sits at that coil's angle
+    tor_deg = np.degrees(tf.TOR[:, 0]) % 360
+    for c, pc in enumerate(phis):
+        tor_profile = B[c].sum(axis=1)
+        assert abs((tor_deg[int(np.argmax(tor_profile))] - pc + 180) % 360 - 180) < 10.0
+
+
 def test_pipeline_emits_valid_radial_build(tf):
     P, B, _ = demo.coil_fields(tf, n_coils=5)
     r = demo.run_pipeline(P, B, tf, budget_frac=0.3, combine_mode="sum",
