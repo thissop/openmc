@@ -1,0 +1,21 @@
+#!/bin/bash
+# Master surface-source-write run. Env: TAG DAGMC BATCHES PARTICLES MAXPART CELLFROM CELLS
+#SBATCH -J sswmaster
+#SBATCH -p burst
+#SBATCH --account=astro
+#SBATCH -t 1-00:00:00
+#SBATCH --nodes=1 --ntasks=1 --cpus-per-task=32 --mem=96G
+#SBATCH -o /burg-archive/home/tjk2147/pstl_test/corrected/ssr/slurm_%x_%j.log
+set -uo pipefail
+WORK=/burg-archive/home/tjk2147/pstl_test/corrected
+SRC=/ginsburg/astro/users/tjk2147/spf_work/openmc_src
+SSR=$WORK/ssr
+export RUNDIR=$WORK/ssrrun_${TAG}; mkdir -p "$RUNDIR"
+source /burg/opt/anaconda3-2023.09/etc/profile.d/conda.sh; conda activate spf-stellarator
+export PYTHONNOUSERSITE=1 PYTHONPATH=$SRC LD_PRELOAD=$SRC/build/lib/libopenmc.so PATH=$SRC/build/bin:$PATH
+export OPENMC_CROSS_SECTIONS=/ginsburg/astro/users/tjk2147/spf_work/xs/endfb-viii.0-hdf5/cross_sections.xml
+export OMP_NUM_THREADS=32 PYTHONUNBUFFERED=1
+echo "=== ssw_master $TAG $(date) ==="
+python -u "$SSR/ssw_master.py" "$BATCHES" "$PARTICLES" "$WORK/$DAGMC" "$TAG" 60 "$WORK/$CELLS" "$MAXPART" "$CELLFROM" \
+  || echo "rc=$? (check for surface_source write / benign teardown)"
+[ -f "$WORK/surf_${TAG}.h5" ] && [ -f "$WORK/coil_${TAG}.npz" ] && echo "OK_${TAG} $(date)" || { echo "FAILED_${TAG}"; exit 1; }
