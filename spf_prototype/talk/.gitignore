@@ -3,6 +3,8 @@ __pycache__/
 *.log
 *.nav
 *.out
+*.pdf
 *.snm
-*.toc
 *.synctex.gz
+*.toc
+geom/
