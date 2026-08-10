@@ -1,0 +1,165 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{default}
+\usecolortheme{dove}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}
+\beamertemplatenavigationsymbolsempty
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage[most]{tcolorbox}
+\usepackage{booktabs}
+
+\graphicspath{{figs/}}
+
+\definecolor{key}{rgb}{0.10,0.35,0.65}
+\setbeamercolor{frametitle}{fg=key}
+
+\newcommand{\kb}[1]{\begin{tcolorbox}[colback=key!5,colframe=key!60,boxsep=2pt,left=4pt,right=4pt,top=3pt,bottom=3pt]#1\end{tcolorbox}}
+
+\title{SPF Stellarator Neutronics: Adjoint Magnet Shielding}
+\subtitle{Placement Worth Experiment}
+\author{Thaddaeus Kiker}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}[plain]\titlepage\end{frame}
+
+\begin{frame}{Since The Last Meeting}
+  \begin{itemize}
+    \item Last time the adjoint coil-importance map and reciprocity were validated, and the placed-versus-uniform shield test was proposed with the outcome still open.
+    \item That test now resolves: nonuniform placement lowers the peak coil flux by a factor of four at equal material.
+    \item I then asked the sharper question underneath it: does the cheap adjoint proxy predict where shield actually helps, patch by patch.
+    \item Ground truth for twelve shield patches was measured in direct transport.
+    \item Two findings came out that change how the automatic optimizer should work.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Defining Shielding Worth}
+  \small
+  The worth of a shield patch is the reduction in peak coil dose per unit of shield material added there, at fixed outer envelope, with breeder traded away for the shield.
+  \vspace{0.4em}
+  \kb{\centering $\displaystyle W_{\mathrm{FD}} \;=\; -\,\frac{\Delta(\text{coil dose})}{\Delta(\text{material})}$ \quad measured by full Monte Carlo per patch}
+  \vspace{0.4em}
+  \begin{itemize}
+    \item Positive worth means shield placed there lowers the coil dose.
+    \item The question is whether a free adjoint estimate can stand in for this expensive measurement.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Four Quantities}
+  \small
+  \begin{center}
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{@{}llc@{}}
+    \toprule
+    Quantity & Definition & Cost \\
+    \midrule
+    Attribution $A$ & plasma contributon $S\,\psi^\dagger$, where neutrons are born & one adjoint \\
+    Scalar worth $W$ & shield-band contributon $\phi\,\psi^\dagger$, first-order estimate & free \\
+    Signed worth $W_s$ & $\sigma_{\mathrm{sh}}\!\sum_{\mathrm{shield}}\! C - \sigma_{\mathrm{br}}\!\sum_{\mathrm{breeder}}\! C$, debits breeder & free \\
+    Measured worth $W_{\mathrm{FD}}$ & $-\,\Delta$dose per material, direct transport & one run per patch \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.5em}
+  The first three are adjoint estimates. The fourth is the truth they are tested against.
+\end{frame}
+
+\begin{frame}{Does The Proxy Rank Placements}
+  \begin{columns}[c]
+    \begin{column}{0.62\textwidth}
+      \includegraphics[width=\textwidth]{worth_vs_truth}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item Across twelve patches neither the scalar worth nor the attribution orders the measured worth.
+        \item Spearman correlations are $-0.34$ and $-0.17$, both consistent with no rank agreement.
+        \item The cheap proxy cannot serve as the ordering an optimizer would follow.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{The Robust Signal Is Backfire Detection}
+  \begin{columns}[c]
+    \begin{column}{0.58\textwidth}
+      \includegraphics[width=\textwidth]{fd_worth_bars}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item Eleven patches reduce the coil dose by a similar amount; one raises it by forty-one percent.
+        \item The scalar worth ranks that backfire patch among the best places to shield.
+        \item The signed worth ranks it the worst, matching the measurement.
+        \item The adjoint is reliable at the sign, not at the fine order.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Why The Proxy Fails: Multigroup Moderation}
+  \small
+  \begin{itemize}
+    \item The coil responds to fast flux. The breeder moderates fast neutrons through downscatter.
+    \item Trading breeder for shield removes moderator, so fast flux is released even as shield is added.
+    \item On one patch that release outweighs the added shield and the coil dose rises.
+  \end{itemize}
+  \vspace{0.3em}
+  \kb{\centering First-order removal theory predicts dose down everywhere. The measured sign flip is a moderation effect a single total cross section cannot carry.}
+  \vspace{0.3em}
+  \begin{itemize}
+    \item A fast-group forward flux is the correct energy weighting for the coil response.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Peak Coil Flux: Collective, Not Per-Coil}
+  \begin{columns}[c]
+    \begin{column}{0.56\textwidth}
+      \includegraphics[width=\textwidth]{peak_flux}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item Single-coil placement lowers the peak by a factor of four but moves it onto an unprotected coil.
+        \item Distributing the same material by combined importance does not beat single-coil concentration.
+        \item The coil loading is set by a shared inboard region, not by twenty independent coil footprints.
+        \item Concentrating shield on that inboard region is the lever.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Implications For Automatic Optimization}
+  \small
+  \begin{itemize}
+    \item The cheap proxy does not rank placements, so it cannot replace Monte Carlo as the optimizer objective.
+    \item The signed worth identifies backfire patches, so it enters as a constraint that keeps the optimizer from degrading the magnet.
+    \item The collective inboard result reduces the search to a few parameters instead of a per-coil field.
+    \item The workable automatic system is a low-dimensional Monte Carlo Bayesian loop with an adjoint backfire guard, not a zero-cost adjoint placer.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Reactor-Scale Coil Sets}
+  \small
+  \begin{itemize}
+    \item Gil et al.\ 2026 released eighty-six optimized stellarator coil sets, quasi-axisymmetric and quasi-helical, from an augmented-Lagrangian method.
+    \item The work is coil optimization with no neutronics, so it is a source of geometry rather than competing prior art.
+    \item Coil-surface distance is an explicit parameter in the set, and that distance is our fixed blanket envelope.
+    \item The sets give controlled standoff sweeps across reactor scales to test whether these results generalize.
+    \item The converter into the neutronics geometry pipeline is built and tested.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{In Progress}
+  \begin{itemize}
+    \item Concentrated placement on the shared inboard region at equal material, in transport, to test whether it beats single-coil concentration.
+    \item Fast-group signed worth, to test whether the coil-relevant energy range recovers a usable ranking.
+    \item Both finish tomorrow.
+  \end{itemize}
+\end{frame}
+
+\end{document}
