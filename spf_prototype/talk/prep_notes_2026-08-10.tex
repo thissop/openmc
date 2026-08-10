@@ -9,8 +9,9 @@
 
 \definecolor{key}{rgb}{0.10,0.35,0.65}
 \titleformat{\section}{\normalfont\large\bfseries\color{key}}{\thesection}{0.6em}{}
-\titleformat{\subsection}{\normalfont\normalsize\bfseries}{}{0em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{0.5em}{}
 \titlespacing{\section}{0pt}{8pt}{4pt}
+\titlespacing{\subsection}{0pt}{5pt}{2pt}
 \setlist{leftmargin=1.3em,itemsep=1pt,topsep=2pt}
 \newcommand{\Q}[1]{\smallskip\noindent\textbf{Q. #1}\par}
 \newcommand{\A}[1]{\noindent #1\par}
@@ -28,11 +29,24 @@
 \section{What I Am Presenting}
 Last meeting the adjoint coil-importance map was validated and the placed-versus-uniform shield test
 was proposed with the outcome open. Since then that test resolved, and I turned it into a real
-experiment: does a free adjoint estimate predict where shield actually helps, patch by patch. I
-measured the ground truth for twelve shield patches in direct transport. Two results changed the
-picture. The cheap proxy does not rank placements, but it does flag the one patch where shielding
-makes the coil worse. And the coil loading is set by a shared inboard region, not by twenty
-independent coil footprints, so magnet protection is a collective problem.
+experiment.
+
+The idea behind the whole program is that a single adjoint solve gives a map of how much every point
+in the machine contributes to the coil load, for free, without a separate transport run per design.
+If that map also told me where to put shield, I could optimize the radial build without running
+Monte Carlo in the loop. The experiment asks whether that is true.
+
+There is a ladder of quantities, from cheapest to truest. Attribution says where the neutrons that
+load the coil are born. Scalar worth says, to leading order, where blocking flux would help. Signed
+worth corrects that for the fact that adding shield means giving up breeder at a fixed envelope.
+Measured worth is the real answer: build the geometry, run transport, and see how the coil dose
+actually changes. The experiment tests whether any of the cheap rungs predicts the true one.
+
+The measurement covered twelve shield patches. Two results changed the picture. The cheap proxy does
+not rank placements, so it cannot be the objective an optimizer follows. It does correctly flag the
+one patch where adding shield makes the coil worse, so it works as a guard. And the coil loading is
+set by a shared inboard region rather than by twenty independent coil footprints, so magnet
+protection is a collective problem and the optimization is low-dimensional.
 
 \section{Numbers To Have Ready}
 \begin{itemize}
@@ -49,25 +63,85 @@ independent coil footprints, so magnet protection is a collective problem.
         about $2.2$ m. Reciprocity from last time: quasi-helical $+0.76$, quasi-axisymmetric $+0.83$.
 \end{itemize}
 
-\section{The Physics, One Pass}
-\noindent\textbf{Contributon.} $C(r)=\phi(r)\,\psi^\dagger(r)$, forward flux times adjoint importance.
-It is the amount of the coil response carried through each point. Attribution is the contributon
-evaluated at the plasma source, $S\psi^\dagger$. Worth is the contributon summed over the shield
-band, the leading-order estimate of how much blocking flux there helps.
+\section{The Physics}
 
-\smallskip
-\noindent\textbf{The trade.} Fixed outer envelope: coils do not move and the machine does not grow.
-Adding shield in a patch means removing an equal thickness of breeder there. Worth must account for
-both, which is the signed worth $W_s=\sigma_{\mathrm{sh}}\sum_{\mathrm{shield}}C-\sigma_{\mathrm{br}}\sum_{\mathrm{breeder}}C$.
+\subsection{The Adjoint And The Contributon}
+The forward problem is the physical one. Neutrons are born in the plasma with a source $S(r)$, they
+transport through roughly a meter of blanket and shield, and a small fraction deposit energy in the
+coils. The coil load is $R=\int \Sigma_{\mathrm{resp}}\,\phi\,dV$, the response cross section times
+the forward flux, integrated over the coils.
 
-\smallskip
-\noindent\textbf{Why the naive worth gets the sign wrong.} First-order removal theory gives
-$\delta R=-\int \delta\Sigma\,\phi\,\psi^\dagger$. For the trade the change in cross section is
-positive everywhere in the trade zone, so this predicts the dose goes down for every patch. The coil
-responds to fast flux, and the breeder does more than remove: it moderates fast neutrons by
-downscatter. Removing breeder removes that moderation, so fast flux is released. That is a positive
-term absent from any total-cross-section model. On one patch it wins and the dose rises. Getting the
-sign right needs a fast-and-thermal treatment, which is why a single-group worth ranks only roughly.
+The adjoint problem runs this backward. Put the coil response function in as a source and solve the
+transport equation with the operator transposed. The result is the adjoint flux $\psi^\dagger(r)$,
+which reads as an importance: the expected contribution to the coil load of one neutron introduced at
+$r$. A neutron born deep in the plasma on a clear path to the inboard coil has high importance; one
+born where geometry already blocks it has low importance. Because the coil heating response is
+direction-blind, the adjoint source is isotropic and a scalar solve is enough for placement.
+
+Reciprocity is the identity $R=\int S\,\psi^\dagger = \int \Sigma_{\mathrm{resp}}\,\phi$. The same
+coil load comes out whether computed forward from the source or backward from the importance.
+Validating it, per-coil correlation $+0.76$ and $+0.83$ on the two devices, is what says the adjoint
+solve is trustworthy.
+
+The contributon is $C(r)=\phi(r)\,\psi^\dagger(r)$. It is the local density of response flow: how
+much of the coil load passes through the point $r$. Integrate it over any region and you get that
+region's share of the coil load. Everything downstream is the contributon read out in different
+places.
+
+\subsection{Attribution Versus Worth}
+Attribution is the contributon evaluated at the plasma source, $A=S\,\psi^\dagger$. It answers which
+plasma regions cause the coil load. Worth is the contributon summed over the shield band,
+$W=\sum_{\mathrm{shield}}\phi\,\psi^\dagger$. It answers where adding shield should intercept the most
+response.
+
+They are the same quantity in two places, and the reason to separate them is that they answer
+different questions. A plasma region can emit many coil-bound neutrons yet sit on a sightline where
+shield cannot easily catch them; a shield location can carry a lot of contributon yet already be
+thick enough that more does little. Where the neutrons come from is not the same as where blocking
+them helps. The experiment measures how far apart these really are.
+
+\subsection{The Fixed-Envelope Trade}
+The outer envelope is fixed. The coils do not move and the machine does not grow, because both cost
+far more than shielding does. So shield cannot simply be added. Adding a thickness of shield in a
+patch means removing the same thickness of breeder there, and the breeder is the tritium-breeding
+blanket. Protecting the magnet costs breeding.
+
+This is why worth must be signed. The benefit is the contributon the added shield intercepts; the
+cost is the contributon the removed breeder no longer sees:
+$W_s=\sigma_{\mathrm{sh}}\sum_{\mathrm{shield}}C-\sigma_{\mathrm{br}}\sum_{\mathrm{breeder}}C$, with
+the $\sigma$ set by the two materials' fast-neutron attenuation. A trade only pays off where the
+first term wins.
+
+\subsection{Why The Naive Worth Gets The Sign Wrong}
+First-order removal theory says the change in coil load from a small change in cross section is
+$\delta R=-\int \delta\Sigma\,\phi\,\psi^\dagger$. For the trade the cross section goes up in the
+trade zone, since a centimeter of shield attenuates more than a centimeter of breeder, so this
+predicts $\delta R<0$, the dose down, for every patch. It cannot produce a patch where shielding
+makes the coil worse.
+
+What it misses is that the coil responds to fast flux, and the breeder does more than remove
+neutrons. It moderates them: a fast neutron entering the breeder is likely downscattered on lithium,
+beryllium, and fluorine below the energy the coil responds to. Remove breeder and that moderation
+goes away, so more neutrons reach the coil still fast. That is a positive contribution to the fast
+coil flux that no total-cross-section model contains. On most patches the added shield outweighs it
+and the dose falls. On one patch the released fast flux wins and the dose rises by forty-one percent.
+
+Getting the sign right therefore needs a treatment that separates fast from thermal, because the
+effect is a transfer between energy groups, not a change in total attenuation. This is why a
+single-group signed worth ranks only roughly, and why a fast-group forward flux is the correct
+weighting to test next.
+
+\subsection{Why The Problem Is Collective}
+The intuitive picture is that each coil has its own line of sight to the plasma, so each coil should
+be protected locally. The transport says otherwise. The inboard side of the torus is where the
+plasma sits closest to the coils and the flux is highest, and every coil passes near the inboard at
+some toroidal angle. The inboard is a hotspot shared by the whole coil set.
+
+Concentrating shield on the inboard band, symmetric across field periods, therefore protects every
+coil's inboard segment at once. Spreading the same material by per-coil importance dilutes it and
+protects no coil well. Single-coil placement over-protected one coil's inboard so hard that the peak
+load jumped to a different, unprotected coil. The lesson is to treat the inboard band as one target
+rather than twenty coils, which also makes the optimization low-dimensional.
 
 \section{Anticipated Questions And Answers}
 \Q{Is the ranking just Monte Carlo noise?}
