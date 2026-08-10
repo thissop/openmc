@@ -87,3 +87,76 @@ much moderation the breeder does here"; its VALUE is not ab-initio. A quantitati
 needs a 2-group (fast/thermal) forward + adjoint with the moderation source term.
 Full derivation + empirical proof: SIGNED_WORTH_ANALYSIS.md. first_order_dr_patches() +
 fwd_meshflux.py --fast (spectrally-consistent forward flux) prepped for the multigroup step.
+
+---
+
+## n=12 VERDICT (2026-08-10, all 12 patches dosed) -- the n=4 story does NOT generalize
+
+All 12 patches of the 4x4 grid are now dosed (12x4M no-WW, correlated seed; relerr 0.66-1.65%).
+The clean n=4 corner result was an artifact of the extremes. Honest full-grid correlations:
+
+| metric                          | n=4 (corners) | n=12 (full grid)     |
+|---------------------------------|---------------|----------------------|
+| Spearman(W_FD, W scalar worth)  | -1.00         | **-0.34** (p=0.29)   |
+| Spearman(W_FD, A attribution)   | -0.40         | **-0.17** (p=0.60)   |
+| Spearman(W_FD, W_signed)        | +0.80         | **+0.16** (p=0.62)   |
+| sign-match(W_FD, W scalar)      | 0.75          | 0.92                 |
+| sign-match(W_FD, W_signed)      | (neg all 4)   | 0.50                 |
+
+**Neither scalar worth, attribution, nor signed worth RANKS the 12 patches** (all correlations
+weak and not significant). Signed worth at least flips the *sign* of the correlation vs scalar
+(+0.16 vs -0.34), but it is not a reliable magnitude predictor at full n.
+
+**Why: the finite-difference worth is bimodal, not a smooth ranking.** 11 of 12 patches reduce
+coil-20 dose by a near-uniform amount (W_FD +5.6e-5 .. +9.3e-5; dR ~ -2.2e-2 .. -2.8e-2 on a
+3.45e-2 baseline), and ONE patch backfires: t2p3 (W_FD = -4.7e-5, the only dose INCREASE). Excluding
+t2p3, no ranking signal survives in either proxy (Spearman -0.17 scalar, -0.09 signed, n=11). The
+"which patch is best" question is geometry-dominated and nearly flat -- any shield near coil-20's
+sightline helps about equally; the adjoint proxies do not resolve the small residual differences.
+
+**The one robust, actionable result -- signed worth is a BACKFIRE GUARDRAIL, not a fine ranker.**
+On the single patch where the fixed-envelope trade backfires (t2p3), the metrics disagree decisively:
+
+| proxy on t2p3   | value      | what it would do                                        |
+|-----------------|------------|---------------------------------------------------------|
+| W scalar worth  | 1.81e6     | ranks t2p3 the **2nd-HIGHEST** worth -> would SHIELD it  |
+| W_signed        | -5.82e5    | ranks t2p3 the **most-negative** (rank 0) -> would AVOID |
+| W_FD (truth)    | -4.7e-5    | shielding here **raises** coil dose (+41%)               |
+
+So scalar worth would walk straight into the one counterproductive patch; signed worth uniquely
+flags it. That sign/threshold detection -- "don't shield where debiting the breeder backfires" --
+is the defensible methodological claim, NOT "signed worth recovers the ranking." (Signed worth also
+over-flags: it predicts backfire on 6 patches that actually helped, hence sign-match 0.50. Its
+extreme is trustworthy; its interior is not.)
+
+**Revised paper headline (honest):** under a fixed-envelope breeder-for-shield trade, naive scalar
+contributon worth can select an actively counterproductive shield patch; a signed worth that debits
+the removed breeder correctly identifies the backfire, but the fine-grained placement ranking is
+geometry-dominated and requires the finite difference (or the multigroup signed worth) to resolve.
+Repro: cluster_pull/ bundle + `python3 -c "... finite_diff / signed_worth ..."` (see git log 2026-08-10).
+
+---
+
+## Multi-coil placement validation (2026-08-10) -- SURPRISE: it did NOT beat single-coil
+
+Budget-matched (sum(delta)=630.7 cm for all three; fixed envelope). Real DAGMC+transport, 12x4M no-WW:
+
+| placement                    | peak coil fast flux | vs uniform | peak @ | total coil flux |
+|------------------------------|---------------------|------------|--------|-----------------|
+| uniform                      | 3.4521e-2           | --         | coil20 | 2.539e-1        |
+| single-coil placed (killshot)| 8.2797e-3           | **-76.0%** | coil25 | 1.121e-1        |
+| multi-coil placed (combined) | 2.3315e-2           | -32.5%     | coil15 | 2.611e-1        |
+
+At EQUAL material the multi-coil (combined-importance, spread; max 10.5 cm) placement is much WORSE
+on peak than the single-coil concentration (max 35 cm on the inboard). The surrogate demo predicted
+the opposite because it modeled each coil's load as a LOCAL toroidal lobe at phi_c; in real transport
+the coil loading is COLLECTIVE and inboard-dominated (single-placed cut TOTAL coil flux 56%, multi
+barely moved it -> the inboard hotspot feeds many coils at once). Concentrating shield on the shared
+inboard beats spreading it by per-coil importance.
+
+**Honest implication:** the multi-coil-aware allocator as implemented dilutes protection. The right
+knob is not "spread across coils' importance" but "concentrate on the collective inboard hotspot"
+(which the attribution-guided single placement happened to do). Follow-up: check whether the combined
+priority should be MAX-pooled + thresholded (concentrate) rather than summed (spread), and whether a
+collective-hotspot target beats a per-coil target. This flips the multicoil-demo's headline and must
+be reported as such (surrogate assumption invalidated by transport).
