@@ -1,0 +1,52 @@
+{
+  "id": 252666,
+  "stem": "quasr252666",
+  "blanket": "baseline",
+  "status": "error",
+  "warnings": [
+    "geometry fold at scale=14.38: ['shield', 'coil']",
+    "geometry fold at scale=20.13: ['shield', 'coil']"
+  ],
+  "nfp": 5,
+  "iota": 0.2,
+  "aspect": 10.0000095825,
+  "symmetry_class": "QA",
+  "total_coil_length": 70.000027383,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 9.395525451452106e-08,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.003520725143518827,
+      "passed": true,
+      "max": 0.016165296968677318
+    },
+    "passed": true
+  },
+  "C": 0.9997118648087471,
+  "tensor_evals": [
+    0.999424449995443,
+    0.0002885834628982334,
+    0.0002869665416565102
+  ],
+  "anisotropy": 0.9991358665325447,
+  "lambda_phi": 0.9993754445953112,
+  "S_phi": 0.9990631668929668,
+  "reversal_frac": 0.0,
+  "angular_std_deg": 1.3757083521871216,
+  "C_lab": 0.007368689751757205,
+  "tau": 13.476,
+  "scale": 28.185466098513302,
+  "built_minor_cm": 333.9839999999999,
+  "dagmc": {
+    "volumes": 6,
+    "tris": 86016
+  },
+  "error": "FileNotFoundError: [Errno 2] Unable to synchronously open file (unable to open file: name = '/Volumes/My Passport for Mac/github-data/openmc-spf/data/quasr252666_baseline_geom/quasr252666.h5m', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)",
+  "traceback": "Traceback (most recent call last):\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/sweep.py\", line 368, in run_config\n    vals, lost = run_transport(\n                 ^^^^^^^^^^^^^^\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/sweep.py\", line 185, in run_transport\n    model, mats = rc.build_model(abc, h5m, fmap, R0_cm, a_cm,\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/python/run_conformal.py\", line 97, in build_model\n    geom, materials, mats = make_geometry(h5m_path)\n                            ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/python/run_conformal.py\", line 86, in make_geometry\n    dag.material_names  # noqa: B018 (touch to surface a clear error if tags missing)\n    ^^^^^^^^^^^^^^^^^^\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/openmc/dagmc.py\", line 226, in material_names\n    dagmc_file_contents = h5py.File(self.filename)\n                          ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/h5py/_hl/files.py\", line 555, in __init__\n    fid = make_fid(name, mode, userblock_size, fapl, fcpl, swmr=swmr)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/site-packages/h5py/_hl/files.py\", line 232, in make_fid\n    fid = h5f.open(name, flags, fapl=fapl)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"h5py/_objects.pyx\", line 54, in h5py._objects.with_phil.wrapper\n  File \"h5py/_objects.pyx\", line 55, in h5py._objects.with_phil.wrapper\n  File \"h5py/h5f.pyx\", line 106, in h5py.h5f.open\nFileNotFoundError: [Errno 2] Unable to synchronously open file (unable to open file: name = '/Volumes/My Passport for Mac/github-data/openmc-spf/data/quasr252666_baseline_geom/quasr252666.h5m', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)\n"
+}

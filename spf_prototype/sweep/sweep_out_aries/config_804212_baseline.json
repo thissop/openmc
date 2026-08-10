@@ -1,0 +1,81 @@
+{
+  "id": 804212,
+  "stem": "quasr804212",
+  "blanket": "baseline",
+  "status": "done",
+  "warnings": [
+    "geometry fold at scale=7.52: ['shield', 'coil']",
+    "geometry fold at scale=10.53: ['shield', 'coil']"
+  ],
+  "nfp": 3,
+  "iota": 0.2,
+  "aspect": 5.0000015978,
+  "symmetry_class": "QA",
+  "total_coil_length": 84.0000020457,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 1.6027027559935798e-07,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.006352166213543256,
+      "passed": true,
+      "max": 0.046391572512940266
+    },
+    "passed": true
+  },
+  "C": 0.998751642118818,
+  "tensor_evals": [
+    0.9975123632053349,
+    0.0013594461748572947,
+    0.0011281906198158153
+  ],
+  "anisotropy": 0.9961529170304776,
+  "lambda_phi": 0.9973041377138275,
+  "S_phi": 0.9959562065707412,
+  "reversal_frac": 0.0,
+  "angular_std_deg": 2.864647428861981,
+  "C_lab": 0.015488633845973019,
+  "tau": 13.476,
+  "scale": 14.747151411877871,
+  "built_minor_cm": 333.9839999999999,
+  "dagmc": {
+    "volumes": 6,
+    "tris": 86016
+  },
+  "lost_particles": 0,
+  "delta_free_perpendicular": -0.08692770749457737,
+  "delta_free_perpendicular_sd": 0.0007051399585797888,
+  "delta_free_parallel": 0.08681497272018789,
+  "delta_free_parallel_sd": 0.0006974604362848776,
+  "observables_raw": {
+    "coil_fast__free__unpolarized": [
+      26.130009965984783,
+      0.011370786279558249
+    ],
+    "wall_dir__free__unpolarized": [
+      -0.07584519274206648,
+      0.00021151043941566668
+    ],
+    "coil_fast__free__perpendicular": [
+      23.858588102831266,
+      0.015221662589401701
+    ],
+    "wall_dir__free__perpendicular": [
+      -0.07267462597778639,
+      0.00019966390778032082
+    ],
+    "coil_fast__free__parallel": [
+      28.39848606835999,
+      0.013394741501811032
+    ],
+    "wall_dir__free__parallel": [
+      -0.07798794480064362,
+      0.0002122545210449645
+    ]
+  }
+}

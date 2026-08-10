@@ -1,0 +1,426 @@
+\documentclass[aspectratio=169]{beamer}
+
+% --- plain default theme, no third-party theme ---
+\usetheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamercolor{normal text}{fg=black,bg=white}
+\setbeamercolor{frametitle}{fg=black,bg=white}
+\setbeamertemplate{frametitle}[default][left]
+\setbeamerfont{frametitle}{series=\bfseries}
+\beamertemplatenavigationsymbolsempty
+\setbeamertemplate{itemize items}[default]
+
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage{graphicx}
+
+\graphicspath{%
+  {/Users/tkiker/Documents/GitHub/openmc/spf_prototype/figs/}%
+  {/Users/tkiker/Documents/GitHub/anarrima/figures/}}
+
+% --- macros lifted verbatim from docs/stellarator_nwl.tex ---
+\newcommand{\rs}{\bm{r}_s}
+\newcommand{\rw}{\bm{r}_w}
+\newcommand{\Del}{\bm{\Delta}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\Bhat}{\hat{\bm{B}}}
+\newcommand{\bperp}{\tilde{\bm{b}}}
+\newcommand{\Nfp}{N_{\mathrm{fp}}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\half}{\tfrac{1}{2}}
+\newcommand{\Kpol}{K_{\mathrm{pol}}}
+\newcommand{\NWL}{\mathrm{NWL}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\Ck}[2]{\mathcal{C}^{(#2)}_{#1}}
+\newcommand{\Sk}[2]{\mathcal{S}^{(#2)}_{#1}}
+\newcommand{\Ja}[1]{J_{#1}}
+\newcommand{\Order}[1]{O(\eps^{#1})}
+\newcommand{\Fell}{F}
+\newcommand{\Eell}{E}
+
+\title{Methods \& Q\&A prep --- Spin-polarized stellarator NWL}
+\subtitle{Internal notes (not for presentation)}
+\author{Thaddaeus Kiker}
+\date{29 June 2026}
+
+\begin{document}
+
+\begin{frame}[plain]\titlepage\end{frame}
+
+\begin{frame}{Roadmap}
+  \textbf{Part A --- methods \& concepts}, one per slide, explained from paper + code.\\[0.4em]
+  \textbf{Part B --- anticipated PI questions}, with grounded answers.\\[1em]
+  {\small Honesty line to keep straight all meeting: the \emph{analytic} result is cross-checked
+  against an exact free-streaming quadrature to machine precision; the \emph{OpenMC} Monte-Carlo
+  pipeline on Ginsburg is in bring-up --- machinery and geometry validated, the full
+  MC-vs-exact-vs-analytic \emph{numbers} comparison on a real high-$\eps_{\mathrm{eff}}$ equilibrium
+  is the \emph{next} milestone, not yet done.}
+\end{frame}
+
+% ============================================================
+\begin{frame}[t]{Part A}
+  \centering\vfill{\Huge Methods \& concepts}\vfill
+\end{frame}
+
+% ---- A1: quadrature & the hybrid ----
+\begin{frame}{A1. Quadrature, and my hybrid quadrature}
+  \small
+  \textbf{Quadrature} = approximating a definite integral by a weighted sum at chosen nodes,
+  $\int f \approx \sum_i w_i f(\phi_i)$ (here Gauss--Legendre in the toroidal angle $\phi$).
+  \begin{itemize}
+    \item \textbf{Two ways to do the per-loop $\phi$-integral} $g=\int \mathcal{J}\mathcal{N}\,K/D^{3/2}\dd\phi$:
+      (i) reduce it to closed form (elliptic $F,E$ + elementary) via the series; (ii) just
+      evaluate it numerically.
+    \item \textbf{My hybrid hybridizes the two:} keep the integrand
+      \emph{exact and analytic} (no $\eps$-truncation) --- $\mathcal{J},\mathcal{N},D,\Bhat$ as explicit
+      differentiable functions of the design parameters --- but do the single residual $\phi$-quadrature
+      \emph{numerically}.
+    \item \textbf{Why:} it has \emph{no $\eps_{\mathrm{eff}}$ ceiling} below grazing and, unlike a
+      black-box numerical NWL, \emph{retains exact autodiff gradients} in all design parameters.
+      This is Lion's cost regime but differentiable.
+  \end{itemize}
+\end{frame}
+
+% ---- A2: low-eps_eff QA adaptation ----
+\begin{frame}{A2. What I did to Schwartz's method for QA plasmas}
+  \small
+  Schwartz (2025) is \emph{exact} for axisymmetric rings: a planar circle makes
+  $D_0(\phi)=p^2+r^2+z^2-2pr\cos\phi$ affine in $\cos\phi$, so $w=e^{i\phi}$ puts the integral on a
+  genus-1 (elliptic) curve $\Rightarrow$ closed form in $F,E$.
+  \begin{itemize}
+    \item A stellarator loop is non-planar; the period integral becomes \textbf{hyperelliptic}
+      (genus $\ge 2$) --- no finite closed form in $F,E$.
+    \item \textbf{My addition:} a \emph{field-period perturbation series}. Split each loop into mean
+      $+\,\eps\,$ripple, expand $D^{-s}$, and every term lands in the canonical form
+      (trig polynomial)$/D_0^{(2j+1)/2}$ --- reducible to the \emph{same} $F,E$.
+    \item Leading order $g^{(0)}$ \emph{is} Schwartz's kernel verbatim; corrections are additive
+      ripple terms layered on the existing Carlson-form code. Reduces \emph{exactly} to the
+      axisymmetric kernel at zero ripple (regression test, $2\times10^{-16}$).
+    \item Controlling parameter is the \emph{geometric} non-axisymmetry $\eps_{\mathrm{eff}}$, not
+      $|B|$ quasisymmetry --- QA (gently shaped) is where the truncated series converges fastest.
+  \end{itemize}
+\end{frame}
+
+% ---- A3: OpenMC SPF source ----
+\begin{frame}{A3. The spin-polarized DT source in OpenMC}
+  \small
+  A self-contained \texttt{CompiledSource} (\texttt{src/polarized\_fusion\_source.cpp},
+  \texttt{src/spf\_sampler.hpp}), no private MIT code.
+  \begin{itemize}
+    \item \textbf{Anisotropic emission:} monoenergetic 14.1\,MeV; birth direction sampled from
+      $I(\theta)=\tfrac34 a\sin^2\theta+(\tfrac23 b+\tfrac13 c)(\tfrac14+\tfrac34\cos^2\theta)$ by
+      \emph{stratified} sampling of the two angular shapes (exact inverse-CDF, cross-checked vs
+      rejection). Rate factor $\eta=a+\tfrac23 b+\tfrac13 c$ kept \emph{separate} from the
+      direction PDF.
+    \item \textbf{Quantization axis = local field:} $\cos\theta=u\cdot\Bhat(\rs)$ with $\Bhat$ from
+      \texttt{field\_->bhat()}; sample in a $\Bhat$-aligned frame, rotate to global with a
+      Gram--Schmidt basis (no gimbal degeneracy).
+    \item \textbf{Plugin loading:} OpenMC loads the compiled \texttt{.so} via
+      \texttt{CompiledSource(library=...)}; thread-safe ($\Kpol$ state set at construction, all
+      sampling \texttt{const}, RNG only \texttt{openmc::prn(seed)}).
+    \item Verified: A/iso $=\tfrac32\sin^2\theta$ to 0.3\%/bin, mean $1.0000$; B$\equiv$C shape;
+      linearity of mixes.
+  \end{itemize}
+\end{frame}
+
+% ---- A4: analytic improvements / free-streaming work ----
+\begin{frame}{A4. Analytic work in the free-streaming limit}
+  \small
+  \begin{itemize}
+    \item \textbf{Reduction engine:} harmonic recursion $\Ck{k+1}{s}=2h\Ck{k}{s}-\Ck{k-1}{s}-2\Ck{k}{s-1}$,
+      master recursion for $\Ja{a}=\int(h-\cos\phi)^a\dd\phi$, $F/E$ seeds through the existing
+      Carlson $R_F/R_D$ layer. \emph{No third-kind ($\Pi$) integral ever appears.}
+    \item \textbf{Polarized kernels:} A $=\,$iso$-\,$cos$^2$, B/C $=\tfrac14$iso$+\tfrac34$cos$^2$;
+      one extra power $1/D$ raises the elliptic order ($s$: $5/2\!\to\!7/2\!\to\!9/2$). Order-by-order
+      cross-check $g_A^{(j)}+g_c^{(j)}=g_{\mathrm{iso}}^{(j)}$ from $\sin^2+\cos^2=1$.
+    \item \textbf{Gradient closure:} $\partial_h\Ck{k}{s}=-s\,\Ck{k}{s+1}$ --- differentiation maps
+      the integral family into itself, so optimization gradients cost \emph{no} new special-function
+      calls and give a second, independent generator of the elliptic tower.
+    \item \textbf{Robustness:} singularity subtraction for grazing; Leibniz boundary term for the
+      moving visible arc; multi-arc visibility ($\mathcal{N}=\nhat\cdot\Del>0$).
+  \end{itemize}
+\end{frame}
+
+% ---- A5: elliptic integrals ----
+\begin{frame}{A5. Elliptic integrals, and where they enter}
+  \small
+  Incomplete elliptic integrals of the first / second kind ($m=k^2$):
+  \begin{equation*}
+    \Fell(\varphi,m)=\int_0^{\varphi}\!\frac{\dd x}{\sqrt{1-m\sin^2 x}},\qquad
+    \Eell(\varphi,m)=\int_0^{\varphi}\!\sqrt{1-m\sin^2 x}\,\dd x
+  \end{equation*}
+  \begin{itemize}
+    \item They are the closed form for $\int (h-\cos\phi)^{-1/2}\dd\phi$ and
+      $\int(h-\cos\phi)^{+1/2}\dd\phi$ --- the half-integer-power integrals the flux factor
+      ($D^{-3/2}$) and polarization kernels ($D^{-5/2}$) produce.
+    \item Seeds: $\Ja{-1/2}\propto \Fell(\phi_\pm/2,m)$, $\Ja{+1/2}\propto \Eell(\phi_\pm/2,m)$,
+      modulus $m=-2/(h-1)=-4pr/((p-r)^2+z^2)$, $h=(p^2+r^2+z^2)/2pr$.
+    \item Implemented through \textbf{Carlson symmetric forms} $R_F,R_D$ --- numerically stable,
+      differentiable, and they handle the \emph{asymmetric} visible arcs (evaluate at $\phi_+/2$ and
+      $\phi_-/2$, difference) without modification.
+  \end{itemize}
+\end{frame}
+
+% ---- A6: perturbation expansion setup ----
+\begin{frame}{A6. How the perturbation expansion was set up}
+  \small
+  Split loop into mean $+$ ripple (formal order parameter $\eps$):
+  \begin{equation*}
+    R(\phi)=p+\eps\,dR(\phi),\qquad Z(\phi)-z_w=z+\eps\,dZ(\phi)
+  \end{equation*}
+  $dR,dZ$ expanded in field-period harmonics $\cos/\sin(n\Nfp\phi)$. Then \emph{exactly}:
+  \begin{equation*}
+    D=D_0+\eps D_1+\eps^2 D_2,\quad
+    D_1=2[dR(p-r\cos\phi)+z\,dZ],\quad D_2=dR^2+dZ^2
+  \end{equation*}
+  \begin{itemize}
+    \item Jacobian $\mathcal{J}$, flux numerator $\mathcal{N}=\mathcal{N}_0+\eps\mathcal{N}_1$, and
+      field projection $\Bhat\cdot\Del=P_0+\eps P_1+\eps^2 P_2$ expand the same way.
+    \item Insert into $g$, use $D^{-s}=D_0^{-s}(1+\eps D_1/D_0+\eps^2 D_2/D_0)^{-s}$, collect powers
+      of $\eps$ $\Rightarrow$ strict series $g=g^{(0)}+\eps g^{(1)}+\eps^2 g^{(2)}+\cdots$.
+    \item \textbf{Implementation:} represent $dR,dZ,\mathcal{N},P,D_1,D_2,\ldots$ as Fourier
+      coefficient vectors; form products by \emph{convolution}; contract against
+      $\Ck{k}{s},\Sk{k}{s}$. General; avoids hand-derived coefficients.
+    \item Verified $g^{(1)},g^{(2)}$ vs finite differences of the exact integral to 9--11 sig figs
+      at \emph{asymmetric} limits.
+  \end{itemize}
+\end{frame}
+
+% ---- A6b: the subtle 2nd-order polarized term ----
+\begin{frame}{A6b. The subtle second-order polarized term}
+  \small
+  Naive expansion $\Bhat\approx\Bhat_0+\eps\bperp$ gives $P_2=\bperp\cdot\Del_1$. But
+  $|\Bhat|=1$ is only enforced to \emph{first} order by $\Bhat_0\cdot\bperp=0$.
+  \begin{itemize}
+    \item At second order the unit-norm constraint demands a field term $\eps^2\bperp_2$ with
+      $\Bhat_0\cdot\bperp_2=-\tfrac12|\bperp|^2$, contributing $\bperp_2\cdot\Del_0$ to $P_2$.
+    \item This is the second-order Taylor remainder of the angled-field numerator $P_0$ in the
+      field-angle excursions $\alpha_1,\beta_1$ (closed-form trig polynomials).
+    \item \textbf{Why it matters:} omit it and the A, B/C modes converge only at \emph{second}
+      order; include it and they recover the \emph{third}-order convergence of the isotropic series.
+      Small for QA (small $|\bperp|$), but it is the correct closed form. Verified to 9 sig figs.
+  \end{itemize}
+\end{frame}
+
+% ---- A7: hybrid solution combining analytic + numerical ----
+\begin{frame}{A7. What the hybrid solution \emph{is}}
+  \small
+  Three regimes, separated by two thresholds; the hybrid bridges them:
+  \begin{itemize}
+    \item $\eps_{\mathrm{eff}}\lesssim\tfrac12$: \textbf{truncated series} --- fast, closed form,
+      differentiable (2 terms $\to$1\% for $\eps_{\mathrm{eff}}\lesssim0.15$; 3 terms $\to\approx0.3$).
+    \item $\tfrac12\lesssim\eps_{\mathrm{eff}}\lesssim\eps_{\mathrm{graze}}\!\approx\!2$:
+      \textbf{hybrid quadrature} --- exact integrand, single numerical $\phi$-integral, exact
+      gradients retained. Reproduces ground truth to $\sim2\times10^{-9}$.
+    \item Near grazing ($\min_\phi|\Del|\!\to\!0$): \textbf{singularity-subtracted hybrid} ---
+      closed-form peak model removed, fixed node count suffices ($\sim$12 nodes).
+    \item True contact / scattered load: \textbf{Monte Carlo} required.
+  \end{itemize}
+  The series is the \emph{analytic backbone} that makes every stage differentiable; the hybrid is
+  the same integrand, not a different model.
+\end{frame}
+
+% ---- A8: other core concepts ----
+\begin{frame}{A8. Other concepts the work leans on}
+  \small
+  \begin{itemize}
+    \item \textbf{Boozer coordinates / quasisymmetry:} QA/QH are statements that $|B|$ depends on
+      Boozer angles only through a fixed combination --- they govern \emph{confinement}, not directly
+      this expansion.
+    \item \textbf{$\eps_{\mathrm{eff}}$ vs qs-error:} my controlling parameter is
+      $\eps_{\mathrm{eff}}\sim\max_\phi\sqrt{dR^2+dZ^2}/\min_\phi|\Del_0|$ --- \emph{real-space} boundary
+      shaping over standoff. The quasisymmetry error (deviation of $|B|$ from exact QS) is a
+      \emph{different} number; a QA config can be excellent in $|B|$ yet strongly shaped geometrically.
+    \item \textbf{TBR:} tritium breeding ratio --- needs a breeder blanket + scattering; the
+      free-streaming inboard/outboard current split is a geometric \emph{precursor}, not a TBR.
+    \item \textbf{Spin-state fractions $(a,b,c)$:} from deuteron/triton spin projections;
+      $a{+}b{+}c{=}1$; nonpolarized $=(\tfrac13,\tfrac13,\tfrac13)$ gives $\sigma=\tfrac23\sigma_0$.
+      B and C share angular shape (differ only in rate).
+  \end{itemize}
+\end{frame}
+
+% ============================================================
+\begin{frame}[t]{Part B}
+  \centering\vfill{\Huge Anticipated PI questions}\vfill
+\end{frame}
+
+% ---- B1 derivation & validity ----
+\begin{frame}{B1. Is the derivation right, and physically valid?}
+  \small
+  \textbf{Derivation.} Every piece is verified numerically: seeds $\Ja{\pm1/2}$ ($2\times10^{-15}$),
+  master recursion ($6\times10^{-14}$), harmonic recursion ($9\times10^{-12}$), $h$-derivative
+  closures vs autodiff ($\sim10^{-14}$), $g^{(0)},g_c^{(0)}$ vs exact quadrature ($\sim4\times10^{-16}$),
+  $g^{(1)},g^{(2)},g_c^{(1)},g_c^{(2)}$ vs finite differences (limited only by step). The Appendix-C
+  worked single-harmonic example reproduces exactly.\\[0.4em]
+  \textbf{Validity.} It is the \emph{free-streaming / first-flight} (uncollided) wall load: no
+  scattering, no multiplication. That is a genuine physical limit (the uncollided tally of any
+  transport code), \emph{and} it is exactly why it is a clean ground truth. The assumption is ideal
+  field-aligned polarization; a fraction $<1$ interpolates toward isotropic and leaves the geometry
+  untouched.
+\end{frame}
+
+% ---- B2 convergence ----
+\begin{frame}{B2. Convergence and error control}
+  \small
+  \begin{itemize}
+    \item Truncation error at order $p$ scales as $\eps_{\mathrm{eff}}^{\,p+1}$; fitted log--log
+      slopes $1.00, 2.03, 3.01$ (iso) and $\approx$ same for A, B/C.
+    \item Practical table (representative loop): $\eps_{\mathrm{eff}}=0.10\!\to\!2.9\%/0.12\%/0.024\%$;
+      $0.30\!\to\!7.1\%/1.6\%/0.72\%$; $0.60\!\to\!6.8\%/11\%/7.1\%$ (non-monotone --- series has
+      left its radius near $\eps_{\mathrm{eff}}\approx\tfrac12$).
+    \item \textbf{A-posteriori control:} the first neglected term $|g^{(p+1)}|$ is itself an error
+      estimate, computable \emph{without} the exact answer; it tracks the true error up to
+      $\eps_{\mathrm{eff}}\approx0.4$. Applied \emph{patch by patch} --- inboard loops that breach
+      the bound are routed to the hybrid, closed form everywhere else.
+    \item Two breakdowns at \emph{separated} $\eps_{\mathrm{eff}}$: series radius $\approx\tfrac12$
+      (expansion property) vs grazing $\approx 2$ (geometry property).
+  \end{itemize}
+\end{frame}
+
+% ---- B3 why QA, eps_eff vs qs ----
+\begin{frame}{B3. Why QA? And $\eps_{\mathrm{eff}}$ vs quasisymmetry error}
+  \small
+  \begin{itemize}
+    \item \textbf{Why QA:} it is the regime geometrically \emph{closest} to axisymmetric, so the
+      perturbation about Schwartz's exact kernel converges fastest; and the polarized field-direction
+      ripple $\bperp$ is milder than in QH, so the polarized series does not lag the isotropic one.
+    \item \textbf{Key subtlety to state plainly:} $\eps_{\mathrm{eff}}$ is set by real-space shaping,
+      \emph{not} by $|B|$ symmetry. The published QAs are strongly shaped \emph{because} that is the
+      price of quasisymmetric $|B|$: ESTELL 1.01/1.47, NCSX 1.27/1.78, ARIES-CS 1.57/1.73, WISTELL-A
+      1.55/2.39 (median/max $\eps_{\mathrm{eff}}$ at a tight wall).
+    \item \textbf{Consequence:} for real QAs at a tight standoff the truncated series alone is
+      \emph{not} sufficient over most of the wall --- the differentiable hybrid is the operational
+      tool; the series is the exact leading order + low-$\eps_{\mathrm{eff}}$ cross-validation anchor.
+  \end{itemize}
+\end{frame}
+
+% ---- B4 validation status honest ----
+\begin{frame}{B4. Validation status --- verified vs in progress}
+  \small
+  \textbf{Verified (analytic side):}
+  \begin{itemize}
+    \item Every reduction/recursion/correction vs direct quadrature \& finite differences to machine
+      precision; $\eps^{p+1}$ law confirmed; zero-ripple regression to axisymmetric kernel
+      ($2\times10^{-16}$); fwd/rev autodiff agree ($3\times10^{-12}$).
+    \item Analytic series vs \emph{exact free-streaming quadrature} on a QA config: $\sim$1\% iso,
+      few-\% polarized at $\eps_{\mathrm{eff}}=0.15$. Hybrid vs ground truth $\sim10^{-9}$.
+    \item Free-streaming OpenMC source vs analytic on low-$\eps_{\mathrm{eff}}$ QA (toy
+      $\eps_{\mathrm{eff}}\!=\!0.08$ and \emph{published} QUASR 59509 $\eps_{\mathrm{eff}}\!=\!0.43$):
+      $\le1.8\%$ on most walls; inboard 4--6\% residual under strong shaping (bounded, not a bug).
+  \end{itemize}
+  \textbf{In progress (MC side, honest):} the OpenMC pipeline on Ginsburg is in \emph{bring-up} ---
+  sampler, field-map reader, geometry, end-to-end machinery validated; the full
+  \emph{MC-vs-exact-vs-analytic numbers} comparison on a real high-$\eps_{\mathrm{eff}}$ equilibrium
+  (e.g.\ precise\_QA) is the \emph{next} milestone, \emph{not yet done}. No claim that MC numbers are
+  validated against the analytic theory.
+\end{frame}
+
+% ---- B5 novelty ----
+\begin{frame}{B5. Novelty vs Schwartz / Lion / Bae}
+  \small
+  \begin{itemize}
+    \item \textbf{vs Schwartz (2025):} he is exact only in axisymmetry (planar ring $\to$ elliptic).
+      I remove the hyperelliptic obstruction perturbatively, keeping closed form + differentiability
+      in a \emph{stellarator}; leading order is his kernel verbatim.
+    \item \textbf{vs Lion (2022):} he does the toroidal direction \emph{numerically} (black-box, no
+      gradients). My hybrid matches his cost in the strongly-shaped limit but keeps \emph{exact
+      autodiff gradients} for shape/polarization optimization.
+    \item \textbf{vs Bae (2025):} they show spin-polarization steering matters via Monte Carlo in
+      spherical tokamaks. I give the \emph{analytic, differentiable free-streaming} counterpart and
+      extend the geometry to stellarators; their MC and my analytic are complementary
+      (scattered vs uncollided).
+    \item \textbf{New physics deliverable:} closed-form \emph{polarized} A and B/C stellarator
+      kernels with the $|\Bhat|=1$ second-order term, and the $\partial_h$ gradient-closure result.
+  \end{itemize}
+\end{frame}
+
+% ---- B6 spin physics ----
+\begin{frame}{B6. Spin-polarization physics --- realism}
+  \small
+  \begin{itemize}
+    \item \textbf{Reactivity:} parallel-aligned (A) enhances the DT cross section $\sim$50\%
+      ($\sigma_0$ vs $\tfrac23\sigma_0$ nonpolarized); the C combination suppresses it (to
+      $\tfrac13\sigma_0$). Reaction goes through the $J^\pi=\tfrac32^+$ $^5$He resonance.
+    \item \textbf{Angular redistribution:} A mode radiates $\propto\sin^2\theta$ (perpendicular to
+      $\Bhat$); B/C $\propto\tfrac14+\tfrac34\cos^2\theta$ (toward $\Bhat$). This is what makes the
+      wall load a \emph{functional of field geometry}.
+    \item \textbf{Quantization axis:} the local field $\Bhat$ --- spins precess rapidly about it,
+      so polarization is referenced to $\Bhat$; both codes use the \emph{local} $\Bhat$ at the source.
+    \item \textbf{Realism caveats (honest):} I assume ideal field-aligned polarization, spatially
+      uniform $(a,b,c)$, no depolarization during confinement. Depolarization mechanisms (wall
+      collisions, resonances, $\nabla B$) set the achievable fraction and profile --- not modeled;
+      a fraction $<1$ just interpolates toward isotropic.
+  \end{itemize}
+\end{frame}
+
+% ---- B7 geometry & DAGMC ----
+\begin{frame}{B7. Geometry and DAGMC choices}
+  \small
+  \begin{itemize}
+    \item \textbf{Analytic side:} non-planar source loops; wall taken conformal to the boundary at a
+      uniform poloidal gap; convex-cross-section visibility (single visible arc), with multi-arc
+      ($\mathcal{N}>0$) handling wired into the driver.
+    \item \textbf{MC side now (honest, per DEFERRED.md):} the 3D physics is in the \emph{source}
+      (field map + flux-surface births); the transport \emph{geometry} is still an axisymmetric
+      layered box-torus, square cross-section --- \textbf{no field-period geometry effect claimed yet}.
+    \item \textbf{DAGMC} (Direct Accelerated Geometry Monte Carlo) lets OpenMC track on real
+      CAD/triangulated 3D surfaces --- needed to build a true 3D stellarator first wall from the
+      boundary Fourier fits (via Stellarmesh / build123d). That is the upgrade path from the box-torus.
+    \item DAGMC ships with OpenMC's \textbf{linux-64} build as an optional feature; unavailable on my
+      local aarch64 / Mac --- hence Ginsburg.
+  \end{itemize}
+\end{frame}
+
+% ---- B8 why HPC / Ginsburg ----
+\begin{frame}{B8. Why HPC / Ginsburg?}
+  \small
+  \begin{itemize}
+    \item \textbf{DAGMC availability:} only on the linux-64 build --- the cluster gives it; local
+      arm/Mac does not.
+    \item \textbf{Statistics:} resolved per-patch, per-mode, $\phi$-resolved wall tallies across
+      \emph{many} configurations (QA$\to$QH scan) need large history counts; deep-coil tallies need
+      variance reduction (weight windows, MAGIC) --- HPC scale.
+    \item \textbf{The high-$\eps_{\mathrm{eff}}$ regime:} real QAs sit at $\eps_{\mathrm{eff}}\sim1$--$2.5$;
+      there the analytic series diverges \emph{and} even fixed-node exact quadrature can break down
+      near grazing (precise\_QA: $\approx$34\% exact-vs-hybrid disagreement, unphysical negatives).
+      That regime is \textbf{MC-only} --- the science question lives there.
+    \item Headline science it unlocks: how \emph{quasisymmetry} controls the \emph{directional
+      benefit} of spin polarization at the wall, across configurations, with scattering included.
+  \end{itemize}
+\end{frame}
+
+% ---- B9 next steps ----
+\begin{frame}{B9. Concrete next steps}
+  \small
+  \begin{enumerate}
+    \item Finish OpenMC bring-up on Ginsburg; run the \textbf{free-streaming} MC and close the
+      three-way \emph{numbers} cross-check (MC $=$ exact quadrature $=$ analytic) per patch/mode on a
+      real equilibrium --- the gated milestone.
+    \item Turn materials on: quantify the \emph{scattering departure} from free-streaming (the part
+      the analytic cannot give).
+    \item Build a real 3D wall via DAGMC (boundary Fourier $\to$ Stellarmesh) to claim a genuine
+      field-period \emph{geometry} effect.
+    \item \textbf{QA$\to$QH quasisymmetry scan}: correlate the steering benefit / loading with
+      (non-)axisymmetry across configs.
+    \item Joint \emph{wall-shape $+$ polarization} co-optimization with exact analytic gradients
+      (the differentiability payoff); analytic-paper + MC-paper split.
+  \end{enumerate}
+\end{frame}
+
+% ---- B10 anticipated traps ----
+\begin{frame}{B10. Traps to not fall into (self-reminders)}
+  \small
+  \begin{itemize}
+    \item Do \emph{not} say the MC numbers are validated against the analytic theory --- they are not
+      yet; only machinery/geometry are.
+    \item Do \emph{not} conflate $\eps_{\mathrm{eff}}$ (geometry) with quasisymmetry quality ($|B|$).
+      QA $\ne$ geometrically axisymmetric.
+    \item NWL here is free-streaming, normalized to constant fusion rate $\Rightarrow$ pure
+      directionality; it is \emph{not} a shielded dose, \emph{not} a TBR.
+    \item In a \emph{fixed} square geometry both polarized modes can \emph{raise} the global peaking
+      factor; the B/C benefit is the \emph{inboard center-stack} load reduction, not a lower global
+      peak (that needs wall re-shaping).
+    \item B and C share angular shape (a common notes error is calling C isotropic --- it is not).
+  \end{itemize}
+\end{frame}
+
+\end{document}

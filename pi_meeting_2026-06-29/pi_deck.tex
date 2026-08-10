@@ -1,0 +1,266 @@
+\documentclass[aspectratio=169]{beamer}
+
+% --- plain default theme, no third-party theme ---
+\usetheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamercolor{normal text}{fg=black,bg=white}
+\setbeamercolor{frametitle}{fg=black,bg=white}
+\setbeamertemplate{frametitle}[default][left]
+\setbeamerfont{frametitle}{series=\bfseries}
+\beamertemplatenavigationsymbolsempty
+
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage{graphicx}
+
+% figures live in two trees; give absolute paths so nothing breaks
+\graphicspath{%
+  {/Users/tkiker/Documents/GitHub/openmc/spf_prototype/figs/}%
+  {/Users/tkiker/Documents/GitHub/anarrima/figures/}}
+
+% --- macros lifted verbatim from docs/stellarator_nwl.tex ---
+\newcommand{\rs}{\bm{r}_s}
+\newcommand{\rw}{\bm{r}_w}
+\newcommand{\Del}{\bm{\Delta}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\Bhat}{\hat{\bm{B}}}
+\newcommand{\bperp}{\tilde{\bm{b}}}
+\newcommand{\Nfp}{N_{\mathrm{fp}}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\half}{\tfrac{1}{2}}
+\newcommand{\Kpol}{K_{\mathrm{pol}}}
+\newcommand{\NWL}{\mathrm{NWL}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\Ck}[2]{\mathcal{C}^{(#2)}_{#1}}
+\newcommand{\Sk}[2]{\mathcal{S}^{(#2)}_{#1}}
+\newcommand{\Ja}[1]{J_{#1}}
+\newcommand{\Order}[1]{O(\eps^{#1})}
+\newcommand{\Fell}{F}
+\newcommand{\Eell}{E}
+
+% one helper for a frame-filling figure
+\newcommand{\bigfig}[1]{\centering\includegraphics[width=\linewidth,height=0.66\textheight,keepaspectratio]{#1}}
+
+\title{Analytic Neutron Wall Loading for Spin-Polarized Fusion\\in Quasi-Axisymmetric Stellarators}
+\subtitle{Field-period perturbation of the axisymmetric kernel}
+\author{Thaddaeus Kiker}
+\institute{Columbia University --- Astronomy \& Fusion Research Center}
+\date{PI meeting, 29 June 2026}
+
+\begin{document}
+
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+% ============================================================
+% OPENING: genesis of the work
+% ============================================================
+\begin{frame}{Where this started: four papers}
+  \small
+  This project grew out of reading a quartet:
+  \begin{itemize}
+    \item \textbf{Kulsrud} (1986) --- \emph{Physics of spin-polarized plasmas.}
+          Polarizing D and T spins enhances the DT reactivity ($\sim$50\%) and
+          makes the fusion emission \emph{anisotropic} about $\Bhat$.
+    \item \textbf{Schwartz} (2025) --- \emph{Analytic neutron wall loading from spin-polarized
+          fusion in axisymmetric geometries.} Closed-form, differentiable NWL for tokamaks via
+          incomplete elliptic integrals $F,E$.
+    \item \textbf{Bae et al.} (2025) --- \emph{Neutronics of spin-polarized fuel in spherical
+          tokamaks.} Monte-Carlo evidence the steering matters at the wall / center stack.
+    \item \textbf{Lion et al.} (2022) --- \emph{Deterministic 3D neutron wall load for generic
+          stellarators.} Fast, but integrates the toroidal direction \emph{numerically}.
+  \end{itemize}
+  \vspace{0.4em}
+  \footnotesize\textbf{The gap:} Schwartz's closed form is exact only in axisymmetry; Lion is
+  3D but numerical. \emph{Can we keep Schwartz's closed, differentiable form in a stellarator?}
+\end{frame}
+
+% ============================================================
+% KEY EQUATION 1: what NWL is
+% ============================================================
+\begin{frame}{The object: neutron wall load (free-streaming)}
+  First-flight neutron current through a wall patch, weighted by the polarized emission kernel:
+  \begin{equation*}
+    Q_{\NWL}(\rw)\ \propto\ \int_{V_s} \dd^3 r_s\; S(\rs)\;
+    \frac{\nhat\cdot(\rs-\rw)}{\lvert \rs-\rw\rvert^{3}}\;
+    \Kpol\!\left(\Bhat(\rs)\cdot\widehat{(\rs-\rw)}\right)
+  \end{equation*}
+  \vspace{0.2em}
+  \begin{equation*}
+    \Kpol(\cos\theta)=\tfrac{3}{4}\,a\,\sin^2\theta+\Big(\tfrac{2}{3}b+\tfrac{1}{3}c\Big)
+    \Big(\tfrac{1}{4}+\tfrac{3}{4}\cos^2\theta\Big)
+  \end{equation*}
+  \vspace{0.4em}
+
+  {\small Takeaway: no scattering --- a purely geometric, line-of-sight quantity, so it can be
+  computed two independent ways and cross-checked.}
+\end{frame}
+
+% ============================================================
+% FIGURE 1
+% ============================================================
+\begin{frame}{OpenMC source reproduces the analytic free-streaming load}
+  \bigfig{tier3_analytic_vs_numerical.png}
+
+  {\small Takeaway: scattering off, the polarized MC source reproduces the analytic kernel per wall
+  and mode (residual mean $+0.02$, $\sigma\,0.69$) --- sampler and line-of-sight geometry validated.}
+\end{frame}
+
+% ============================================================
+% FIGURE 2
+% ============================================================
+\begin{frame}{The steering, at a glance: inboard center-stack relief}
+  \bigfig{tier3_torus3d.png}
+
+  {\small Takeaway: schematic box-torus render of the computed free-streaming NWL (not CAD/DAGMC);
+  the B/C mode moves load off the inboard center stack, the A mode does the reverse.}
+\end{frame}
+
+% ============================================================
+% KEY EQUATION 2: the per-loop kernel = the hybrid integrand
+% ============================================================
+\begin{frame}{The hard part: one toroidal integral per source loop}
+  Reduced intensity from a single source loop (the free-streaming kernel):
+  \begin{equation*}
+    g=\int_{\phi_-}^{\phi_+}\!\mathcal{J}(\phi)\;\mathcal{N}(\phi)\;
+    \frac{K\!\big(\cos\theta(\phi)\big)}{D(\phi)^{3/2}}\;\dd\phi,
+    \qquad D\equiv\lvert\Del\rvert^{2}
+  \end{equation*}
+  \vspace{0.3em}
+
+  {\small In a tokamak the loop is a planar circle $\Rightarrow$ this is elliptic (closed form).
+  In a stellarator the loop is \emph{non-planar} $\Rightarrow$ the integral becomes
+  \emph{hyperelliptic}: no finite closed form in $F,E$. That is the obstruction --- of algebraic
+  geometry, not of effort.}
+\end{frame}
+
+% ============================================================
+% FIGURE 3 (xsection) -- why hyperelliptic
+% ============================================================
+\begin{frame}{Why: the cross section rotates and reshapes with $\phi$}
+  \bigfig{plasma_xsection_QA.pdf}
+
+  {\small Takeaway: the QA boundary ($\Nfp=2$) at three toroidal angles over a half field period.
+  This field-period excursion is exactly what the paper expands order by order to restore closed
+  form.}
+\end{frame}
+
+% ============================================================
+% FIGURE 4 (plasma 3d)
+% ============================================================
+\begin{frame}{Each source loop is non-planar}
+  \bigfig{plasma_3d_QA.pdf}
+
+  {\small Takeaway: unlike a tokamak ring, every constant-$(\rho,\vartheta)$ loop carries
+  field-period harmonics --- the feature that makes the toroidal NWL integral hyperelliptic.}
+\end{frame}
+
+% ============================================================
+% KEY EQUATION 3: the perturbation expansion
+% ============================================================
+\begin{frame}{The idea: expand in the non-axisymmetric excursion}
+  Write each loop as its toroidal mean plus ripple and collect order by order:
+  \begin{equation*}
+    g=g^{(0)}+\eps\,g^{(1)}+\eps^2\,g^{(2)}+\cdots
+  \end{equation*}
+  with the leading term the axisymmetric kernel \emph{verbatim},
+  \begin{equation*}
+    g^{(0)}=\int_{\phi_-^{(0)}}^{\phi_+^{(0)}}\! p\,\mathcal{N}_0\;\frac{K_0}{D_0^{3/2}}\dd\phi
+  \end{equation*}
+  and every correction closed form in the \emph{same} elliptic integrals $F,E$:
+  \begin{equation*}
+    \Ck{k}{s}=\int_{\phi_-}^{\phi_+}\frac{\cos k\phi}{(h-\cos\phi)^{s}}\dd\phi
+    \quad\xrightarrow{\ \text{recursions}\ }\quad
+    \Ja{-1/2}=\tfrac{2}{\sqrt{h-1}}\big[\Fell(\phi_+/2,m)-\Fell(\phi_-/2,m)\big]
+  \end{equation*}
+  {\small Takeaway: anchored on Schwartz's exact axisymmetric result; corrections are additive,
+  differentiable ripple terms.}
+\end{frame}
+
+% ============================================================
+% FIGURE 5 (nwl_unwrapped)
+% ============================================================
+\begin{frame}{The deliverable: a full 3D free-streaming NWL map}
+  \bigfig{nwl_unwrapped.pdf}
+
+  {\small Takeaway: full toroidal$\times$poloidal analytic NWL (unpolarized vs optimized); the
+  $\Nfp=2$ period shows as $\pi$-banding. One global polarization flattens it only modestly --- the
+  wall \emph{shape} is the larger lever.}
+\end{frame}
+
+% ============================================================
+% FIGURE 6 (tier3 nwl map QA-high)
+% ============================================================
+\begin{frame}{Series vs.\ exact free-streaming, all three modes}
+  \bigfig{tier3_nwl_map_QA-high.pdf}
+
+  {\small Takeaway: at $\eps_{\mathrm{eff}}=0.15$ the truncated analytic series (dashed+markers)
+  reproduces the exact free-streaming load (solid) to $\sim$1\% across isotropic, A, and B/C
+  modes.}
+\end{frame}
+
+% ============================================================
+% FIGURE 7 (optimize)
+% ============================================================
+\begin{frame}{Differentiable $\Rightarrow$ optimizable}
+  \bigfig{optimize_uniform_nwl.pdf}
+
+  {\small Takeaway: minimizing non-uniformity over the polarization simplex with \emph{exact}
+  gradients flattens the profile (squared coeff.\ of variation falls $\sim$6$\times$) --- the
+  polarization mix is a free design knob.}
+\end{frame}
+
+% ============================================================
+% FIGURE 8 (quadrature frontier)
+% ============================================================
+\begin{frame}{When the series ends, a differentiable hybrid takes over}
+  \bigfig{quadrature_frontier.pdf}
+
+  {\small Takeaway: two thresholds, not one. The non-axisymmetry $\eps_{\mathrm{eff}}$ alone does
+  not break the quadrature; only a source filament \emph{grazing} the wall
+  ($\min_\phi|\Del|\!\to\!0$) does.}
+\end{frame}
+
+% ============================================================
+% FIGURE 9 (singularity subtraction)
+% ============================================================
+\begin{frame}{Closed-form singularity subtraction handles grazing}
+  \bigfig{singularity_subtraction.pdf}
+
+  {\small Takeaway: the analytic structure locates the peak in closed form; subtracting it restores
+  fixed-node convergence ($\sim$12 nodes to $10^{-6}$) where plain quadrature fails.}
+\end{frame}
+
+% ============================================================
+% FIGURE 10 (tier2 convergence)
+% ============================================================
+\begin{frame}{Convergence is the predicted $\eps^{\,p+1}$ law}
+  \bigfig{tier2_convergence.pdf}
+
+  {\small Takeaway: each retained order removes one power of the excursion amplitude (slopes
+  $1,2,3$); all three polarization modes reach third order --- the polarized modes only with the
+  $|\Bhat|=1$ field-normalization term.}
+\end{frame}
+
+% ============================================================
+% CLOSING: where this is going
+% ============================================================
+\begin{frame}{Where this is going: HPC + DAGMC on Ginsburg}
+  \small
+  \begin{itemize}
+    \item The analytic side is the \emph{free-streaming} ground truth. The collided wall load,
+          the high-$\eps_{\mathrm{eff}}$ regime, and real 3D walls need Monte Carlo transport.
+    \item Building the full OpenMC pipeline on Columbia's \textbf{Ginsburg} cluster to get
+          \textbf{DAGMC} --- ships with OpenMC's linux-64 build as an optional feature,
+          unavailable locally on aarch64 / Mac.
+    \item Unlocks: a high-performance study of the \emph{quasisymmetry effect} on the directional
+          benefit of spin polarization across \emph{many} configurations\ldots
+    \item \ldots including the \textbf{high-$\eps_{\mathrm{eff}}$ regime} where the analytic series
+          breaks down and Monte Carlo on HPC is required.
+  \end{itemize}
+  \vspace{0.5em}
+  \centering\textbf{Analytic (fast, differentiable, free-streaming) $\;\Longleftrightarrow\;$
+  Monte Carlo (scattered, exact, HPC).}
+\end{frame}
+
+\end{document}

@@ -1,0 +1,9 @@
+{
+  "id": 261059,
+  "stem": "quasr261059",
+  "blanket": "baseline",
+  "status": "error",
+  "warnings": [],
+  "error": "FileNotFoundError: [Errno 2] No such file or directory: '/Users/tkiker/Documents/GitHub/openmc/spf_prototype/data/quasr/catalogue.csv.gz'",
+  "traceback": "Traceback (most recent call last):\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/sweep.py\", line 291, in run_config\n    dev = ql.load_device(cid, n_samples=cfg.get(\"coil_samples\", 256))\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/quasr_loader.py\", line 226, in load_device\n    row = _catalogue_row(ID)\n          ^^^^^^^^^^^^^^^^^^\n  File \"/Users/tkiker/Documents/GitHub/openmc/spf_prototype/sweep/quasr_loader.py\", line 156, in _catalogue_row\n    with gzip.open(DATADIR / \"catalogue.csv.gz\", \"rt\") as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/gzip.py\", line 58, in open\n    binary_file = GzipFile(filename, gz_mode, compresslevel)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/tkiker.guest/miniforge3/envs/spf/lib/python3.11/gzip.py\", line 174, in __init__\n    fileobj = self.myfileobj = builtins.open(filename, mode or 'rb')\n                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/Users/tkiker/Documents/GitHub/openmc/spf_prototype/data/quasr/catalogue.csv.gz'\n"
+}

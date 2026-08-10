@@ -123,6 +123,10 @@ echo "=== Tier-2 patch ($I_TOR,$J_POL): magnet cells (pymoab) $(date) ==="
 python -u "$WORK/step1_cells.py" "$WORK/dagmc_qh_patch_${TAG}.h5m" "$WORK/cells_patch_${TAG}.npz" \
     || { echo "CELLS_FAIL"; exit 1; }
 
+# SKIP_DOSE=1 -> build+cells only (run on the idle short partition; dose later via MODE=doseonly
+# on burst). Decouples the ~12 min build from the ~17.5 h dose when burst is QOS-blocked for astro.
+if [ "${SKIP_DOSE:-0}" = "1" ]; then echo "=== BUILD_ONLY_DONE ($I_TOR,$J_POL) $(date) ==="; exit 0; fi
+
 echo "=== Tier-2 patch ($I_TOR,$J_POL): coil-20 dose (NO WW, ISOLATED) $(date) ==="
 cd "$RUNDIR"
 export DOSE_CWD="$RUNDIR"                               # coil_run_iso chdir's here -> no statepoint race

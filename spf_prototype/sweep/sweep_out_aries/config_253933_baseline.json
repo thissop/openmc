@@ -1,0 +1,81 @@
+{
+  "id": 253933,
+  "stem": "quasr253933",
+  "blanket": "baseline",
+  "status": "done",
+  "warnings": [
+    "geometry fold at scale=13.38: ['FLiBe', 'shield', 'coil']",
+    "geometry fold at scale=18.73: ['shield', 'coil']"
+  ],
+  "nfp": 5,
+  "iota": 0.3,
+  "aspect": 10.0000278461,
+  "symmetry_class": "QA",
+  "total_coil_length": 80.000179534,
+  "field_audit": {
+    "unit": {
+      "value": 2.220446049250313e-16,
+      "passed": true
+    },
+    "div_free": {
+      "value": 1.2334584493218084e-07,
+      "passed": true
+    },
+    "boundary_flux": {
+      "value": 0.0036685540008105405,
+      "passed": true,
+      "max": 0.016946898231571944
+    },
+    "passed": true
+  },
+  "C": 0.9994611664132154,
+  "tensor_evals": [
+    0.9989251670955315,
+    0.0005586833302865408,
+    0.0005161495741822601
+  ],
+  "anisotropy": 0.998366483765245,
+  "lambda_phi": 0.9988522385355315,
+  "S_phi": 0.9982783578032972,
+  "reversal_frac": 0.0,
+  "angular_std_deg": 1.8817231907345278,
+  "C_lab": 0.009140468525788857,
+  "tau": 13.476,
+  "scale": 26.222018437341575,
+  "built_minor_cm": 333.9839999999999,
+  "dagmc": {
+    "volumes": 6,
+    "tris": 86016
+  },
+  "lost_particles": 0,
+  "delta_free_perpendicular": -0.15234667821797798,
+  "delta_free_perpendicular_sd": 0.0005469748533837197,
+  "delta_free_parallel": 0.1522040372157891,
+  "delta_free_parallel_sd": 0.0007604297616874329,
+  "observables_raw": {
+    "coil_fast__free__unpolarized": [
+      27.058785708885615,
+      0.0121930543059168
+    ],
+    "wall_dir__free__unpolarized": [
+      -0.0780315650228228,
+      0.0002264039675709138
+    ],
+    "coil_fast__free__perpendicular": [
+      22.936469589524798,
+      0.010593954027110426
+    ],
+    "wall_dir__free__perpendicular": [
+      -0.07591502052466781,
+      0.00020887231810398378
+    ],
+    "coil_fast__free__parallel": [
+      31.177242135934904,
+      0.01503373401028309
+    ],
+    "wall_dir__free__parallel": [
+      -0.07924313906765106,
+      0.00022703579175264584
+    ]
+  }
+}
