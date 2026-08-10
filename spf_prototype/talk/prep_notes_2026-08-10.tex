@@ -1,0 +1,136 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.85in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{setspace}
+\setstretch{1.08}
+
+\definecolor{key}{rgb}{0.10,0.35,0.65}
+\titleformat{\section}{\normalfont\large\bfseries\color{key}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{}{0em}{}
+\titlespacing{\section}{0pt}{8pt}{4pt}
+\setlist{leftmargin=1.3em,itemsep=1pt,topsep=2pt}
+\newcommand{\Q}[1]{\smallskip\noindent\textbf{Q. #1}\par}
+\newcommand{\A}[1]{\noindent #1\par}
+
+\pagestyle{empty}
+
+\begin{document}
+
+\begin{center}
+  {\Large\bfseries\color{key} Presentation Prep: Adjoint Magnet Shielding} \\[2pt]
+  {\normalsize Follow-up check-in, 2026-08-10}
+\end{center}
+
+\vspace{-4pt}
+\section{What I Am Presenting}
+Last meeting the adjoint coil-importance map was validated and the placed-versus-uniform shield test
+was proposed with the outcome open. Since then that test resolved, and I turned it into a real
+experiment: does a free adjoint estimate predict where shield actually helps, patch by patch. I
+measured the ground truth for twelve shield patches in direct transport. Two results changed the
+picture. The cheap proxy does not rank placements, but it does flag the one patch where shielding
+makes the coil worse. And the coil loading is set by a shared inboard region, not by twenty
+independent coil footprints, so magnet protection is a collective problem.
+
+\section{Numbers To Have Ready}
+\begin{itemize}
+  \item Peak coil fast flux at equal material: uniform $1.00$, single-coil placement $0.24$
+        (a factor of four lower), distributed placement $0.68$.
+  \item Rank correlation of measured worth with the proxies (twelve patches): scalar worth $-0.34$,
+        attribution $-0.17$, signed worth $+0.16$. None are significant.
+  \item Backfire patch: adding shield there raises the coil dose by forty-one percent.
+  \item Doses: twelve batches of four million, no weight windows, correlated seed. Coil-20 relative
+        error $0.7$ to $1.7$ percent. Dose changes are twenty to a hundred standard deviations.
+  \item Attenuation lengths used in the signed worth: tungsten carbide shield about $8$ cm, FLiBe
+        breeder about $17$ cm. Breeder floor $15$ cm; breeding ratio floor $1.05$.
+  \item Geometry: reactor-scaled quasi-helical build, major radius about $13.7$ m, minor radius
+        about $2.2$ m. Reciprocity from last time: quasi-helical $+0.76$, quasi-axisymmetric $+0.83$.
+\end{itemize}
+
+\section{The Physics, One Pass}
+\noindent\textbf{Contributon.} $C(r)=\phi(r)\,\psi^\dagger(r)$, forward flux times adjoint importance.
+It is the amount of the coil response carried through each point. Attribution is the contributon
+evaluated at the plasma source, $S\psi^\dagger$. Worth is the contributon summed over the shield
+band, the leading-order estimate of how much blocking flux there helps.
+
+\smallskip
+\noindent\textbf{The trade.} Fixed outer envelope: coils do not move and the machine does not grow.
+Adding shield in a patch means removing an equal thickness of breeder there. Worth must account for
+both, which is the signed worth $W_s=\sigma_{\mathrm{sh}}\sum_{\mathrm{shield}}C-\sigma_{\mathrm{br}}\sum_{\mathrm{breeder}}C$.
+
+\smallskip
+\noindent\textbf{Why the naive worth gets the sign wrong.} First-order removal theory gives
+$\delta R=-\int \delta\Sigma\,\phi\,\psi^\dagger$. For the trade the change in cross section is
+positive everywhere in the trade zone, so this predicts the dose goes down for every patch. The coil
+responds to fast flux, and the breeder does more than remove: it moderates fast neutrons by
+downscatter. Removing breeder removes that moderation, so fast flux is released. That is a positive
+term absent from any total-cross-section model. On one patch it wins and the dose rises. Getting the
+sign right needs a fast-and-thermal treatment, which is why a single-group worth ranks only roughly.
+
+\section{Anticipated Questions And Answers}
+\Q{Is the ranking just Monte Carlo noise?}
+\A{No. The dose changes are twenty to a hundred standard deviations for the strong patches, and the
+correlated seed cancels most of the variance in the difference. The near-flat worth across most
+patches is a real feature, not scatter. The one backfire patch is far outside noise.}
+
+\Q{Why no weight windows on a deep coil dose?}
+\A{FW-CADIS weight windows over-split on this geometry, turning two million primaries into tens of
+millions of secondary tracks, so the first batch never finishes. Brute-force sampling resolves the
+deep coil dose to about one percent and, with a fixed seed, makes each patch dose correlated with the
+baseline. The difference is then clean even though the absolute error is modest.}
+
+\Q{Are the signed-worth cross sections tuned to get the answer?}
+\A{No. They are the fast-neutron attenuation lengths of the shield and breeder materials. The
+four-corner result held across a factor of ten in their ratio, and the twelve-patch result stays weak
+across the same sweep, so the conclusion does not depend on the choice.}
+
+\Q{If the proxy does not rank, what is the adjoint good for?}
+\A{Three things. It tells you where the coil load comes from, which is physical insight. The signed
+worth flags patches where the trade backfires, which a shield-the-hotspot heuristic would miss. And
+the importance map is concentrated on the inboard, which collapses the optimization to a few
+parameters. The adjoint sets the search space and the constraints, not the objective.}
+
+\Q{So there is no automatic optimizer?}
+\A{There is, but not the zero-cost one. The workable system is a low-dimensional Bayesian search
+scored by real transport, with the signed worth as a guard that keeps it from degrading the magnet.
+The value of the free adjoint is to shrink the search and rule out backfires, not to replace the
+transport evaluation.}
+
+\Q{Could the multi-coil result be a budget mismatch or an allocator bug?}
+\A{The budgets match to the centimeter. The single-coil field concentrates thirty-five centimeters on
+the inboard; the distributed field spreads about ten. The tell is the total coil flux: the
+concentrated field cuts it by more than half, the distributed field barely moves it. Concentrating on
+the shared inboard helps every coil; spreading by per-coil importance dilutes. A concentrated
+distributed field is in transport now to confirm.}
+
+\Q{Trading breeder for shield lowers the breeding ratio. Is the trade feasible?}
+\A{That is the binding constraint and the reason for the fixed-envelope framing. The trade keeps a
+breeder floor and the optimizer holds the breeding ratio above its floor. The backfire result matters
+because a careless placement can hurt both the magnet and the breeding at once.}
+
+\Q{How does this connect to the spin-polarized fuel source?}
+\A{The polarized source changes where the coil load peaks through the emission direction. The
+attribution map is exactly the tool that links emission direction to coil loading. This shielding
+work builds the adjoint framework the polarized source will couple into. The plan is two papers, one
+on the directional source with the adjoint, one on the adjoint-informed shielding.}
+
+\Q{Is any of this already published?}
+\A{The existing radial-build tool does manual sweeps and names automated optimization as future work.
+Polarized-source transport in this code was shown by another group this year, so the source itself is
+not our claim. The closed-loop breeder-for-shield magnet optimizer at fixed envelope, the backfire
+result, and the collective-hotspot reframing appear to be new.}
+
+\Q{Does angular order matter for placement?}
+\A{Not for placement. On the real coil through the shield the first-order correction is under one
+percent and the peak location is unchanged. It reaches about seventy percent in a deep scattering slab,
+so angular order matters for through-shield magnitude, not for where to place shield.}
+
+\Q{What is next, concretely?}
+\A{Two runs finish tomorrow: the concentrated distributed placement to test whether it beats
+single-coil concentration, and a fast-group signed worth to test whether the coil-relevant energy
+range recovers a usable ranking. After that, the low-dimensional optimizer with the backfire guard,
+and the reactor-scale coil sets for a standoff sweep.}
+
+\end{document}
