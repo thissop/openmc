@@ -1,0 +1,465 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{default}
+\usecolortheme{dove}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage[most]{tcolorbox}
+\usepackage{booktabs}
+
+\graphicspath{{figs/}}
+
+\definecolor{key}{rgb}{0.10,0.35,0.65}
+\definecolor{warn}{rgb}{0.70,0.09,0.15}
+\definecolor{grey}{rgb}{0.48,0.48,0.48}
+\setbeamercolor{frametitle}{fg=key}
+\setbeamercolor{footline}{fg=grey}
+
+\newcommand{\kb}[1]{\begin{tcolorbox}[colback=key!5,colframe=key!60,boxsep=2pt,left=4pt,right=4pt,top=3pt,bottom=3pt]#1\end{tcolorbox}}
+\newcommand{\wb}[1]{\begin{tcolorbox}[colback=warn!5,colframe=warn!55,boxsep=2pt,left=4pt,right=4pt,top=3pt,bottom=3pt]#1\end{tcolorbox}}
+\newcommand{\q}[1]{\textbf{\color{key}Q.\ }#1}
+\newcommand{\an}[1]{\textbf{A.\ }#1}
+
+\title{ParaStell}
+\subtitle{Parametric Stellarator Neutronics Model Generation \\ \small Moreno, Bader \& Wilson, \emph{Front.\ Nucl.\ Eng.}\ \textbf{3}, 1384788 (2024)}
+\author{Presented by Thaddaeus Kiker}
+\date{Group meeting --- \today}
+
+\begin{document}
+
+\begin{frame}[plain]\titlepage
+  \begin{center}\footnotesize\color{grey} Teaching deck --- read alongside the paper PDF (the CAD figures are Figs.~1--13 there).\end{center}
+\end{frame}
+
+% ==================================================================
+\begin{frame}{Roadmap}
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \textbf{Part A --- The tool}
+      \begin{itemize}\small
+        \item Why stellarator neutronics is hard
+        \item Flux coordinates \& VMEC input
+        \item Building the plasma, first wall, radial build
+        \item Magnets from coil filaments
+        \item Mesh $\to$ DAGMC $\to$ OpenMC; the source mesh
+      \end{itemize}
+      \textbf{Part B --- The study}
+      \begin{itemize}\small
+        \item WISTELL-D, materials, OpenMC setup
+        \item The 99-configuration parametric scan
+        \item Results, verification, limitations, future work
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \textbf{Part C --- How I use \& extend it}
+      \begin{itemize}\small
+        \item My QH pipeline mapped onto ParaStell
+        \item Where my thesis lives in their ``future work''
+      \end{itemize}
+      \textbf{Part D --- Anticipated questions}
+      \begin{itemize}\small
+        \item $\sim$40 questions with answers, grouped
+      \end{itemize}
+      \vspace{1em}
+      \kb{\footnotesize One-line summary: \textbf{ParaStell turns a VMEC plasma equilibrium + coil filaments into a 3-D CAD radial build and a fusion source mesh, exports to DAGMC, and runs OpenMC --- so you can scan stellarator blanket/shield designs.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============== PART A ==============
+\section{Part A}
+\begin{frame}{Part A --- What ParaStell is and does}
+  \begin{center}\Large\color{key} The tool: geometry in, neutronics out.\end{center}
+\end{frame}
+
+\begin{frame}{The problem: stellarators break the tokamak playbook}
+  \begin{itemize}
+    \item Stellarators have \textbf{no toroidal (axi-) symmetry}. A tokamak is essentially 2-D (one poloidal cross-section, rotated); a stellarator is irreducibly \textbf{3-D}.
+    \item So you \emph{cannot} approximate the device in lower dimensions --- prior work established 3-D modeling is required for stellarator components.
+    \item Existing parametric tools assume symmetry: \textbf{Paramak} (tokamak first-wall/blanket/shield) assumes toroidal symmetry $\Rightarrow$ inapplicable.
+    \item Manual CAD of a stellarator FWBS is ``cumbersome and challenging'' --- too slow for design-space exploration.
+  \end{itemize}
+  \kb{\textbf{The gap ParaStell fills:} an automated, \emph{parametric} generator of stellarator in-vessel geometry + neutron source, at a fidelity suited to early (conceptual / pre-conceptual) scoping.}
+\end{frame}
+
+\begin{frame}{Design philosophy: low fidelity, on purpose}
+  \begin{itemize}
+    \item Target regime: \textbf{conceptual / pre-conceptual} power-plant design, where you iterate over the design space fast.
+    \item Claim: for \textbf{global} metrics you do not need fine geometric detail. Track:
+      \begin{itemize}\small
+        \item Tritium breeding ratio (TBR)
+        \item Total magnet nuclear heating [kW] (sets the cryogenic load)
+        \item (secondary) neutron wall loading, peak magnet heating
+      \end{itemize}
+    \item ``Reasonably accurate performance metrics'' from homogenized materials + smooth geometry.
+    \item \textbf{Not} for: activation, detailed damage (dpa), or anything needing real material composition / fine local geometry.
+  \end{itemize}
+  \wb{Keep this framing in your head --- almost every ``why didn't they do X'' question is answered by \emph{``it's a low-fidelity scoping tool, X is future/high-fidelity work.''}}
+\end{frame}
+
+\begin{frame}{The data flow (paper Fig.~1)}
+  \begin{columns}[c]
+    \begin{column}{0.55\textwidth}
+      \textbf{Inputs}
+      \begin{itemize}\small
+        \item VMEC plasma equilibrium (\texttt{wout})
+        \item Coil filament point-loci (MAKEGRID)
+        \item Radial-build parameters $t_l(\phi,\theta)$
+      \end{itemize}
+      \textbf{ParaStell operations}
+      \begin{itemize}\small
+        \item Loft plasma / first wall / each layer
+        \item Sweep magnets along filaments
+        \item Build structured source mesh in flux space
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \textbf{Outputs}
+      \begin{itemize}\small
+        \item CAD solids (CadQuery)
+        \item \textbf{DAGMC} \texttt{.h5m} faceted geometry
+        \item Tetrahedral \textbf{fusion source mesh}
+        \item OpenMC tallies (TBR, heating, \dots)
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vspace{0.5em}
+  \kb{\footnotesize Software stack: \textbf{PyStell-UW} (reads VMEC) $\to$ \textbf{CadQuery} 2.3.1 (CAD) $\to$ \textbf{Coreform Cubit} 2023.11 \emph{or} \textbf{CAD-to-DAGMC} (facet) $\to$ \textbf{PyMOAB} (source mesh) $\to$ \textbf{OpenMC} (transport, DAGMC-coupled).}
+\end{frame}
+
+\begin{frame}{Flux coordinates (paper Fig.~2)}
+  Stellarator plasmas live in 3-D flux coordinates $(s,\theta,\phi)$:
+  \begin{itemize}
+    \item $s$ --- normalized closed-flux-surface (CFS) label, $s\in[0,1]$: $s=0$ magnetic axis, $s=1$ last closed flux surface (LCFS = plasma edge).
+    \item $\theta$ --- poloidal parameterizing angle $\in[0,2\pi]$.
+    \item $\phi$ --- toroidal angle $\in[0,2\pi]$.
+  \end{itemize}
+  \kb{Fourier transform to cylindrical (Eqs.~1--2):
+  \[ R(s,\theta,\phi)=\sum_{m,n} R_{mn}(s)\cos(n\phi-m\theta), \quad
+     Z(s,\theta,\phi)=\sum_{m,n} Z_{mn}(s)\sin(n\phi-m\theta) \]}
+  The $R_{mn},Z_{mn}$ are the VMEC equilibrium's Fourier coefficients. Then $(R,Z,\phi)\to$ Cartesian for CAD.
+  \begin{itemize}\small
+    \item $m$ = poloidal mode number, $n$ = toroidal mode number. This is the entire geometric description of the nested flux surfaces.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Building the plasma solid (paper Figs.~3)}
+  \begin{enumerate}
+    \item PyStell-UW evaluates plasma-edge points on the LCFS ($s=1$) at chosen $(\theta,\phi)$.
+    \item At each toroidal angle $\phi$, sweep $\theta$ to trace a \textbf{poloidal profile} (one closed cross-section).
+    \item CadQuery spline-interpolates each profile into a CAD wire.
+    \item CadQuery \textbf{lofts} across the toroidal sequence of profiles $\to$ 3-D plasma solid.
+  \end{enumerate}
+  \vspace{0.4em}
+  \kb{``Lofting'' = fitting a smooth surface through a stack of cross-sectional wires. It is how every layer (plasma, first wall, each build layer) is turned from 2-D profiles into a 3-D solid.}
+  \begin{itemize}\small
+    \item Done per field period and assembled using the $n$-fold symmetry (\texttt{nfp} periods).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{First wall \& scrape-off layer (paper Fig.~4)}
+  \begin{itemize}
+    \item First wall = a surface at a CFS label \textbf{just past the edge}, $s>1$ (e.g.\ $s=1.2$). VMEC only defines $s\le1$, so PyStell-UW \textbf{extrapolates} the Fourier series geometrically.
+    \item The plasma solid is then \textbf{Boolean-cut} out of the first-wall volume $\Rightarrow$ the region between LCFS and first wall is the \textbf{scrape-off layer (SOL)}.
+    \item \textbf{Alternative} (more robust): define the first wall as a grid of \emph{offsets} from the plasma surface, treated like any radial-build layer --- avoids the $s>1$ extrapolation.
+  \end{itemize}
+  \wb{\footnotesize The $s>1$ extrapolation is a known failure mode (Fig.~13A: the first-wall profile develops loops). Mitigation: keep $s$ close to 1, or use the offset-grid definition.}
+\end{frame}
+
+\begin{frame}{The in-vessel radial build --- the heart of it (Fig.~5)}
+  In-vessel components are defined by a \textbf{radial build}: a stack of layer thicknesses $t_l(\phi,\theta)$ specified on a user grid of $(\phi,\theta)$ vertices.
+  \kb{Cumulative offset of layer $l$ from the first wall (Eq.~3):
+  \[ o_l(\phi,\theta) \;=\; \sum_{i=1}^{l} t_i(\phi,\theta) \]}
+  \begin{itemize}\small
+    \item At each $(\phi,\theta)$, offset the first-wall profile \textbf{along its surface normal} by $o_l$; spline the offset points into a profile; loft to a solid; Boolean-subtract all interior layers to isolate that layer's volume. Repeat for every layer.
+    \item Because $t_l$ is a \emph{grid over} $(\phi,\theta)$, thicknesses can vary \textbf{spatially} --- ``thin'' uniform builds and ``thick'' non-uniform builds are both expressible.
+  \end{itemize}
+  \begin{center}\includegraphics[width=0.86\textwidth]{radial_build}\end{center}
+\end{frame}
+
+\begin{frame}{Magnets from coil filaments (paper Fig.~6)}
+  \begin{enumerate}
+    \item Each coil = a closed loop of \textbf{filament point-loci} (from a MAKEGRID-format coils file).
+    \item Spline-interpolate the loci into a closed CAD path.
+    \item \textbf{Sweep} a user cross-section (parametric \emph{rectangle} or \emph{circle}) along the path $\to$ magnet solid.
+    \item Repeat for all filaments $\to$ full magnet set.
+  \end{enumerate}
+  \begin{itemize}\small
+    \item Partial toroidal model ($<360^\circ$): magnets are cut by a wedge of the same extent so they are included proportionally.
+    \item \textbf{Circular} cross-section: orientation along the path is irrelevant (radially symmetric) --- robust.
+    \item \textbf{Rectangular}: CadQuery's sweep does not constrain orientation $\Rightarrow$ non-physical \emph{twists} on complex paths (Fig.~13B). WISTELL-D uses a 40-cm circular section to sidestep this.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{CAD $\to$ mesh $\to$ DAGMC $\to$ OpenMC}
+  \begin{itemize}
+    \item CadQuery produces the CAD solids. Faceting to DAGMC \texttt{.h5m} via either:
+      \begin{itemize}\small
+        \item \textbf{Coreform Cubit} (commercial; native DAGMC export), or
+        \item \textbf{CAD-to-DAGMC} (open-source alternative --- scales without a license seat).
+      \end{itemize}
+    \item DAGMC lets OpenMC transport particles \textbf{directly on the faceted CAD surfaces} (no CSG re-modeling). DAGMC+OpenMC are validated for fusion neutronics (Valentine et al.\ 2022).
+    \item The \texttt{.h5m} imports straight into OpenMC as a \texttt{DAGMCUniverse}.
+  \end{itemize}
+  \kb{\footnotesize This is exactly the geometry path my own pipeline uses --- my QH \texttt{dagmc\_qh\_step1\_uniform.h5m} is a ParaStell-style build; I load it as a \texttt{DAGMCUniverse} wrapped in a vacuum sphere.}
+\end{frame}
+
+\begin{frame}{The fusion source mesh (paper Figs.~7, 10, 11)}
+  A \textbf{tetrahedral} mesh carrying the fusion neutron birth rate:
+  \begin{itemize}
+    \item PyMOAB builds a \textbf{structured} mesh with uniform intervals in $(s,\theta,\phi)$. WISTELL-D single period: $11\times81\times61$ = \textbf{230{,}400 tets}; the multi-equilibrium examples: 921{,}600 tets.
+    \item Elements are hexahedra everywhere except the magnetic axis (wedges). Split for tets: \textbf{wedge $\to$ 3 tets}, \textbf{hex $\to$ 5 tets} (MOAB canonical numbering), then map to Cartesian via Eqs.~1--2.
+    \item Source strength density depends only on $s$ (Eq.~4): $\sigma_\nu(s) = f\big(n(s),T(s)\big)$ --- ion density and temperature profiles set the local fusion reaction rate.
+    \item Vertex source strengths are integrated over each tet by \textbf{5-node Gaussian quadrature}.
+  \end{itemize}
+  \wb{\footnotesize Contrast with my work: I use a \texttt{StellaratorSource} with a \emph{fluxmap} field model (monoenergetic 14.06 MeV) rather than ParaStell's tet source mesh --- same idea (birth rate $\propto$ reaction rate on flux surfaces), different implementation.}
+\end{frame}
+
+% ============== PART B ==============
+\begin{frame}{Part B --- The WISTELL-D study}
+  \begin{center}\Large\color{key} A worked example: scanning 99 blanket designs.\end{center}
+\end{frame}
+
+\begin{frame}{Reference device: WISTELL-D}
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \textbf{Machine}
+      \begin{itemize}\small
+        \item Quasi-helical stellarator (from WISTELL-A, Bader 2020)
+        \item Major radius $\bar R \approx 10.1$ m
+        \item Minor radius $\bar a \approx 1.5$ m
+        \item $\langle B\rangle \approx 8.3$ T, 3\% $\beta$
+        \item Fusion power $\approx 2113$ MW (optimistic)
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \textbf{Blanket concept}
+      \begin{itemize}\small
+        \item Dual-coolant lithium-lead (DCLL)
+        \item Homogenized materials from \textbf{ARIES-CS} (El-Guebaly 2008)
+        \item Compositions idealized (no impurities) --- fine for transport, \emph{not} activation
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vspace{0.4em}
+  \kb{\footnotesize Radial build (Fig.~8): first wall, breeder, back wall, high-temperature shield (HTS), vacuum vessel, magnets. Two variable-thickness layers. Total build (excl.\ SOL, magnets) $70$--$188.7$ cm; SOL $5$--$50.7$ cm; first-wall extrapolation at $s=1.2$.}
+\end{frame}
+
+\begin{frame}{OpenMC setup}
+  \begin{itemize}
+    \item \textbf{Single field period} with rotational periodic boundary conditions (exploits symmetry --- 1/nfp the cost).
+    \item Source: the tet mesh ($11\times81\times61$), normalized to 2113 MW.
+    \item $300{,}000$ particles, $30$ batches; \textbf{photon production + photon transport ON}; \textbf{survival biasing ON}.
+    \item Magnets: 40-cm circular cross-section; materials homogenized (Tables 1--2).
+  \end{itemize}
+  \wb{\footnotesize $300$k particles is \emph{small} --- consistent with a low-fidelity scoping study over 99 configs, not a converged high-res run. (My coil-dose runs use 24--48\,M histories because I need per-coil fast flux, a much harder tally.)}
+\end{frame}
+
+\begin{frame}{The parametric study: 99 configurations}
+  A 2-D scan, $11\times9$ grid:
+  \begin{itemize}
+    \item \textbf{Axis 1 --- total FWBS thickness used}: $0\%\to100\%$ in $10\%$ steps (11 values). $0\%$ = ``thin'' archetype (min build), $100\%$ = ``thick'' archetype (max build).
+    \item \textbf{Axis 2 --- fraction of available space to breeder}: $10\%\to90\%$ in $10\%$ steps (9 values). Remainder goes to \textbf{HTS} (the shield).
+  \end{itemize}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}\small
+        \item \textbf{Thin}: uniform breeder \& HTS; min LCFS-to-magnet spacing $= 70$ cm; $30$ cm available to breeder$+$HTS.
+        \item \textbf{Thick}: \emph{non-uniform} toroidal/poloidal thickness; max spacing $148.7$ cm.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \kb{\footnotesize The two knobs are exactly \textbf{how much material} and \textbf{how to split it breeder-vs-shield} --- the same trade I make, but here applied \emph{uniformly} across the whole device.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Results (paper Fig.~12)}
+  \begin{columns}[c]
+    \begin{column}{0.56\textwidth}
+      \includegraphics[width=\textwidth]{param_study}
+    \end{column}
+    \begin{column}{0.44\textwidth}\small
+      \begin{itemize}
+        \item TBR target $1.05$ (arbitrary; no tritium-cycle analysis).
+        \item \textbf{Optimal point}: $100\%$ thickness, $60\%$ breeder $\Rightarrow$ \textbf{TBR $=1.10$}, \textbf{total magnet heating $=152.0$ kW}.
+        \item Context: ARIES-CS $\approx 12$ kW ($\sim$5 MWe cryo); WISTELL-D $152$ kW $\Rightarrow$ est.\ $63.3$ MWe cryogenic load.
+        \item Heating $\downarrow$ with more thickness and \emph{less} breeder (more shield).
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vspace{0.3em}
+  \wb{\footnotesize Key qualitative finding: \emph{greatest magnet heating occurs where LCFS-to-coil spacing is minimum}. Those spots don't benefit from more \emph{total} thickness --- protection needs \textbf{less breeder / more shield there, or more thickness in neighbouring regions}. $\leftarrow$ this sentence is the seed of my thesis.}
+\end{frame}
+
+\begin{frame}{Verification, limitations, future work}
+  \textbf{Verification.} There is \emph{no physical benchmark}; justified as a low-fidelity scoping tool. DAGMC+OpenMC validated separately.
+  \vspace{0.3em}
+  \textbf{Limitations (Fig.~13).}
+  \begin{itemize}\small
+    \item First-wall $s>1$ extrapolation can loop (13A).
+    \item Rectangular magnet sweeps can twist (13B).
+    \item Cubit workflows are license-seat-limited (open-source path scales freely).
+  \end{itemize}
+  \textbf{Future work (named explicitly).}
+  \begin{itemize}\small
+    \item Robust CadQuery-only first-wall + magnet generation.
+    \item First-wall surface meshing (NWL) and magnet-volume meshing (damage).
+    \item \textbf{\color{key}Coupling ParaStell to machine-driven optimization; a FWBS neutronics optimization framework for stellarators.}
+    \item Higher-fidelity computational benchmarks.
+  \end{itemize}
+  \kb{\footnotesize The bold bullet is \textbf{my project}. I am not competing with ParaStell --- I am building the optimization layer it names as future work.}
+\end{frame}
+
+% ============== PART C ==============
+\begin{frame}{Part C --- How I use and extend ParaStell}
+  \begin{center}\Large\color{key} From their scoping tool to my optimization loop.\end{center}
+\end{frame}
+
+\begin{frame}{My pipeline mapped onto ParaStell}
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \textbf{ParaStell gives me}
+      \begin{itemize}\small
+        \item QH (Landreman-Paul, nfp$=4$) radial build as a DAGMC \texttt{.h5m}
+        \item 8 layers: first wall, Be multiplier, FLiBe breeder, back wall, WC shield, gap, vacuum vessel, thermal shield
+        \item Magnets as cells 11--30
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \textbf{I add}
+      \begin{itemize}\small
+        \item \texttt{StellaratorSource} (fluxmap, 14.06 MeV)
+        \item Per-coil \textbf{fast-flux} and heating tallies
+        \item A $(\phi,\theta)$ \textbf{patch grid} = spatially-varying $t_l$
+        \item \textbf{Adjoint} coil-importance maps
+        \item \textbf{Surface-source (SSR)} decoupling
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vspace{0.4em}
+  \kb{\footnotesize The patch grid is literally ParaStell's $t_l(\phi,\theta)$ knob, but I \emph{optimize} over it instead of scanning it uniformly, using a fixed-envelope \textbf{breeder$\leftrightarrow$shield} swap.}
+\end{frame}
+
+\begin{frame}{My thesis in one slide}
+  \wb{\centering \textbf{At a fixed machine envelope, redistribute the blanket --- trade breeder thickness for shield thickness, locally --- to cut the peak magnet load, driven automatically by Monte-Carlo/adjoint transport.}}
+  \begin{itemize}\small
+    \item ParaStell showed magnet heating peaks at min plasma-coil standoff and that the fix is local breeder-vs-shield. It scanned this \textbf{uniformly}; I make it \textbf{spatially adaptive and automated}.
+    \item Two hard parts I have been solving:
+      \begin{itemize}\footnotesize
+        \item[(i)] \emph{Does a cheap proxy predict where shielding helps?} --- tested; the honest answer is \textbf{no} (proxies don't rank; they only catch backfire). So real transport must stay in the loop.
+        \item[(ii)] \emph{How to keep MC affordable in the loop?} --- \textbf{SSR decoupling}: freeze the neutron source once, replay cheaply through only the part I change.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+% ============== PART D : Q&A ==============
+\begin{frame}{Part D --- Anticipated questions}
+  \begin{center}\Large\color{key} $\sim$40 questions Peterson or the group might ask.\end{center}
+  \footnotesize Grouped: geometry \& VMEC $\cdot$ method $\cdot$ neutronics/fidelity $\cdot$ the study $\cdot$ limitations $\cdot$ my work $\cdot$ adversarial.
+\end{frame}
+
+\begin{frame}{Q\&A --- Geometry \& VMEC (1/2)}
+  \small
+  \q{What is $s$, physically?} \an{Normalized toroidal flux label; $s=0$ axis, $s=1$ plasma edge (LCFS). Constant-$s$ surfaces are nested flux surfaces the field lines lie on.}\\[2pt]
+  \q{Why Fourier in $(m,n)$ and not a CAD mesh from the start?} \an{VMEC \emph{natively} outputs the boundary as Fourier coefficients $R_{mn},Z_{mn}$; it is the compact, exact description of the flux surfaces. ParaStell samples it to points, then splines/lofts.}\\[2pt]
+  \q{What is \texttt{nfp} and why model one period?} \an{Number of field periods (QH here: 4). The device repeats every $2\pi/\text{nfp}$ toroidally, so you model one period with periodic BCs and save nfp$\times$ the cost.}\\[2pt]
+  \q{What is lofting?} \an{Fitting a smooth 3-D surface through a toroidal stack of 2-D poloidal cross-section wires --- how every layer becomes a solid.}
+\end{frame}
+
+\begin{frame}{Q\&A --- Geometry \& VMEC (2/2)}
+  \small
+  \q{Why is the first wall at $s>1$? Isn't the plasma only defined to $s=1$?} \an{Right --- it extrapolates the Fourier series past the edge to get a wall standoff. That is fragile (can loop, Fig.~13A); the robust alternative is to define the wall as an offset grid from the plasma surface.}\\[2pt]
+  \q{Does it need a real equilibrium or any VMEC file?} \an{Any VMEC \texttt{wout} with the coil filament loci. The geometry is only as physical as the equilibrium you feed it.}\\[2pt]
+  \q{How are spatially-varying thicknesses specified?} \an{As a grid $t_l(\phi,\theta)$ at user $(\phi,\theta)$ vertices; the cumulative offset $o_l=\sum_{i=1}^l t_i$ is applied along the first-wall normal at each vertex.}\\[2pt]
+  \q{What sets poloidal/toroidal resolution of the build?} \an{The density of the $(\phi,\theta)$ grid and the number of lofted profiles --- a user choice trading smoothness vs.\ cost.}
+\end{frame}
+
+\begin{frame}{Q\&A --- Method \& magnets}
+  \small
+  \q{Rectangular vs circular magnet cross-section?} \an{Circular is orientation-free and robust; rectangular can twist on complex filament paths because CadQuery's sweep doesn't fix the section's orientation (Fig.~13B). WISTELL-D used 40-cm circular.}\\[2pt]
+  \q{Where do the coil filaments come from?} \an{A MAKEGRID-format coils file (filament point-loci + currents). For geometry only the loci matter; current is irrelevant to the DAGMC build.}\\[2pt]
+  \q{Cubit vs CAD-to-DAGMC?} \an{Same output (\texttt{.h5m}); Cubit is commercial and seat-limited, CAD-to-DAGMC is open-source and HPC-scalable. They are moving toward the open path.}\\[2pt]
+  \q{Why DAGMC instead of CSG?} \an{Stellarator surfaces have no closed-form CSG description; DAGMC transports directly on faceted CAD, which is the only tractable route for this geometry.}
+\end{frame}
+
+\begin{frame}{Q\&A --- Source mesh \& neutronics}
+  \small
+  \q{Why a tetrahedral \emph{source} mesh?} \an{The fusion birth rate varies through the 3-D plasma volume; a tet mesh in flux coordinates lets you sample births $\propto \sigma_\nu(s)$ with the right spatial weight.}\\[2pt]
+  \q{Why does source strength depend only on $s$?} \an{Density and temperature are flux-surface quantities ($n(s),T(s)$), so the reaction rate is constant on a flux surface --- a standard, good approximation.}\\[2pt]
+  \q{Hex$\to$5 tets, wedge$\to$3 tets --- why split at all?} \an{MC source sampling and unstructured-mesh tallies want simplices; the split follows MOAB canonical numbering so it's consistent and watertight.}\\[2pt]
+  \q{Single energy or a spectrum?} \an{The plant study uses realistic fusion source with photon transport ON. (My verification work uses monoenergetic 14.06 MeV to isolate directional physics.)}
+\end{frame}
+
+\begin{frame}{Q\&A --- The study \& results}
+  \small
+  \q{Why only 300k particles?} \an{Global metrics (TBR, \emph{total} heating) converge fast; it's a 99-config scoping scan, not a converged local-dose calculation. Fine for the questions asked.}\\[2pt]
+  \q{Is TBR = 1.05 physical?} \an{No --- chosen arbitrarily; no tritium-cycle analysis. It's a design target line, not a validated requirement.}\\[2pt]
+  \q{152 kW magnet heating --- is that acceptable?} \an{High vs ARIES-CS's 12 kW ($\Rightarrow \sim$63 MWe cryo load), but at 2113 MW fusion it may be tolerable with enough thermal efficiency. It's a flag, not a verdict.}\\[2pt]
+  \q{What's the single most important physical result?} \an{Magnet heating localizes at minimum plasma-coil standoff, and the lever there is local breeder-vs-shield split (or more thickness nearby) --- not uniform thickening.}
+\end{frame}
+
+\begin{frame}{Q\&A --- Limitations \& validity}
+  \small
+  \q{No benchmark --- why trust it?} \an{They don't claim high-fidelity truth; they claim useful \emph{relative} scoping. Absolute numbers need higher-fidelity follow-up (named as future work).}\\[2pt]
+  \q{Homogenized materials --- what's lost?} \an{Local heterogeneity (coolant channels, structure) and impurities; fine for global neutron balance, wrong for activation/damage detail.}\\[2pt]
+  \q{Biggest source of geometric error?} \an{The first-wall extrapolation and smooth homogenized layers; small local features are absent by design.}\\[2pt]
+  \q{Could the twisting/looping change neutronics answers?} \an{They're modeling artifacts to avoid (use circular sections, $s$ near 1); if present they'd corrupt local geometry but the paper avoids them in the reported runs.}
+\end{frame}
+
+\begin{frame}{Q\&A --- How this connects to my work (1/2)}
+  \small
+  \q{Why present this paper?} \an{It is the exact tool my pipeline is built on, and it \emph{names} my thesis --- ``coupling ParaStell to machine-driven optimization'' --- as future work. I'm building that layer.}\\[2pt]
+  \q{What exactly do you add beyond ParaStell?} \an{(1) Spatially-\emph{optimized} $t_l(\phi,\theta)$ instead of uniform scans; (2) a fixed-envelope breeder$\leftrightarrow$shield trade; (3) adjoint coil-importance to target the swap; (4) an SSR decoupling that keeps MC in the loop cheaply.}\\[2pt]
+  \q{Does your work use their exact code?} \an{The ParaStell-style DAGMC radial build, yes; I drive it with my own source (\texttt{StellaratorSource} fluxmap), tallies, patch-grid geometry variants, and the adjoint/SSR machinery.}\\[2pt]
+  \q{Your device vs WISTELL-D?} \an{Both QH; I use a Landreman-Paul nfp$=4$ QH, they use WISTELL-D (nfp per WISTELL-A). Same family, different equilibrium.}
+\end{frame}
+
+\begin{frame}{Q\&A --- How this connects to my work (2/2)}
+  \small
+  \q{You said proxies don't predict where to shield --- doesn't that undercut the whole idea?} \an{No --- it sharpens it. It rules out the \emph{cheap} shortcut and justifies keeping real transport in the loop, which is why the SSR decoupling matters.}\\[2pt]
+  \q{Why not just scan uniformly like ParaStell?} \an{Because the load is spatially concentrated (min-standoff regions); a uniform scan can't place material where it pays off. That's the whole point of optimizing $t_l(\phi,\theta)$.}\\[2pt]
+  \q{Where does spin-polarized fusion fit?} \an{Separate thread (Paper A): a directional source that changes \emph{where} neutrons go; it composes with the same adjoint magnet-importance machinery. Not part of this paper.}\\[2pt]
+  \q{What would make your optimization tractable?} \an{The coil load is dominated by a shared inboard band, so the effective design problem is low-dimensional --- shape that band --- which is what makes an automatic optimizer feasible.}
+\end{frame}
+
+\begin{frame}{Q\&A --- Harder / adversarial}
+  \small
+  \q{Is low-fidelity geometry good enough to trust a shield \emph{optimization}?} \an{For \emph{relative} ranking of designs at fixed fidelity, yes; you optimize within the model and validate the winner at higher fidelity. The danger is over-reading absolute numbers --- I keep it relative.}\\[2pt]
+  \q{If breeder moderates neutrons, doesn't trading it for shield have subtle effects?} \an{Exactly --- that's a real multigroup effect I found: removing breeder removes moderation and can \emph{release} fast flux to the coil. It's why single-group proxies mispredict and why I use full transport.}\\[2pt]
+  \q{Isn't ParaStell already doing breeder-vs-shield?} \an{Uniformly, as a \emph{scan} over two global knobs. I do it \emph{locally and automatically} with a spatial field and an optimizer --- the future-work they name.}\\[2pt]
+  \q{What's the weakest point of the paper?} \an{No benchmark and small particle counts --- but both are consistent with its stated low-fidelity scoping scope; it doesn't overclaim.}
+\end{frame}
+
+\begin{frame}{One-slide cheat sheet}
+  \footnotesize
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \textbf{What it is}: VMEC + coils $\to$ CAD radial build + tet source mesh $\to$ DAGMC $\to$ OpenMC.\\[3pt]
+      \textbf{Why}: stellarators are irreducibly 3-D; manual CAD too slow; low-fidelity parametric scoping.\\[3pt]
+      \textbf{Key equation}: $o_l(\phi,\theta)=\sum_{i=1}^{l}t_i$ (cumulative offset build).\\[3pt]
+      \textbf{Stack}: PyStell-UW, CadQuery, Cubit / CAD-to-DAGMC, PyMOAB, OpenMC.
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \textbf{Study}: WISTELL-D QH, 99 configs (thickness\% $\times$ breeder\%).\\[3pt]
+      \textbf{Result}: opt $100\%/60\%$ $\Rightarrow$ TBR $1.10$, $152$ kW magnet heating; heating peaks at min plasma-coil standoff.\\[3pt]
+      \textbf{Limits}: no benchmark; homogenized; FW-extrapolation \& magnet-twist artifacts.\\[3pt]
+      \textbf{My hook}: they name ``machine-driven optimization / FWBS optimization framework'' as future work --- \textbf{that's my project} (spatial, automated, adjoint + SSR).
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[plain]
+  \begin{center}
+    {\Large\color{key} ParaStell}\\[4pt]
+    \small the parametric bridge from a stellarator equilibrium to neutronics\\[10pt]
+    \footnotesize Moreno, Bader \& Wilson, \emph{Front.\ Nucl.\ Eng.}\ \textbf{3}, 1384788 (2024)\\
+    \footnotesize Questions?
+  \end{center}
+\end{frame}
+
+\end{document}
