@@ -341,6 +341,18 @@ private:
   //! \return Position in Cartesian coordinates [cm]
   Position flux_to_cartesian(double r, double alpha, double phi) const;
 
+  //! Interpolate the safety factor on the normalized minor-radius grid
+  //! \param r_norm Normalized minor radius r/a
+  //! \return Interpolated safety factor q(r/a)
+  double interp_q(double r_norm) const;
+
+  //! Evaluate the local magnetic-field direction at a sampled birth point
+  //! \param r Minor radius [cm]
+  //! \param alpha Poloidal angle [rad]
+  //! \param phi Toroidal angle [rad]
+  //! \return Unit field direction in Cartesian coordinates
+  Direction field_direction(double r, double alpha, double phi) const;
+
   //==========================================================================
   // Data members
 
@@ -354,8 +366,16 @@ private:
   // Time distribution (defaults to a delta distribution at t=0)
   UPtrDist time_;
 
-  // Angular distribution (isotropic)
+  // Angular distribution (isotropic fallback)
   UPtrAngle angle_;
+
+  // Spin-polarized emission (set at construction, const during sample())
+  bool polarized_ {false}; //!< Whether to use the polarized direction sampler
+  double p_perp_ {0.0};    //!< Probability of selecting the sin^2(theta) mode
+  bool pitched_field_ {false}; //!< Whether to include q-profile field pitch
+  double field_sign_ {1.0};    //!< Handedness of the poloidal field component
+  vector<double> q_r_over_a_;  //!< Normalized-radius grid for q
+  vector<double> q_values_;    //!< Safety factor q(r/a)
 
   // Tokamak geometry parameters
   double major_radius_;    //!< Major radius R0 [cm]
