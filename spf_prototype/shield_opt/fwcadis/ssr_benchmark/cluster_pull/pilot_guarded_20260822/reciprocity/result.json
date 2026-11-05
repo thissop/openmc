@@ -1,0 +1,195 @@
+{
+  "calculation_rate_particles_per_second": 7021.47,
+  "coil_fast_flux": {
+    "figure_of_merit": [
+      0.0,
+      0.0,
+      0.0,
+      0.03510978905170788,
+      0.0
+    ],
+    "mean": [
+      0.0,
+      0.0,
+      0.0,
+      5.610075284151911e-05,
+      0.0
+    ],
+    "relative_error": [
+      null,
+      null,
+      null,
+      1.0,
+      null
+    ],
+    "std_dev": [
+      0.0,
+      0.0,
+      0.0,
+      5.610075284151911e-05,
+      0.0
+    ]
+  },
+  "coil_heating_local": {
+    "figure_of_merit": [
+      0.0,
+      0.0,
+      0.0,
+      0.03510978905170788,
+      0.0
+    ],
+    "mean": [
+      0.0,
+      0.0,
+      0.0,
+      0.6890410756562156,
+      0.0
+    ],
+    "relative_error": [
+      null,
+      null,
+      null,
+      1.0,
+      null
+    ],
+    "std_dev": [
+      0.0,
+      0.0,
+      0.0,
+      0.6890410756562156,
+      0.0
+    ]
+  },
+  "configuration": {
+    "batches": 4,
+    "black_inside_cells": [
+      2,
+      3,
+      4
+    ],
+    "coil_cells": [
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "depth_cells": [
+      6,
+      8,
+      10,
+      12,
+      14
+    ],
+    "fast_energy_bounds_ev": [
+      100000.0,
+      25000000.0
+    ],
+    "li6_atom_percent": 60.0,
+    "max_history_splits": 100,
+    "max_lower_bound_ratio": 5.0,
+    "max_split": 4,
+    "particles_per_batch": 50000,
+    "seed": 104729,
+    "source_histories": 200000,
+    "threads": 32
+  },
+  "depth_flux": {
+    "figure_of_merit": [
+      899.1313770018239,
+      377.8324313294762,
+      0.2908306589960247,
+      0.0,
+      0.0
+    ],
+    "mean": [
+      16.126203055275134,
+      1.0362692464791465,
+      0.001004049302592867,
+      0.0,
+      0.0
+    ],
+    "relative_error": [
+      0.006248885014533817,
+      0.00963972164765941,
+      0.347451360348932,
+      null,
+      null
+    ],
+    "std_dev": [
+      0.10077078861343824,
+      0.009989347088088733,
+      0.00034885829604328804,
+      0.0,
+      0.0
+    ]
+  },
+  "estimated_tracks_per_source_history": 1.0663906560876852,
+  "inputs": {
+    "dagmc": {
+      "bytes": 16097968,
+      "mtime_ns": 1787237366000000000,
+      "path": "/burg-archive/home/tjk2147/pstl_test/corrected/dagmc_qh_op_uniform.h5m",
+      "sha256": "b6259fa2682ccd04ddc07eb9d1b6aef39dff93153b99750038a73453c58f57c6"
+    },
+    "surface_source": {
+      "bytes": 696529492,
+      "mtime_ns": 1787274769000000000,
+      "path": "/burg-archive/home/tjk2147/pstl_test/corrected/surf_op_master.h5"
+    },
+    "weight_windows": {
+      "bytes": 44952,
+      "mtime_ns": 1787426996484272596,
+      "path": "/ginsburg/astro/users/tjk2147/advancedagents/openmc_fwcadis/ssr_benchmark/inputs/reciprocity_cadis.h5",
+      "sha256": "168be831a381bfbe625d4327b7f74008d76508b9816cb06aa949ce370c0f18ab"
+    }
+  },
+  "mode": "reciprocity",
+  "openmc_executable_version": "OpenMC version 0.15.4-dev212\nCommit hash: 23572ccc928a9ab7be19e6d7d2868852f12c0f0e\nCopyright (c) 2011-2026 MIT, UChicago Argonne LLC, and contributors\nMIT/X license at <https://docs.openmc.org/en/latest/license.html>\nBuild type:            Release\nCompiler ID:           GNU 14.3.0\nMPI enabled:           yes\nParallel HDF5 enabled: yes\nPNG support:           yes\nDAGMC support:         yes\nlibMesh support:       no\nCoverage testing:      no\nProfiling flags:       no\nUWUW support:          no\nStrict FP:             no",
+  "openmc_python_version": "0.15.3",
+  "runner_wall_seconds": 44.1578937638551,
+  "runtime": {
+    "accumulating tallies": 0.023645965999999997,
+    "active batches": 28.482206516,
+    "reading cross sections": 3.921324641,
+    "simulation": 28.482085111,
+    "total": 42.358914272,
+    "total initialization": 13.855766242,
+    "transport": 28.440678757999997,
+    "writing statepoints": 0.017905942
+  },
+  "statepoint": "/ginsburg/astro/users/tjk2147/advancedagents/openmc_fwcadis/ssr_benchmark/results/pilot_guarded_20260822/reciprocity_9467414/statepoint.4.h5",
+  "status": "PASS",
+  "track_rate_per_second": 7487.63,
+  "weight_window_objects": [
+    {
+      "active_bins": 1992,
+      "energy_bounds_ev": [
+        100000.0,
+        25000000.0
+      ],
+      "lower_left_cm": [
+        5.10702591327572e-14,
+        -9.903189379656396e-14,
+        -917.9134558057502
+      ],
+      "max_lower_bound_ratio": 5.0,
+      "max_split": 4,
+      "mesh_dimension": [
+        16,
+        16,
+        8
+      ],
+      "mesh_type": "RegularMesh",
+      "particle_type": "neutron",
+      "survival_ratio": 3.0,
+      "total_bins": 2048,
+      "upper_right_cm": [
+        2293.169804451609,
+        2175.759965617972,
+        565.2356715886655
+      ]
+    }
+  ],
+  "workdir": "/ginsburg/astro/users/tjk2147/advancedagents/openmc_fwcadis/ssr_benchmark/results/pilot_guarded_20260822/reciprocity_9467414"
+}

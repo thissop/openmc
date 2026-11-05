@@ -1,0 +1,121 @@
+{
+  "cases": [
+    {
+      "bins_compatible_with_master_at_2sigma": 0,
+      "estimated_tracks_per_source_history": 1.0,
+      "fractional_bias_from_master": [
+        -1.0,
+        -1.0,
+        -1.0,
+        -0.9994551226276998,
+        -1.0
+      ],
+      "median_positive_fom": 0.0034148615076990438,
+      "median_positive_relative_error": 1.0,
+      "mode": "analog",
+      "positive_coil_bins": 1,
+      "result_path": "/ginsburg/astro/users/tjk2147/advancedagents/openmc_fwcadis/ssr_benchmark/results/screen_2m_20260822/analog_9467424",
+      "rms_fractional_bias_from_master": 0.9998910482794363,
+      "rms_fractional_pattern_error": 1.4303513519838527,
+      "runner_wall_seconds": 301.3571172892116,
+      "simulation_seconds": 292.837644439,
+      "source_histories": 2000000,
+      "source_normalized_coil_flux": [
+        0.0,
+        0.0,
+        0.0,
+        1.1538250129323741e-05,
+        0.0
+      ],
+      "source_normalized_coil_std_dev": [
+        0.0,
+        0.0,
+        0.0,
+        1.1538250129323741e-05,
+        0.0
+      ],
+      "weight_windows_sha256": null
+    },
+    {
+      "bins_compatible_with_master_at_2sigma": 0,
+      "estimated_tracks_per_source_history": 1.1584874698098961,
+      "fractional_bias_from_master": [
+        -1.0,
+        -1.0,
+        -0.9989720182625303,
+        -0.9994051737241375,
+        -0.9983333514423705
+      ],
+      "median_positive_fom": 0.003132258105177679,
+      "median_positive_relative_error": 1.0,
+      "mode": "magic",
+      "positive_coil_bins": 3,
+      "result_path": "/ginsburg/astro/users/tjk2147/advancedagents/openmc_fwcadis/ssr_benchmark/results/screen_2m_20260822/magic_9467418",
+      "rms_fractional_bias_from_master": 0.9993423112367696,
+      "rms_fractional_pattern_error": 0.7440231899804971,
+      "runner_wall_seconds": 328.1914869779721,
+      "simulation_seconds": 319.258492251,
+      "source_histories": 2000000,
+      "source_normalized_coil_flux": [
+        0.0,
+        0.0,
+        1.3530234317312553e-05,
+        1.2595961409487078e-05,
+        4.2735096237667314e-05
+      ],
+      "source_normalized_coil_std_dev": [
+        0.0,
+        0.0,
+        1.3530234317312553e-05,
+        1.1531059065231273e-05,
+        4.2735096237667314e-05
+      ],
+      "weight_windows_sha256": "f772b4967da17812fb0b45e0570ef71f5b5f8a450122e74c4b109a732688397c"
+    },
+    {
+      "bins_compatible_with_master_at_2sigma": 0,
+      "estimated_tracks_per_source_history": 1.0645233092985886,
+      "fractional_bias_from_master": [
+        -1.0,
+        -1.0,
+        -1.0,
+        -0.9994551226276998,
+        -1.0
+      ],
+      "median_positive_fom": 0.0034817835229655875,
+      "median_positive_relative_error": 1.0,
+      "mode": "reciprocity",
+      "positive_coil_bins": 1,
+      "result_path": "/ginsburg/astro/users/tjk2147/advancedagents/openmc_fwcadis/ssr_benchmark/results/screen_2m_20260822/reciprocity_9467416",
+      "rms_fractional_bias_from_master": 0.9998910482794363,
+      "rms_fractional_pattern_error": 1.4303513519838527,
+      "runner_wall_seconds": 295.8171050506644,
+      "simulation_seconds": 287.209125267,
+      "source_histories": 2000000,
+      "source_normalized_coil_flux": [
+        0.0,
+        0.0,
+        0.0,
+        1.1538250129323741e-05,
+        0.0
+      ],
+      "source_normalized_coil_std_dev": [
+        0.0,
+        0.0,
+        0.0,
+        1.1538250129323741e-05,
+        0.0
+      ],
+      "weight_windows_sha256": "168be831a381bfbe625d4327b7f74008d76508b9816cb06aa949ce370c0f18ab"
+    }
+  ],
+  "failures": [],
+  "master": "/burg-archive/home/tjk2147/pstl_test/corrected/coil_op_master.npz",
+  "master_histories": 4000000,
+  "source_bank": {
+    "sites": 8291969,
+    "weight_sum": 8226805.912511392
+  },
+  "source_weight_per_master_history": 2.056701478127848,
+  "surface_source": "/burg-archive/home/tjk2147/pstl_test/corrected/surf_op_master.h5"
+}

@@ -52,10 +52,61 @@ inboard band), which is what makes an automatic optimizer tractable.
 
 ## 4. What is queued right now (check these first)
 
-SSR pipeline (smoke chain gates the real overnight chain via `afterok`):
-- `9358861` smoke_master → `9358862` smoke_gate2 → `9358863` real_master → `9358864` real_gate2
-- Last seen: smoke_master PENDING (burst nodes down/reserved). It is tiny; runs in minutes once a
-  node frees, then real runs auto-fire.
+**UPDATE 2026-08-11:** smoke chain PASSED as a plumbing test overnight (ran end-to-end, files written,
+hottest coil matched cell 18, Spearman +0.72). Its CV=112% "FAIL" is **statistics only** — 40k
+histories can't populate 20 coils, so far coils get 0 counts → NaN ratios. Not the backscatter
+double-count; ignore the smoke Gate-2 verdict.
+
+**Burst preemption bit us:** the real_master (`9358863`, 48M histories) ran ~10h to batch 7/12 then got
+**preempted and restarted from zero — twice** (`Restarts=2`). Burst is opportunistic/preemptible and the
+run needs ~17h uninterrupted, which it never got. **Fix applied:** moved the real chain to the
+non-preemptible `short` queue (12h cap) and cut to **2M/batch = 24M total** each (still 600× smoke) so
+master (~8-9h) + dose (~7h) fit 12h. Both `slurm_ssw_master.sh` and `slurm_ssr.sh` were edited
+`-p burst`→`-p short`, `-t 1-00:00:00`→`-t 12:00:00`. New submit script: `ssr/submit_ssr_real_short.sh`.
+
+Current real chain (on `short`, non-preemptible):
+- `9372052` real_master → `9372053` real_gate2 (afterok). Submitted 2026-08-11 ~16:45 EDT.
+- When both finish, run Gate 2: `python3 ssr/gate2_analyze.py coil_real_master.npz coil_real_gate2.npz`.
+- If Gate 2 is statistics-marginal (not a physics fail), scale batches/particles back up on `short`
+  via a second chained job or accept the 24M verdict.
+
+Superseded (do not use): `9358861/62/63/64` (old burst chain, cancelled).
+
+**UPDATE 2026-08-12 — real Gate 2 ran (24M) and FAILED as anticipated; void-kill fix implemented + rerunning.**
+Full chain finished clean on `short`, no preemption (master 8h48m, dose 6h56m). Verdict (`GATE2_REAL_VERDICT.txt`):
+CV=**48%** (need <5%), Spearman **+0.90**, hottest coil full=20 vs ssr=19 (0.6% apart = tie). NOT statistics:
+600× more particles than smoke only moved CV 112%→48%, so ~48% is a systematic floor. Distortion is
+geometric — full/ssr ratio ~2 at hot inboard coils (16–22) but 4–9 at cold coils. Cause (confirmed in
+code): `surf_source_write cellfrom=2` banks EVERY plasma-cavity crossing incl. blanket-backscatter
+re-exits; the SSR replay lets those stream back across the empty cavity and land decorrelated on the far
+wall — the exact "plasma-void re-entry" the handoff pre-flagged.
+FIX (in `ssr/ssr_dose.py`, `VOID_KILL=1` default): fill DAGMC cell 2 (plasma cavity) with a B-10 absorber
+(2.2 g/cc) so replayed neutrons heading back in are killed; their real far-wall contribution is still carried
+by the separately-banked re-exit particle. Master run + its 4.7GB `surf_real_master.h5` are VALID and reused;
+only the ~7h dose reruns.
+
+**Two false starts before it landed (important API gotchas, all caught by a hard-assert so NO compute wasted):**
+1. First tried `dag._material_overrides={2:[void_abs]}` — validated on the LOGIN node's conda openmc (0.15.3),
+   but the ACTUAL run uses the custom transport build at `$SRC` (`PYTHONPATH`+`LD_PRELOAD`, also self-reports
+   0.15.3 but different code). `model.run()`'s export path there dropped the dict: `model.xml` had an empty
+   `<dagmc_universe/>` and the run was a byte-for-byte no-op vs the pre-fix result. LESSON: probe the `$SRC`
+   openmc, not conda.
+2. Then tried `dag.replace_material_assignment("Vacuum", void_abs)` — that method DOES NOT EXIST in the `$SRC`
+   build (only conda has it). AttributeError, instant fail.
+CORRECT FIX (works): after building the model, `model.init_lib(output=False); model.sync_dagmc_universes()`
+(populates `dag.cells`, 30 cells), then `dag.add_material_override(2, void_abs)` — in this build that method
+sets `cells[2].fill` directly, and `create_xml_subelement` writes every synced cell's fill to model.xml (no
+clobbering loop), so it survives `model.run()`. Then `finalize_lib()`, then assert `cells[2].fill` is
+`void_absorber`. KEY GEOMETRY FACT (sync-debug `ssr/debug_sync.slurm`): cell 2 (plasma cavity) is a TRUE VOID
+`fill=None`, NOT a 'Vacuum'-named material — target it by ID, not by material name. Cell 31 = outer graveyard
+void (leave it, so leakage still works). Cells 3–30 = the radial build. Validated by an ON-vs-OFF smoke pair
+(`vk4_on`/`vk4_off`, same source+seed): assert passed + coil fluxes DIFFER = physics genuinely changed.
+
+Current real chain on `short` (non-preemptible): `9387596` real_vk (24M, VOID_KILL=1) → `9387597` verdict_vk
+(writes `GATE2_REAL_VK_VERDICT.txt`, compares vs still-present pre-fix `coil_real_gate2.npz` CV=48%).
+Superseded/cancelled VK attempts: `9379468/69/70` (no-op dict), `9387265`/`9387490` (API/void-name fails).
+If CV collapses to single digits → decoupling validated → build the breeder optimizer. If it drops but not
+enough, residual is fast-neutron scatter-back in the absorber (bump B-10 density) or reconsider freeze surface.
 
 Earlier jobs (from the previous direction, still worth having):
 - `9354539` mcgreedy — concentrate-multicoil dose (~9.5 h of ~17 h). Tests whether concentrating

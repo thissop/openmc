@@ -8,22 +8,13 @@
 
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
-\usepackage[most]{tcolorbox}
-\usepackage{booktabs}
 
 \graphicspath{{figs/}}
 
 \definecolor{key}{rgb}{0.10,0.35,0.65}
-\definecolor{good}{rgb}{0.16,0.50,0.31}
-\definecolor{warn}{rgb}{0.70,0.09,0.15}
 \setbeamercolor{frametitle}{fg=key}
 
-\newcommand{\kb}[1]{\begin{tcolorbox}[colback=key!5,colframe=key!60,boxsep=2pt,left=4pt,right=4pt,top=3pt,bottom=3pt]#1\end{tcolorbox}}
-\newcommand{\gb}[1]{\begin{tcolorbox}[colback=good!6,colframe=good!55,boxsep=2pt,left=4pt,right=4pt,top=3pt,bottom=3pt]#1\end{tcolorbox}}
-\newcommand{\wb}[1]{\begin{tcolorbox}[colback=warn!5,colframe=warn!55,boxsep=2pt,left=4pt,right=4pt,top=3pt,bottom=3pt]#1\end{tcolorbox}}
-
-\title{SSR Decoupling: Diagnosis and a Partial Fix}
-\subtitle{Weekly check-in}
+\title{Stellarator Neutronics Check In Meeting}
 \author{Thaddaeus Kiker}
 \date{2026-08-19}
 
@@ -31,110 +22,68 @@
 
 \begin{frame}[plain]\titlepage\end{frame}
 
-\begin{frame}{Since the last meeting (Aug 10)}
-  \begin{itemize}
-    \item \textbf{Patch-worth closed}: at full resolution the cheap adjoint proxy does \emph{not} rank where shielding helps (12 patches; scalar worth anti-correlated). It reliably flags only the one \emph{backfire} patch. $\Rightarrow$ real transport must stay in the loop.
-    \item \textbf{Pivoted to your SSR architecture}: freeze the neutron source once, replay cheaply through only the blanket/shield I change. Built, tested, ran at full scale (24\,M histories, 4.5\,GB frozen source).
-    \item \textbf{This week}: Gate 2 (does SSR reproduce the full-run coil pattern?) failed --- and I now know exactly why, and have a fix that works for the coils that matter.
-  \end{itemize}
-  \kb{Headline: I diagnosed the failure to a measured mechanism, fixed the dominant part (peak-load coils now faithful), and localized a residual on the far side that I want your steer on.}
-\end{frame}
-
-\begin{frame}{Gate 2 --- the identity test}
-  \kb{\centering Run SSR on the \emph{same} uniform build the master ran. If the frozen source is faithful, per-coil \textbf{full/SSR ratio is constant} (CV\,$<5\%$) and the hottest coil matches.}
-  \begin{itemize}
-    \item First attempt (freeze \emph{all} first-wall crossings, \texttt{cellfrom=2}): \textbf{CV = 48\%}, bowl-shaped --- fail.
-    \item The frozen source banked \textbf{2.36 crossings per birth}, not 1. Something is badly over-counted.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Diagnosis: the torus first wall is non-convex}
+\begin{frame}{The Device}
   \begin{columns}[c]
-    \begin{column}{0.52\textwidth}
-      \includegraphics[width=\textwidth]{ci_backscatter}
+    \begin{column}{0.7\textwidth}
+      \includegraphics[width=\textwidth]{device_wireframe}
     \end{column}
-    \begin{column}{0.48\textwidth}\small
+    \begin{column}{0.3\textwidth}
       \begin{itemize}
-        \item The inboard wall faces itself across the hole. The blanket backscatters neutrons \emph{back through the plasma void}, and they re-exit elsewhere.
-        \item Source is monoenergetic 14.06 MeV, so I could separate it: \textbf{42\%} of banked crossings are the true (uncollided) plasma current --- exactly \textbf{1 per birth}; \textbf{58\%} are collided re-exits.
-        \item Replaying those 58\% as independent particles \textbf{double-counts and decorrelates} --- worst on the far coils.
+        \item Quasi-helical (Landreman--Paul) stellarator, nfp = 4.
       \end{itemize}
     \end{column}
   \end{columns}
-  \wb{\footnotesize The earlier ``void-kill'' patch used B-10 --- a \emph{thermal} absorber, nearly transparent to the fast neutrons that hit the coils. Wrong tool; it moved CV by 0.7 points.}
 \end{frame}
 
-\begin{frame}{The fix: freeze only the pristine current}
-  \gb{\centering Keep only the \textbf{42\% uncollided 14.06 MeV} crossings (the true, build-independent plasma$\to$wall current), and replay with the plasma void as a \textbf{real vacuum} so backscatter + void transit happen naturally downstream.}
+\begin{frame}{Surface Source Decoupling}
   \begin{itemize}
-    \item Rigorous, not a patch: no double-count (backscatter never banked), no black-material hack, no energy bias.
-    \item \textbf{Reused the existing master} --- filtered the pristine source out of the 4.5\,GB bank, no re-run. One SSR dose + verdict overnight.
+    \item Goal: run the expensive plasma transport once, then reuse it across many shield designs.
+    \item I freeze the neutron field at the first wall using surface-source read/write (SSR), then replay those neutrons through each blanket and shield variant out to the magnets.
+    \item Freezing in front of the blanket keeps both breeder and shield thickness free to vary.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Result: the peak-load coils are now faithful}
+\begin{frame}{The Double-Counting Mistake, and the Fix}
+  \begin{itemize}
+    \item The freeze records a neutron every time it crosses the first wall.
+    \item The wall wraps a torus, so a neutron can scatter, cross back through the hole, and be recorded again --- about 2.4 records per neutron.
+    \item 58\% of the frozen neutrons were these re-crossings, not fresh plasma neutrons.
+    \item Replaying them as independent particles double-counted, and skewed the coil-load pattern.
+    \item I found it by energy: fresh plasma neutrons are still at 14.06 MeV, re-crossings are degraded below it.
+    \item Fix: keep only the fresh uncollided neutrons and leave the void empty, so re-crossing happens naturally during the replay.
+    \item Partial fix: the peak-load coils now match the full run; the far coils still come out low.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Full Run vs SSR}
   \begin{columns}[c]
-    \begin{column}{0.58\textwidth}
-      \includegraphics[width=\textwidth]{ci_ratio}
+    \begin{column}{0.62\textwidth}
+      \includegraphics[width=\textwidth]{ci_fluxbars}
     \end{column}
-    \begin{column}{0.42\textwidth}\small
-      \gb{\footnotesize Inboard hot band (coils 16--21, the \textbf{peak load}): ratio collapses to \textbf{k\,=\,1.26}, \textbf{CV\,=\,4.1\%} --- passes. Peak coil is a 19-vs-20 tie (0.6\% apart). Spearman $+0.91$.}
-      \wb{\footnotesize Far/outboard coils (24--30): still \textbf{3.5--5$\times$ low}. Real, not noise (ratio errors 5--9\%). These are fed by void-transit / multi-bounce paths the replay under-reproduces.}
+    \begin{column}{0.38\textwidth}
+      \begin{itemize}
+        \item Each series is scaled to its own peak coil, so we compare the load shape.
+        \item Inboard peak-load coils, 16 to 21, sit behind the highest-current wall; the two agree there.
+        \item Outboard far coils, 26 to 30, are fed by indirect scattered paths; SSR comes out low.
+      \end{itemize}
     \end{column}
   \end{columns}
 \end{frame}
 
-\begin{frame}{The three attempts, side by side}
-  \centering
-  \begin{tabular}{lccc}
-    \toprule
-     & global CV & hot-band CV & mean $k$ \\
-    \midrule
-    naive (all crossings)      & 48\% & 6.1\% & 4.44 \\
-    void-kill (B-10)           & 47\% & 3.5\% & 5.64 \\
-    \textbf{pristine (vacuum void)} & 47\% & \textbf{4.1\%} & \textbf{2.38} \\
-    \bottomrule
-  \end{tabular}
-  \vspace{0.6em}
-  \begin{itemize}\small
-    \item Global CV barely moves --- but that number is dominated by low-load far coils.
-    \item The pristine fix is the only one that drives the \textbf{peak-load region toward the ideal $k=1$} (hot-band $k$: $2.2\to2.9\to\mathbf{1.26}$). That is the physically meaningful gain.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Where full vs SSR agree and disagree}
-  \begin{center}\includegraphics[width=0.82\textwidth]{ci_fluxbars}\end{center}
-  \vspace{-0.3em}
-  \begin{itemize}\small
-    \item SSR tracks the truth through the whole inboard peak (coils 15--22); it falls short on the far side (24--30), where absolute load is lower but not negligible (coil 30 $\approx$ 24\% of peak).
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Honest verdict}
-  \gb{\textbf{Win:} the decoupling now faithfully reproduces the \emph{peak-load} coils --- exactly what the optimizer targets. Diagnosis was correct and the fix is principled.}
-  \wb{\textbf{Open:} a real far-side residual remains; the frozen first-wall source doesn't fully carry the void-transit flux to the outboard coils. Global Gate-2 CV still ``fails'' because of it.}
-  \begin{itemize}\small
-    \item Ruled out: statistics (errors too small), and a surf-source re-crossing kill (checked the build --- it doesn't kill on re-crossing).
-    \item Leading suspects for the residual: the far coils depend on the collided re-exit population I dropped; or the freeze surface can't represent multi-bounce void transit from one launch point.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{What I want your steer on}
-  \begin{enumerate}
-    \item \textbf{Is peak-load-faithful enough to proceed?} The objective is the \emph{peak} magnet load, and SSR now nails the hot band (CV 4\%). Do we accept the far-side residual and start the breeder-for-shield optimizer on the peak, or hold until globally faithful?
-    \item \textbf{Freeze surface}: first wall (keeps the breeder trade in the loop, but is non-convex) vs blanket exit (convex-ish, cleaner, but bakes in the breeder). The residual is the cost of the non-convex choice.
-    \item \textbf{Cross-build check}: I have modified builds with full-run references (incl.\ the backfire patch) staged --- ready to test whether cheap SSR reproduces the finite-difference $\Delta$. Worth running now, or after the residual is resolved?
-  \end{enumerate}
-\end{frame}
-
-\begin{frame}{Next steps}
+\begin{frame}{The Speed-Up Question}
   \begin{itemize}
-    \item Pin the far-side residual: tally void-transit current in master vs pristine SSR to see exactly what's lost.
-    \item If we proceed on the peak: launch the cross-build test (SSR through modified builds vs finite-diff truth) --- the direct proof of the optimizer premise.
-    \item Aug 26 talk spine holds: patch-worth negative result $\to$ why proxies fail (moderation) $\to$ SSR decoupling (this diagnosis + fix) $\to$ maps $\to$ optimizer.
+    \item One SSR replay ran about 7h48m against the full run's 8h48m --- roughly a 10 to 13\% saving at equal particle count (24M).
+    \item I do have the infrastructure to mesh the neutron field at any resolution we want --- for example on the neutron-exit layer coming out of the shield onto the magnets.
   \end{itemize}
-  \vspace{0.5em}
-  \kb{\footnotesize All reproducible: \texttt{ssr/filter\_bank.py}, \texttt{submit\_pristine\_full.sh}, \texttt{gate2\_analyze.py}. Verdict file: \texttt{GATE2\_REAL\_PRISTINE\_VERDICT.txt}.}
+\end{frame}
+
+\begin{frame}{Next Steps}
+  \begin{itemize}
+    \item Localize the far-coil residual: tally the void-crossing current in the full run versus the replay.
+    \item Test freezing at the neutron-exit layer, where the magnet load is captured directly and should be exact for every coil.
+    \item Quantify the correlated-sampling saving: replay through modified builds against their finite-difference truth.
+    \item Settle the freeze-surface choice: the first wall keeps the breeder trade, deeper is faster but fixes the breeder.
+  \end{itemize}
 \end{frame}
 
 \end{document}

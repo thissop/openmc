@@ -46,9 +46,9 @@
 
 \begin{frame}{Three Proxy Metrics}
   \begin{itemize}
-    \item Attribution ($A = S\,\psi^\dagger$): where the coil-loading neutrons are born
-    \item Scalar worth ($W = \sum_{\mathrm{shield}} \phi\,\psi^\dagger$): how much coil-bound flux passes through the shield at that patch
-    \item Signed worth ($W_s = \sigma_{\mathrm{sh}}\sum_{\mathrm{shield}} C - \sigma_{\mathrm{br}}\sum_{\mathrm{breeder}} C$): scalar worth minus a penalty for the breeder you give up in the swap
+    \item Attribution ($A = S\,\psi^\dagger$)%: where the coil-loading neutrons are born
+    \item Scalar worth ($W = \sum_{\mathrm{shield}} \phi\,\psi^\dagger$)%: how much coil-bound flux passes through the shield at that patch
+    \item Signed worth ($W_s = \sigma_{\mathrm{sh}}\sum_{\mathrm{shield}} C - \sigma_{\mathrm{br}}\sum_{\mathrm{breeder}} C$)%: scalar worth minus a penalty for the breeder I give up in the swap
   \end{itemize}
 \end{frame}
 
@@ -87,15 +87,9 @@
 \begin{frame}{Why The Proxy Fails: Multigroup Moderation}
   \small
   \begin{itemize}
-    \item The coil responds to fast flux. The breeder moderates fast neutrons through downscatter.
+    \item The coil responds to fast flux and the breeder moderates fast neutrons through downscatter.
     \item Trading breeder for shield removes moderator, so fast flux is released even as shield is added.
     \item On one patch that release outweighs the added shield and the coil dose rises.
-  \end{itemize}
-  \vspace{0.3em}
-  \kb{\centering First-order removal theory predicts dose down everywhere. The measured sign flip is a moderation effect a single total cross section cannot carry.}
-  \vspace{0.3em}
-  \begin{itemize}
-    \item A fast-group forward flux is the correct energy weighting for the coil response.
   \end{itemize}
 \end{frame}
 
@@ -116,15 +110,13 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Implications For Automatic Optimization}
-  \small
-  \begin{itemize}
-    \item The cheap proxy does not rank placements, so it cannot replace Monte Carlo as the optimizer objective.
-    \item The signed worth identifies backfire patches, so it enters as a constraint that keeps the optimizer from degrading the magnet.
-    \item The collective inboard result reduces the search to a few parameters instead of a per-coil field.
-    \item The workable automatic system is a low-dimensional Monte Carlo Bayesian loop with an adjoint backfire guard, not a zero-cost adjoint placer.
-  \end{itemize}
-\end{frame}
+%\begin{frame}{Implications For Automatic Optimization}
+%  \small
+%  \begin{itemize}
+%    \item The cheap proxy does not rank placements, so it cannot replace Monte Carlo as the optimizer objective.
+%    \item The collective inboard result reduces the search to a few parameters instead of a per-coil field.
+%  \end{itemize}
+%\end{frame}
 
 \begin{frame}[plain]
   \begin{center}
@@ -136,10 +128,9 @@
   \small
   \begin{itemize}
     \item Gil et al.\ 2026 released eighty-six optimized stellarator coil sets, quasi-axisymmetric and quasi-helical, from an augmented-Lagrangian method.
-    \item The work is coil optimization with no neutronics, so it is a source of geometry rather than competing prior art.
-    \item Coil-surface distance is an explicit parameter in the set, and that distance is our fixed blanket envelope.
+    \item Coil-surface distance is an explicit parameter in the set.
     \item The sets give controlled standoff sweeps across reactor scales to test whether these results generalize.
-    \item The converter into the neutronics geometry pipeline is built and tested.
+    \item I already have converter for geometry to neutronics pipeline built and tested.
   \end{itemize}
 \end{frame}
 

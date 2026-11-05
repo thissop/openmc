@@ -1,0 +1,105 @@
+{
+  "reference_family": "famU",
+  "sigma_threshold": 2.0,
+  "peak_relerr_threshold": 0.1,
+  "complete": true,
+  "headline_ready": true,
+  "hotspot_labels_ready": true,
+  "families": [
+    {
+      "family": "famU",
+      "label": "uniform",
+      "histories": 4000000,
+      "peak_cell": 23,
+      "tally_peak_cell": 23,
+      "peak_flux": 0.025448862225528196,
+      "peak_relerr": 0.034924846725236276,
+      "peak_ratio_vs_uniform": 1.0,
+      "peak_ratio_sigma": 0.049391191902630714,
+      "peak_change_percent": 0.0,
+      "peak_change_sigma_percent": 4.939119190263072,
+      "peak_change_z": 0.0,
+      "resolved_coils_relerr_lt_threshold": 5,
+      "peak_margin_z": 3.0645295306088975,
+      "peak_value_ready": true,
+      "hotspot_ready": true,
+      "verdict": "reference"
+    },
+    {
+      "family": "famC",
+      "label": "clearance-driven",
+      "histories": 4000000,
+      "peak_cell": 23,
+      "tally_peak_cell": 23,
+      "peak_flux": 0.025509270480580732,
+      "peak_relerr": 0.03347531542684918,
+      "peak_ratio_vs_uniform": 1.0023737114263576,
+      "peak_ratio_sigma": 0.04849191107664486,
+      "peak_change_percent": 0.2373711426357561,
+      "peak_change_sigma_percent": 4.8491911076644865,
+      "peak_change_z": 0.049011123257733866,
+      "resolved_coils_relerr_lt_threshold": 5,
+      "peak_margin_z": 3.4242405432030387,
+      "peak_value_ready": true,
+      "hotspot_ready": true,
+      "verdict": "statistically unresolved"
+    },
+    {
+      "family": "famR",
+      "label": "response-aware",
+      "histories": 4000000,
+      "peak_cell": 23,
+      "tally_peak_cell": 23,
+      "peak_flux": 0.025597013248995798,
+      "peak_relerr": 0.03463478220440297,
+      "peak_ratio_vs_uniform": 1.0058215185478505,
+      "peak_ratio_sigma": 0.04947285315712679,
+      "peak_change_percent": 0.5821518547850513,
+      "peak_change_sigma_percent": 4.947285315712679,
+      "peak_change_z": 0.1180148458559485,
+      "resolved_coils_relerr_lt_threshold": 5,
+      "peak_margin_z": 3.3622212354888,
+      "peak_value_ready": true,
+      "hotspot_ready": true,
+      "verdict": "statistically unresolved"
+    },
+    {
+      "family": "famM",
+      "label": "linear-minimax stress test",
+      "histories": 4000000,
+      "peak_cell": 23,
+      "tally_peak_cell": 29,
+      "peak_flux": 0.2522218967234691,
+      "peak_relerr": 0.009594564516845337,
+      "peak_ratio_vs_uniform": 9.910930181800463,
+      "peak_ratio_sigma": 0.3589618767923615,
+      "peak_change_percent": 891.0930181800463,
+      "peak_change_sigma_percent": 35.89618767923615,
+      "peak_change_z": 87.96418515400187,
+      "resolved_coils_relerr_lt_threshold": 8,
+      "peak_margin_z": 4.864301434110022,
+      "peak_value_ready": true,
+      "hotspot_ready": true,
+      "verdict": "worsens peak"
+    }
+  ],
+  "common_mass_kg": 2163095.2194506074,
+  "source_files": {
+    "famU": {
+      "path": "/Users/tkiker/Documents/GitHub/openmc/spf_prototype/shield_opt/patch_worth/analysis_bfd_20260824/family_transport_results/result_famU.json",
+      "sha256": "adc5226c8fb1742a89e78cee53515600725b69a7419eaa39c2c0c18f82e7d009"
+    },
+    "famC": {
+      "path": "/Users/tkiker/Documents/GitHub/openmc/spf_prototype/shield_opt/patch_worth/analysis_bfd_20260824/family_transport_results/result_famC.json",
+      "sha256": "121c44bca48105d2457eef212cd2a65c9355299195e7e690ab354a9608bc85f7"
+    },
+    "famR": {
+      "path": "/Users/tkiker/Documents/GitHub/openmc/spf_prototype/shield_opt/patch_worth/analysis_bfd_20260824/family_transport_results/result_famR.json",
+      "sha256": "58ef69dc91eaf77fccd4829a76c777b7ab44f412a38ea81c4870ab23dcc02c96"
+    },
+    "famM": {
+      "path": "/Users/tkiker/Documents/GitHub/openmc/spf_prototype/shield_opt/patch_worth/analysis_bfd_20260824/family_transport_results/result_famM.json",
+      "sha256": "79a8cc0b55891906e7577b5c47b4a33d73fc2ed9b230457b4852da2048b21575"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+# Research harness — not part of the OpenMC source PR.
+# Keep large data and generated artifacts out of any accidental `git add`.
+__pycache__/
+*.pyc
+wouts/
+*.nc
+*.npz
+*.h5
+source_files/
+end_to_end/ginsburg_xcheck/
+sweep*.log
+*.log

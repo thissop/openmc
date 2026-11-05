@@ -1,5 +1,7 @@
 __pycache__/
 *.aux
+*.fdb_latexmk
+*.fls
 *.log
 *.nav
 *.out
@@ -8,3 +10,8 @@ __pycache__/
 *.synctex.gz
 *.toc
 geom/
+
+# Commit the self-contained 2026 summer recap and its generated vector figures.
+!summer_recap_2026-08-26.pdf
+!figs/summer_recap_2026/
+!figs/summer_recap_2026/*.pdf

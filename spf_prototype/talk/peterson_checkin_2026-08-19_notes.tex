@@ -1,0 +1,94 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{default}
+\usecolortheme{dove}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+
+\usepackage{amsmath,amssymb}
+
+\definecolor{key}{rgb}{0.10,0.35,0.65}
+\definecolor{acc}{rgb}{0.55,0.20,0.10}
+\setbeamercolor{frametitle}{fg=key}
+\newcommand{\lab}[1]{\textcolor{acc}{\textbf{#1}}}
+
+\title{Speaker Notes --- Stellarator Neutronics Check-In}
+\subtitle{Cheat sheet: one page per slide}
+\author{Thaddaeus Kiker}
+\date{2026-08-19}
+
+\begin{document}
+
+\begin{frame}[plain]\titlepage
+  \begin{center}\small Read this on the way in --- it mirrors the deck slide-for-slide.\end{center}
+\end{frame}
+
+\begin{frame}{Setup you should be able to state cold}
+  \small
+  \lab{The device:} a quasi-helically symmetric (QH) Landreman--Paul \emph{stellarator}, 4 field periods, 20 coils, reactor-scale ($R_0 \approx 13.7$ m). ParaStell 8-layer radial build: first wall, Be multiplier, FLiBe breeder, back wall, WC shield, gap, vacuum vessel, thermal shield. Neutrons born from a fusion source on the QH flux surfaces, monoenergetic 14.06 MeV.\\[4pt]
+  \lab{The goal:} at a fixed machine envelope, redistribute the blanket --- trade breeder thickness for shield thickness, locally --- to cut the peak neutron load on the magnets, driven by Monte Carlo transport.\\[4pt]
+  \lab{This week in one line:} I built the surface-source decoupling, hit a double-counting bug, diagnosed and fixed it, and learned what the method actually buys us.
+\end{frame}
+
+\begin{frame}{Title}
+  \small
+  \lab{Open with:} ``This is my weekly update on the stellarator magnet-shielding work --- the surface-source method I built to make the shield optimization affordable, a bug I found and fixed, and where it stands.''\\[4pt]
+  \lab{Keep it to two sentences} and move on; the content is in the next slides.
+\end{frame}
+
+\begin{frame}{The Device}
+  \small
+  \lab{What the slide shows:} a black-and-white wireframe of the plasma boundary of the actual device --- computed from its VMEC equilibrium (\texttt{wout\_qh.nc}).\\[4pt]
+  \lab{Say:} ``This is the machine --- a quasi-helical Landreman--Paul stellarator, 4 field periods. You can see the cross-section rotate as it goes around; that twist is the stellarator shaping, and it is exactly why the neutronics has to be fully 3-D.''\\[4pt]
+  \lab{If asked why QH / this device:} it is a clean, well-characterized reactor-scale QH equilibrium ($R_0 \approx 13.7$ m); the method is device-agnostic, this is the test case.
+\end{frame}
+
+\begin{frame}{Surface Source Decoupling}
+  \small
+  \lab{What the slide claims:} run the expensive plasma transport once, reuse it across many shield designs.\\[3pt]
+  \lab{Say:} ``The optimizer changes the breeder/shield split to protect the magnets. A full plasma-to-magnet run is about 9 hours --- too slow to repeat per design. So I freeze the neutron field at the first wall using surface-source read/write --- \emph{write} records every neutron that crosses the wall, \emph{read} re-launches them --- then replay those frozen neutrons through each shield variant out to the magnets.''\\[3pt]
+  \lab{Why the first wall:} the thing I vary (breeder and shield) sits behind the first wall, so I freeze in front of both to keep them free to change.\\[3pt]
+  \lab{If asked ``what is SSR'':} an OpenMC feature that banks particles crossing a surface, then starts a later run from that bank.
+\end{frame}
+
+\begin{frame}{The Double-Counting Mistake and the Fix}
+  \small
+  \lab{The bug in plain words:} the freeze records a neutron \emph{every} time it crosses the wall. Because the wall wraps a donut (non-convex), a neutron can scatter in the blanket, cross back through the hole, and be recorded again.\\[3pt]
+  \lab{The numbers:} about 2.4 records per neutron; \emph{58\% of the frozen set were re-crossings}, only 42\% were fresh plasma neutrons.\\[3pt]
+  \lab{Effect:} replaying re-crossings as independent particles double-counts, skewing the coil-load pattern (worst on the far coils).\\[3pt]
+  \lab{How I found it:} the source is monoenergetic 14.06 MeV, so fresh neutrons sit exactly at 14.06 MeV and re-crossings are degraded below it --- a clean split.\\[3pt]
+  \lab{The fix:} keep only the fresh (uncollided) neutrons, and leave the void empty so re-crossing happens naturally during the replay.\\[3pt]
+  \lab{Result:} peak-load coils now match; far coils still low (that is the next slide).
+\end{frame}
+
+\begin{frame}{Full Run vs SSR}
+  \small
+  \lab{What the figure is:} coil-load per coil, Full Run (white) vs SSR (hatched), each scaled to its own peak coil.\\[3pt]
+  \lab{Why scaled to the peak:} SSR sits uniformly about 2.4$\times$ lower from a harmless source-normalization constant; scaling both to their peak removes it so we compare \emph{shape}, not magnitude.\\[3pt]
+  \lab{Read it:} inboard coils 16--21 (behind the highest-current wall) --- the two overlap, so SSR is faithful there. Outboard coils 26--30 --- SSR drops off too fast; that is the open residual.\\[3pt]
+  \lab{The key question --- ``why is it still low?'':} ``In principle the replay should be exact --- neutrons stream straight to the wall, so freezing that current and leaving the void empty should reproduce everything downstream. It does on the peak coils. The far coils are fed by indirect, scattered, void-crossing paths, and that channel comes out low. My read: dropping the re-crossings removed part of what feeds the far side and the fresh neutrons don't fully regenerate it. I'm localizing it with a void-crossing tally, and a freeze at the exit layer would sidestep it for the magnet load.''\\[3pt]
+  \lab{If asked ``is it just noise'':} no --- per-coil errors are 5--9\%, the deficit is 3--5$\times$, so it is systematic.
+\end{frame}
+
+\begin{frame}{The Speed-Up Question}
+  \small
+  \lab{The numbers:} one replay ran about 7h48m vs the full run's 8h48m, both at 24M particles --- roughly 10--13\% faster.\\[3pt]
+  \lab{If asked why so small} (bullet not on the slide, but be ready): the replay still redoes all the breeder and shield scattering, which is the expensive part; it only skips the cheap plasma-source sampling and the empty-void streaming.\\[3pt]
+  \lab{What SSR actually buys us --- lead with this:}
+  \begin{itemize}
+    \item Mesh the neutron field at \emph{any} resolution for free --- e.g.\ on the neutron-exit layer coming out of the shield onto the magnets. (Demonstrated.)
+    \item Correlated sampling: the same frozen source across designs makes the \emph{difference} between designs low-noise, so each design needs far fewer histories. (Mechanism in hand, not yet quantified.)
+  \end{itemize}
+  \lab{Honest bottom line:} raw speed is not the win; free fine meshing and cheap \emph{differences} are.
+\end{frame}
+
+\begin{frame}{Next Steps}
+  \small
+  \lab{1. Localize the residual:} tally the void-crossing current in the full run vs the replay to see exactly where the far-side flux is lost.\\[3pt]
+  \lab{2. Exit-layer freeze:} freeze right before the magnets --- the magnet load is then captured directly and should be exact for every coil; ideal for the fine meshing and attribution, but it bakes in the whole radial build.\\[3pt]
+  \lab{3. Correlated-sampling test:} replay through modified builds and compare to their finite-difference truth --- this both quantifies the speed-up and proves the optimizer premise.\\[3pt]
+  \lab{4. Freeze-surface decision (for him):} first wall keeps the breeder trade live but saves little time; freezing deeper is faster but fixes the breeder. This is the design call I want his steer on.
+\end{frame}
+
+\end{document}

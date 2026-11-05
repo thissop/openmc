@@ -1,0 +1,87 @@
+{
+  "levels": {
+    "F0": {
+      "M": 1,
+      "N": 1,
+      "n_dof": 5,
+      "lambda_pol_min_cm": 1363.0,
+      "lambda_tor_min_cm": 2147.0,
+      "finest_vs_coil_pol": "6.01x coil",
+      "finest_vs_coil_tor": "8.00x coil",
+      "sub_coil_pol": false,
+      "resolves_8coil_tor": false
+    },
+    "F1": {
+      "M": 2,
+      "N": 2,
+      "n_dof": 13,
+      "lambda_pol_min_cm": 682.0,
+      "lambda_tor_min_cm": 1074.0,
+      "finest_vs_coil_pol": "3.00x coil",
+      "finest_vs_coil_tor": "4.00x coil",
+      "sub_coil_pol": false,
+      "resolves_8coil_tor": false
+    },
+    "F2": {
+      "M": 4,
+      "N": 3,
+      "n_dof": 32,
+      "lambda_pol_min_cm": 341.0,
+      "lambda_tor_min_cm": 716.0,
+      "finest_vs_coil_pol": "1.50x coil",
+      "finest_vs_coil_tor": "2.67x coil",
+      "sub_coil_pol": false,
+      "resolves_8coil_tor": false
+    },
+    "F3": {
+      "M": 6,
+      "N": 4,
+      "n_dof": 59,
+      "lambda_pol_min_cm": 227.0,
+      "lambda_tor_min_cm": 537.0,
+      "finest_vs_coil_pol": "1.00x coil",
+      "finest_vs_coil_tor": "2.00x coil",
+      "sub_coil_pol": false,
+      "resolves_8coil_tor": false
+    },
+    "F4": {
+      "M": 9,
+      "N": 6,
+      "n_dof": 124,
+      "lambda_pol_min_cm": 151.0,
+      "lambda_tor_min_cm": 358.0,
+      "finest_vs_coil_pol": "0.67x coil",
+      "finest_vs_coil_tor": "1.33x coil",
+      "sub_coil_pol": true,
+      "resolves_8coil_tor": false
+    }
+  },
+  "nesting_proof": [
+    "F0 subset F1: True (|F0|=5 < |F1|=13 strict=True)",
+    "F1 subset F2: True (|F1|=13 < |F2|=32 strict=True)",
+    "F2 subset F3: True (|F2|=32 < |F3|=59 strict=True)",
+    "F3 subset F4: True (|F3|=59 < |F4|=124 strict=True)"
+  ],
+  "numeric_nesting_resid": 6.328271240363392e-15,
+  "feasibility": {
+    "grid": [
+      13,
+      19
+    ],
+    "m_nyquist_pol": 9,
+    "n_nyquist_tor": 6,
+    "coil_pol_cm": 227.0,
+    "coil_tor_pitch_cm": 268.0,
+    "sub_coil_needs_m_gt": 6,
+    "finest_resolvable_lambda_pol_cm": 151.0,
+    "toroidal_8coil_needs_n": 8,
+    "grid_max_n": 6,
+    "FEASIBILITY_LIMIT": "On the current 13x19 surface the poloidal grid resolves only up to m=9 (lambda_pol~151cm, marginally sub-coil), and the toroidal grid resolves only up to n=6 (lambda_tor~358cm) -- it CANNOT resolve the 8-coil-per-period toroidal structure, which needs n~8 (lambda_tor~268cm). A genuinely sub-coil-in-BOTH design study therefore requires re-meshing the ParaStell surface finer (>=17 toroidal, >=21 poloidal); this is the exact geometric feasibility cap, not a modeling choice."
+  },
+  "robustness_families": {
+    "separate_families_NOT_in_Fourier_hierarchy": [
+      "sector_indicators (16 coarse patches) -- interpretable, discontinuous; use as a basis-FAMILY robustness check",
+      "B-splines (smooth compact support) -- a LATER separate family for the same convergence test, not a continuation of F0..F4"
+    ]
+  }
+}

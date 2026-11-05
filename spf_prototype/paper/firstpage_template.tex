@@ -1,0 +1,79 @@
+\documentclass[11pt]{article}
+
+% --- packages -------------------------------------------------------------
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext,newtxmath}   % Times-like text + math; drop if unavailable
+\usepackage{amsmath}   % newtxmath supplies AMS symbols; loading amssymb here clashes (\Bbbk)
+\usepackage{authblk}               % clean multi-affiliation author block
+\usepackage[hidelinks]{hyperref}
+\usepackage{siunitx}
+
+% --- author-block spacing tweaks -----------------------------------------
+\renewcommand\Authfont{\bfseries}
+\setlength{\affilsep}{0.4em}
+
+% --- title ----------------------------------------------------------------
+\title{\bfseries Harder, Better, Faster, Stronger Neutronics for Fusion
+Reactors: Stellarator and Spin-Polarized Neutronics Sources in OpenMC and
+Automated Shielding Optimization}
+
+% --- authors and affiliations --------------------------------------------
+\author[1,2]{Thaddaeus Kiker\thanks{Corresponding author:
+\href{mailto:tjk2147@columbia.edu}{tjk2147@columbia.edu}}}
+\author[3]{Ethan Peterson}
+
+\affil[1]{Department of Astronomy, Columbia University,
+550 West 120th Street, New York, NY 10027, USA}
+\affil[2]{Columbia Fusion Research Center, Columbia University,
+New York, NY 10027, USA}
+\affil[3]{Plasma Science and Fusion Center, Massachusetts Institute of
+Technology, 175 Albany Street, Cambridge, MA 02139, USA}
+
+\date{\today}
+
+% --- keywords macro -------------------------------------------------------
+\providecommand{\keywords}[1]{\vspace{0.6em}\noindent\small\textbf{Keywords:} #1}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Superconducting magnets are the most radiation-sensitive and costly
+components of a fusion power plant, and protecting them from the intense
+\SI{14}{\MeV} neutron flux requires shielding tuned inside Monte Carlo
+transport simulations that can take hours per design. This work confronts a
+\emph{harder} version of that problem than standard axisymmetric tools allow.
+We add physics-informed fusion neutron sources to the open-source OpenMC code:
+a native VMEC-fluxmap \texttt{StellaratorSource} that captures the true,
+twisting three-dimensional geometry of stellarator and tokamak plasmas, and a
+Schwartz-kernel birth-direction sampler that captures the anisotropic,
+spin-steered emission of spin-polarized fuel. These sources give a
+\emph{better}, higher-fidelity account of where neutrons are born and aimed:
+the polarized kernel reproduces the analytic angular limits of Schwartz (2025)
+and, unlike precomputed-point approaches, evaluates the local magnetic-field
+direction natively and composes with any device geometry. Building on them, we
+develop a \emph{faster}, direct-forward automated shield-optimization loop that
+resolves the per-magnet neutron load to a few percent in minutes---removing the
+variance-reduction machinery previously assumed necessary---and drives an
+attribution-guided redesign of the shield. The outcome is \emph{stronger}
+magnet protection from the same footprint: concentrating shielding where
+neutron attribution directs it cut the peak coil fast-neutron load roughly
+fourfold ($4.2\times$) versus a uniform baseline at fixed envelope. An exact
+volume-calculation pipeline further reveals that identical nominal shield
+thickness varies $2.4\times$ in mass by location, and that the inboard coils
+sitting closest to the plasma---which see the highest neutron load and most
+need shielding---are precisely where the least physical room exists to add it.
+The controlling result is quantitative and non-obvious: because equal shielding
+thickness costs up to $2.4\times$ different mass and the most heavily loaded
+coils have the least room to grow, stellarator magnet protection is bounded by
+geometric \emph{feasibility} rather than shielding mass---set by where a design
+\emph{can} add shielding, not merely where it should.
+\end{abstract}
+
+\keywords{fusion neutronics; stellarator; spin-polarized fusion; OpenMC;
+Monte Carlo neutron transport; superconducting-magnet shielding; DAGMC;
+shield optimization; VMEC equilibria; tritium breeding}
+
+\end{document}

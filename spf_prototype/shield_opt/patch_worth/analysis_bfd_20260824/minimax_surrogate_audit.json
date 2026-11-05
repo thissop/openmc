@@ -1,0 +1,123 @@
+{
+  "target_mass_kg": 2163095.2194506074,
+  "max_mass_at_20cm_kg": 3055737.7530289916,
+  "baseline_peak": 0.034521079534924136,
+  "cases": [
+    {
+      "success": true,
+      "cap_cm": 20.0,
+      "nonnegative_constraints": false,
+      "mass_kg": 2163095.219450608,
+      "delta_cm": {
+        "t0p2": 20.0,
+        "t0p3": 20.0,
+        "t1p0": 20.0,
+        "t1p1": 0.0,
+        "t1p2": 2.895565564521193,
+        "t1p3": 20.0,
+        "t2p0": 20.0,
+        "t2p1": 0.0,
+        "t2p2": 0.0,
+        "t2p3": 0.0,
+        "t3p2": 20.0,
+        "t3p3": 20.0
+      },
+      "patches_at_cap": 7,
+      "predicted_min": -0.15484336966572915,
+      "predicted_peak": 0.0349501665836958,
+      "predicted_peak_cell": 30,
+      "predicted_peak_change_percent": 1.2429711195374615,
+      "negative_coil_count": 13
+    },
+    {
+      "success": true,
+      "cap_cm": 25.0,
+      "nonnegative_constraints": false,
+      "mass_kg": 2163095.2194506074,
+      "delta_cm": {
+        "t0p2": 6.966192189833167,
+        "t0p3": 25.0,
+        "t1p0": 0.0,
+        "t1p1": 0.0,
+        "t1p2": 0.0,
+        "t1p3": 25.0,
+        "t2p0": 25.0,
+        "t2p1": 0.0,
+        "t2p2": 0.0,
+        "t2p3": 0.0,
+        "t3p2": 25.0,
+        "t3p3": 25.0
+      },
+      "patches_at_cap": 5,
+      "predicted_min": -0.14454596683130377,
+      "predicted_peak": -0.0004264272499551586,
+      "predicted_peak_cell": 26,
+      "predicted_peak_change_percent": -101.23526626542416,
+      "negative_coil_count": 20
+    },
+    {
+      "success": true,
+      "cap_cm": 30.0,
+      "nonnegative_constraints": false,
+      "mass_kg": 2163095.2194506074,
+      "delta_cm": {
+        "t0p2": 0.0,
+        "t0p3": 30.0,
+        "t1p0": 0.0,
+        "t1p1": 0.0,
+        "t1p2": 0.0,
+        "t1p3": 7.475082760394403,
+        "t2p0": 30.0,
+        "t2p1": 0.0,
+        "t2p2": 0.0,
+        "t2p3": 0.0,
+        "t3p2": 30.0,
+        "t3p3": 30.0
+      },
+      "patches_at_cap": 4,
+      "predicted_min": -0.14042576491051248,
+      "predicted_peak": -3.2159570766912386e-05,
+      "predicted_peak_cell": 26,
+      "predicted_peak_change_percent": -100.0931592267686,
+      "negative_coil_count": 20
+    },
+    {
+      "success": true,
+      "cap_cm": 35.0,
+      "nonnegative_constraints": false,
+      "mass_kg": 2163095.219450608,
+      "delta_cm": {
+        "t0p2": 0.0,
+        "t0p3": 35.0,
+        "t1p0": 0.0,
+        "t1p1": 0.0,
+        "t1p2": 0.0,
+        "t1p3": 0.0,
+        "t2p0": 29.941029079060165,
+        "t2p1": 0.0,
+        "t2p2": 0.0,
+        "t2p3": 0.0,
+        "t3p2": 24.825365932819604,
+        "t3p3": 35.0
+      },
+      "patches_at_cap": 2,
+      "predicted_min": -0.13785679727124736,
+      "predicted_peak": -4.336808689942018e-19,
+      "predicted_peak_cell": 26,
+      "predicted_peak_change_percent": -100.0,
+      "negative_coil_count": 20
+    },
+    {
+      "success": false,
+      "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is Infeasible)",
+      "cap_cm": 20.0,
+      "nonnegative_constraints": true
+    },
+    {
+      "success": false,
+      "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is Infeasible)",
+      "cap_cm": 35.0,
+      "nonnegative_constraints": true
+    }
+  ]
+}

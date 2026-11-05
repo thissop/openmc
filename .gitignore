@@ -72,6 +72,9 @@ scripts/G4EMLOW*/
 # ...but DO track the SPF prototype result figures (plots) despite the global *.png ignore
 !spf_prototype/figs/*.png
 !spf_prototype/figs/**/*.png
+# ...and the Summer 2026 recap's source screenshots and generated talk figures
+!spf_prototype/talk/figs/paper_screenshots/*.png
+!spf_prototype/talk/figs/summer_recap_2026/*.png
 
 # PyCharm project configuration files
 .idea

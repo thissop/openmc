@@ -1,0 +1,167 @@
+{
+  "calculation_rate_particles_per_second": 6829.67,
+  "coil_fast_flux": {
+    "figure_of_merit": [
+      0.0,
+      0.0,
+      0.0,
+      0.0034148615076990438,
+      0.0
+    ],
+    "mean": [
+      0.0,
+      0.0,
+      0.0,
+      5.610075284151911e-06,
+      0.0
+    ],
+    "relative_error": [
+      null,
+      null,
+      null,
+      1.0,
+      null
+    ],
+    "std_dev": [
+      0.0,
+      0.0,
+      0.0,
+      5.610075284151911e-06,
+      0.0
+    ]
+  },
+  "coil_heating_local": {
+    "figure_of_merit": [
+      0.0,
+      0.0,
+      0.0,
+      0.0034148615076990438,
+      0.0
+    ],
+    "mean": [
+      0.0,
+      0.0,
+      0.0,
+      0.06890410756562157,
+      0.0
+    ],
+    "relative_error": [
+      null,
+      null,
+      null,
+      1.0,
+      null
+    ],
+    "std_dev": [
+      0.0,
+      0.0,
+      0.0,
+      0.06890410756562157,
+      0.0
+    ]
+  },
+  "configuration": {
+    "batches": 20,
+    "black_inside_cells": [
+      2,
+      3,
+      4
+    ],
+    "coil_cells": [
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "depth_cells": [
+      6,
+      8,
+      10,
+      12,
+      14
+    ],
+    "fast_energy_bounds_ev": [
+      100000.0,
+      25000000.0
+    ],
+    "li6_atom_percent": 60.0,
+    "max_history_splits": null,
+    "max_lower_bound_ratio": null,
+    "max_split": null,
+    "particles_per_batch": 100000,
+    "seed": 104729,
+    "source_histories": 2000000,
+    "threads": 32
+  },
+  "depth_flux": {
+    "figure_of_merit": [
+      2356.200035552412,
+      94.812797561786,
+      0.41296777957930475,
+      0.0,
+      0.0
+    ],
+    "mean": [
+      16.156559998695815,
+      1.053490523810529,
+      0.0016109433052232992,
+      0.0,
+      0.0
+    ],
+    "relative_error": [
+      0.0012038724293500316,
+      0.006001406814155042,
+      0.09093445396065565,
+      null,
+      null
+    ],
+    "std_dev": [
+      0.019450437135569473,
+      0.006322425208244273,
+      0.00014649024982205455,
+      0.0,
+      0.0
+    ]
+  },
+  "estimated_tracks_per_source_history": 1.0,
+  "execution": {
+    "hostname": "g231",
+    "slurm_array_job_id": "9467424",
+    "slurm_array_task_id": "0",
+    "slurm_job_id": "9467424"
+  },
+  "inputs": {
+    "dagmc": {
+      "bytes": 16097968,
+      "mtime_ns": 1787237366000000000,
+      "path": "/burg-archive/home/tjk2147/pstl_test/corrected/dagmc_qh_op_uniform.h5m",
+      "sha256": "b6259fa2682ccd04ddc07eb9d1b6aef39dff93153b99750038a73453c58f57c6"
+    },
+    "surface_source": {
+      "bytes": 696529492,
+      "mtime_ns": 1787274769000000000,
+      "path": "/burg-archive/home/tjk2147/pstl_test/corrected/surf_op_master.h5"
+    },
+    "weight_windows": null
+  },
+  "mode": "analog",
+  "openmc_executable_version": "OpenMC version 0.15.4-dev212\nCommit hash: 23572ccc928a9ab7be19e6d7d2868852f12c0f0e\nCopyright (c) 2011-2026 MIT, UChicago Argonne LLC, and contributors\nMIT/X license at <https://docs.openmc.org/en/latest/license.html>\nBuild type:            Release\nCompiler ID:           GNU 14.3.0\nMPI enabled:           yes\nParallel HDF5 enabled: yes\nPNG support:           yes\nDAGMC support:         yes\nlibMesh support:       no\nCoverage testing:      no\nProfiling flags:       no\nUWUW support:          no\nStrict FP:             no",
+  "openmc_python_version": "0.15.3",
+  "runner_wall_seconds": 301.3571172892116,
+  "runtime": {
+    "accumulating tallies": 0.339125051,
+    "active batches": 292.837860263,
+    "reading cross sections": 3.924714904,
+    "simulation": 292.837644439,
+    "total": 299.55245782599997,
+    "total initialization": 6.694211445,
+    "transport": 292.47776958500003,
+    "writing statepoints": 0.019525126
+  },
+  "statepoint": "/ginsburg/astro/users/tjk2147/advancedagents/openmc_fwcadis/ssr_benchmark/results/screen_2m_20260822/analog_9467424/statepoint.20.h5",
+  "status": "PASS",
+  "track_rate_per_second": null,
+  "weight_window_objects": [],
+  "workdir": "/ginsburg/astro/users/tjk2147/advancedagents/openmc_fwcadis/ssr_benchmark/results/screen_2m_20260822/analog_9467424"
+}

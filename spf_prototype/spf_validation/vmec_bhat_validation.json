@@ -1,0 +1,26 @@
+[
+  {
+    "path": "spf_validation/wouts/wout_LandremanPaul2021_QA.nc",
+    "samples": 10000,
+    "median_degrees": 1.585814164606441e-05,
+    "p95_degrees": 8.072654430459792e-05,
+    "p99_degrees": 0.00012865935155751199,
+    "max_degrees": 0.00019250655230539633
+  },
+  {
+    "path": "spf_validation/wouts/wout_qh.nc",
+    "samples": 10000,
+    "median_degrees": 6.883343194785022e-06,
+    "p95_degrees": 0.00013412142199973836,
+    "p99_degrees": 0.0003817205261029176,
+    "max_degrees": 0.0009057544542999203
+  },
+  {
+    "path": "spf_validation/wouts/wout_quasr1328722.nc",
+    "samples": 10000,
+    "median_degrees": 0.0021506153960480718,
+    "p95_degrees": 0.014765882314576468,
+    "p99_degrees": 0.022383802855644567,
+    "max_degrees": 0.03539074929601696
+  }
+]

@@ -1,0 +1,150 @@
+% JacquenettaMono -- monochrome adaptation for the OpenMC summer recap.
+%
+% Adapted from the Jacquenetta Beamer Theme by Samuel Manchajm:
+% https://github.com/smanchajm/Jacquenetta-beamer-theme
+% Original and adaptation licensed CC BY-SA 4.0.
+% https://creativecommons.org/licenses/by-sa/4.0/
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{jacquenetta/beamerthemeJacquenettaMono}%
+  [2026/08/24 v1.0 Monochrome Jacquenetta adaptation]
+
+\mode<presentation>
+
+\RequirePackage[T1]{fontenc}
+\RequirePackage{anyfontsize}
+\RequirePackage{helvet}
+\RequirePackage{microtype}
+\RequirePackage{setspace}
+\RequirePackage{tikz}
+\usetikzlibrary{arrows.meta,calc,positioning}
+
+\definecolor{jqdark}{HTML}{101010}
+\definecolor{jqgray}{HTML}{666666}
+\definecolor{jqlight}{HTML}{D7D7D7}
+\definecolor{jqpaper}{HTML}{F7F7F5}
+
+\renewcommand{\familydefault}{\sfdefault}
+\usefonttheme[onlymath]{serif}
+\setstretch{1.15}
+
+\setbeamercolor{background canvas}{bg=white}
+\setbeamercolor{normal text}{fg=jqdark}
+\setbeamercolor{frametitle}{fg=jqdark}
+\setbeamercolor{title}{fg=jqdark}
+\setbeamercolor{subtitle}{fg=jqgray}
+\setbeamercolor{author}{fg=jqdark}
+\setbeamercolor{institute}{fg=jqgray}
+\setbeamercolor{date}{fg=jqgray}
+\setbeamercolor{item}{fg=jqdark}
+\setbeamercolor{footnote}{fg=jqgray}
+\setbeamercolor{footnote mark}{fg=jqgray}
+
+\setbeamerfont{title}{size=\fontsize{20}{24}\selectfont,series=\mdseries}
+\setbeamerfont{subtitle}{size=\fontsize{11}{15}\selectfont,series=\mdseries}
+\setbeamerfont{frametitle}{size=\fontsize{14}{17}\selectfont,series=\mdseries}
+\setbeamerfont{author}{size=\fontsize{10}{13}\selectfont,series=\mdseries}
+\setbeamerfont{institute}{size=\fontsize{8.5}{11}\selectfont,series=\mdseries}
+\setbeamerfont{date}{size=\fontsize{8.5}{11}\selectfont,series=\mdseries}
+\setbeamerfont{page number in head/foot}{size=\fontsize{7}{9}\selectfont,series=\mdseries}
+\setbeamerfont{itemize/enumerate body}{size=\fontsize{10}{13}\selectfont,series=\mdseries}
+\setbeamerfont{itemize/enumerate subbody}{size=\fontsize{9}{12}\selectfont,series=\mdseries}
+\setbeamerfont{footnote}{size=\fontsize{6.5}{8}\selectfont,series=\mdseries}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{items}[circle]
+\setbeamersize{text margin left=1.15cm,text margin right=1.15cm}
+
+% Jacquenetta's signature technical frame.
+\setbeamertemplate{background}{%
+  \begin{tikzpicture}[overlay,remember picture]
+    \draw[line width=4.5pt,jqdark]
+      ([shift={(4mm,-4mm)}]current page.north west)
+      rectangle
+      ([shift={(-4mm,4mm)}]current page.south east);
+  \end{tikzpicture}%
+}
+
+\defbeamertemplate*{frametitle}{JacquenettaMono}{%
+  \vspace{0.68cm}%
+  \usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}%
+  \insertframetitle%
+}
+
+\setbeamertemplate{footline}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south west,xshift=0.82cm,yshift=0.68cm]
+      at (current page.south west)
+      {\fontsize{6.5}{8}\selectfont\color{jqgray}OpenMC Source And Shield Design};
+    \node[anchor=south east,xshift=-0.82cm,yshift=0.68cm]
+      at (current page.south east)
+      {\usebeamerfont{page number in head/foot}%
+       \insertframenumber\,/\,\inserttotalframenumber};
+  \end{tikzpicture}%
+  \vspace{0.45cm}%
+}
+
+\defbeamertemplate*{title page}{JacquenettaMono}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \draw[line width=1.2pt,jqdark]
+      ([xshift=1.15cm,yshift=-1.25cm]current page.north west) --
+      ([xshift=-1.15cm,yshift=-1.25cm]current page.north east);
+  \end{tikzpicture}%
+  \vspace{1.25cm}%
+  {\usebeamerfont{title}\usebeamercolor[fg]{title}\inserttitle\par}%
+  \vspace{0.32cm}%
+  {\usebeamerfont{subtitle}\usebeamercolor[fg]{subtitle}\insertsubtitle\par}%
+  \vspace{0.45cm}%
+  {\usebeamerfont{author}\usebeamercolor[fg]{author}\insertauthor\par}%
+  \vspace{0.12cm}%
+  {\usebeamerfont{institute}\usebeamercolor[fg]{institute}%
+   \insertinstitute\quad\textbar\quad\insertdate\par}%
+}
+
+\newcommand{\titleframe}{%
+  {\setbeamertemplate{background}{}%
+   \setbeamertemplate{footline}{}%
+   \begin{frame}[plain,noframenumbering]\titlepage\end{frame}}%
+}
+
+\newcommand{\sectionframe}[2]{%
+  {\setbeamercolor{background canvas}{bg=jqdark}%
+   \setbeamertemplate{background}{}%
+   \setbeamertemplate{footline}{}%
+   \begin{frame}[plain,noframenumbering]
+     \vfill
+     \begin{columns}[c]
+       \begin{column}{0.22\textwidth}
+         \raggedleft\fontsize{40}{46}\selectfont\color{white!18}#1
+       \end{column}
+       \begin{column}{0.68\textwidth}
+         \fontsize{21}{27}\selectfont\color{white}#2
+       \end{column}
+     \end{columns}
+     \vfill
+   \end{frame}}%
+}
+
+\newcommand{\closingframe}[1]{%
+  {\setbeamercolor{background canvas}{bg=jqdark}%
+   \setbeamertemplate{background}{}%
+   \setbeamertemplate{footline}{}%
+   \begin{frame}[plain,noframenumbering]
+     \vfill
+     \centering\begin{minipage}{0.78\textwidth}
+       \centering\fontsize{20}{27}\selectfont\color{white}#1
+     \end{minipage}
+     \vfill
+   \end{frame}}%
+}
+
+\newcommand{\jqrule}{\par\vspace{0.10cm}{\color{jqdark}\rule{\linewidth}{0.8pt}}\par}
+\newcommand{\jqcallout}[1]{%
+  \par\vspace{0.15cm}%
+  \begin{minipage}{\linewidth}
+    \color{jqdark}\vrule width 2.4pt\hspace{4mm}%
+    \begin{minipage}{\dimexpr\linewidth-2.4pt-4mm\relax}#1\end{minipage}
+  \end{minipage}%
+}
+
+\mode<all>
+\endinput

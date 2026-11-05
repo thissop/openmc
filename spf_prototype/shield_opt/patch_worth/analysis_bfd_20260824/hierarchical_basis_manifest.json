@@ -1,0 +1,125 @@
+{
+  "grid": [
+    13,
+    19
+  ],
+  "R0_cm": 1367.0,
+  "a_cm": 217.0,
+  "nfp": 4,
+  "levels": {
+    "A_coarse": {
+      "modes": [
+        "uniform",
+        "inboard",
+        "outboard",
+        "updown",
+        "sector_t0p0",
+        "sector_t0p1",
+        "sector_t0p2",
+        "sector_t0p3",
+        "sector_t1p0",
+        "sector_t1p1",
+        "sector_t1p2",
+        "sector_t1p3",
+        "sector_t2p0",
+        "sector_t2p1",
+        "sector_t2p2",
+        "sector_t2p3",
+        "sector_t3p0",
+        "sector_t3p1",
+        "sector_t3p2",
+        "sector_t3p3"
+      ],
+      "n_dof": 20,
+      "min_lambda_pol_cm": 682.0,
+      "min_lambda_tor_cm": 2147.0,
+      "note": "interpretable large-scale + the 16 coarse patch sectors (the coarse B_FD basis)"
+    },
+    "B_lowfourier": {
+      "modes": [
+        "c0_0",
+        "c0_1",
+        "c0_2",
+        "c1_0",
+        "c1_1",
+        "c1_2",
+        "c2_0",
+        "c2_1",
+        "c2_2",
+        "c3_0",
+        "c3_1",
+        "c3_2"
+      ],
+      "n_dof": 12,
+      "m_max": 3,
+      "n_max": 2,
+      "lambda_pol_cm_by_m": {
+        "1": 1363.0,
+        "2": 682.0,
+        "3": 454.0
+      },
+      "lambda_tor_cm_by_n": {
+        "1": 2147.0,
+        "2": 1074.0
+      },
+      "note": "stellarator-symmetric cosines only; finest here lambda_pol~455cm (m=3), lambda_tor~1074cm (n=2)"
+    },
+    "C_highfourier": {
+      "modes": [
+        "c0_0",
+        "c0_1",
+        "c0_2",
+        "c0_3",
+        "c0_4",
+        "c1_0",
+        "c1_1",
+        "c1_2",
+        "c1_3",
+        "c1_4",
+        "c2_0",
+        "c2_1",
+        "c2_2",
+        "c2_3",
+        "c2_4",
+        "c3_0",
+        "c3_1",
+        "c3_2",
+        "c3_3",
+        "c3_4",
+        "c4_0",
+        "c4_1",
+        "c4_2",
+        "c4_3",
+        "c4_4",
+        "c5_0",
+        "c5_1",
+        "c5_2",
+        "c5_3",
+        "c5_4",
+        "c6_0",
+        "c6_1",
+        "c6_2",
+        "c6_3",
+        "c6_4"
+      ],
+      "n_dof": 35,
+      "m_max": 6,
+      "n_max": 4,
+      "lambda_pol_cm_by_m": {
+        "1": 1363.0,
+        "2": 682.0,
+        "3": 454.0,
+        "4": 341.0,
+        "5": 273.0,
+        "6": 227.0
+      },
+      "lambda_tor_cm_by_n": {
+        "1": 2147.0,
+        "2": 1074.0,
+        "3": 716.0,
+        "4": 537.0
+      },
+      "note": "finest lambda_pol~227cm (m=6, ~1 coil footprint), lambda_tor~537cm (n=4); ~= overlapping smooth B-splines"
+    }
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "baseline": "coil_step1b_uniform.npz",
+  "baseline_shield_cm": 42.55,
+  "baseline_coil_cells": [
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30
+  ],
+  "baseline_tbr": 1.0732416341596902,
+  "response_metric": "coil_fast_flux (cell-integrated, NOT volume-normalized)",
+  "n_coils": 20,
+  "patches": [
+    {
+      "tag": "t0p2",
+      "i_tor": 0,
+      "j_pol": 2,
+      "added_cells": 20,
+      "delta_cm": 20.0,
+      "tbr": 0.9757634462084268,
+      "peak_coil_flux": 0.006897608634280179,
+      "peak_cell": 30
+    },
+    {
+      "tag": "t0p3",
+      "i_tor": 0,
+      "j_pol": 3,
+      "added_cells": 20,
+      "delta_cm": 20.0,
+      "tbr": 0.9746228648824175,
+      "peak_coil_flux": 0.006842851398922195,
+      "peak_cell": 25
+    },
+    {
+      "tag": "t1p0",
+      "i_tor": 1,
+      "j_pol": 0,
+      "added_cells": 15,
+      "delta_cm": 20.0,
+      "tbr": 1.0533843795560296,
+      "peak_coil_flux": 0.03875337653464323,
+      "peak_cell": 30
+    },
+    {
+      "tag": "t1p1",
+      "i_tor": 1,
+      "j_pol": 1,
+      "added_cells": 12,
+      "delta_cm": 20.0,
+      "tbr": 0.9509873115751991,
+      "peak_coil_flux": 0.04152570940839087,
+      "peak_cell": 15
+    },
+    {
+      "tag": "t1p2",
+      "i_tor": 1,
+      "j_pol": 2,
+      "added_cells": 15,
+      "delta_cm": 20.0,
+      "tbr": 1.0163815909127862,
+      "peak_coil_flux": 0.04157925113450757,
+      "peak_cell": 30
+    },
+    {
+      "tag": "t1p3",
+      "i_tor": 1,
+      "j_pol": 3,
+      "added_cells": 15,
+      "delta_cm": 20.0,
+      "tbr": 1.099827336857435,
+      "peak_coil_flux": 0.009506006270930754,
+      "peak_cell": 20
+    },
+    {
+      "tag": "t2p0",
+      "i_tor": 2,
+      "j_pol": 0,
+      "added_cells": 15,
+      "delta_cm": 20.0,
+      "tbr": 1.1639890814357157,
+      "peak_coil_flux": 0.010318641712781287,
+      "peak_cell": 25
+    },
+    {
+      "tag": "t2p1",
+      "i_tor": 2,
+      "j_pol": 1,
+      "added_cells": 12,
+      "delta_cm": 20.0,
+      "tbr": 1.0304493193851785,
+      "peak_coil_flux": 0.048959358825508,
+      "peak_cell": 30
+    },
+    {
+      "tag": "t2p2",
+      "i_tor": 2,
+      "j_pol": 2,
+      "added_cells": 15,
+      "delta_cm": 20.0,
+      "tbr": 0.9071062184447469,
+      "peak_coil_flux": 0.04998548709833942,
+      "peak_cell": 15
+    },
+    {
+      "tag": "t2p3",
+      "i_tor": 2,
+      "j_pol": 3,
+      "added_cells": 15,
+      "delta_cm": 20.0,
+      "tbr": 0.8898054400105876,
+      "peak_coil_flux": 0.04973348540004006,
+      "peak_cell": 25
+    },
+    {
+      "tag": "t3p2",
+      "i_tor": 3,
+      "j_pol": 2,
+      "added_cells": 25,
+      "delta_cm": 20.0,
+      "tbr": 1.0499483470764444,
+      "peak_coil_flux": 0.006936971640993442,
+      "peak_cell": 30
+    },
+    {
+      "tag": "t3p3",
+      "i_tor": 3,
+      "j_pol": 3,
+      "added_cells": 25,
+      "delta_cm": 20.0,
+      "tbr": 1.0993240867630345,
+      "peak_coil_flux": 0.0067221521207658196,
+      "peak_cell": 25
+    }
+  ],
+  "caveats": [
+    "patch shield-outside=40cm vs baseline 42.55cm -> ~2.55cm uniform confound in absolute dR",
+    "patches used FW-CADIS WW; baseline did not -> correlated seed likely broken -> independent-sigma bound",
+    "single disjoint-sector patches -> NOT an additive basis; combined designs need a new run"
+  ]
+}

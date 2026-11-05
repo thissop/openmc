@@ -1,0 +1,13 @@
+{
+    "autodeskProduct": "Fusion360",
+    "type": "addin",
+    "id": "parastell-geometry-demo-tjk-2026",
+    "author": "Thaddaeus Kiker",
+    "description": {
+        "": "Educational CAD demo of stellarator geometry: single-profile sweep vs. lofted changing poloidal sections, a parametric radial build, coil sweeps, and a uniform vs. non-uniform (breeder-for-shield) shield trade."
+    },
+    "version": "1.0.0",
+    "runOnStartup": false,
+    "supportedOS": "windows|mac",
+    "editEnabled": true
+}

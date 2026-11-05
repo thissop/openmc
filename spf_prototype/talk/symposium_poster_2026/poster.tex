@@ -1,0 +1,120 @@
+% Harder Better Faster Stronger -- Neutron Shielding for Stellarators
+% Columbia Undergraduate Research Symposium poster, 41in x 36in.
+% Build: xelatex poster.tex
+\documentclass{article}
+\usepackage[paperwidth=41in,paperheight=36in,margin=0in]{geometry}
+\usepackage{fontspec}
+\usepackage{tikz}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usetikzlibrary{calc,positioning,arrows.meta}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+% poster text reads cleaner ragged-right with no hyphenation
+\hyphenpenalty=10000 \exhyphenpenalty=10000 \tolerance=2000 \emergencystretch=4em
+% box toggle for the center method-flow cards: \def\boxmode{1} (boxed) or {0} (boxless)
+\newif\ifboxes
+\ifdefined\boxmode \ifnum\boxmode=1 \boxestrue \else \boxesfalse \fi \else \boxestrue \fi
+
+\setmainfont{EB Garamond}[
+  Path = ./,
+  UprightFont = EBGaramond-Regular.ttf,
+  BoldFont = EBGaramond-Bold.ttf,
+  ItalicFont = EBGaramond-Italic.ttf,
+  BoldItalicFont = EBGaramond-BoldItalic.ttf,
+]
+
+\definecolor{cfrcblue}{HTML}{2B4E8C}
+\definecolor{dark}{HTML}{404040}
+\definecolor{gray}{HTML}{666666}
+\definecolor{good}{HTML}{2E691C}
+\definecolor{bad}{HTML}{AA2228}
+
+% page height (for top-based coordinates: y_device = PH - y_top)
+\def\PH{36}
+% font helper: \F{size}{baseline}. EB Garamond ships a tight 0.20em space, so we
+% force a normal interword space (resolved to the just-selected size) everywhere.
+\newcommand{\F}[2]{\fontsize{#1}{#2}\selectfont\spaceskip=0.32em plus 0.11em minus 0.03em\relax}
+
+\begin{document}
+\begin{tikzpicture}[x=1in,y=1in]
+\useasboundingbox (0,0) rectangle (41,36);
+% explicit white page (white = no ink; guarantees a white background in every viewer / printer)
+\fill[white] (0,0) rectangle (41,36);
+
+% ---------------------------------------------------------------- TITLE
+\node[anchor=north west, text width=39.4in, align=left,
+      font=\F{115}{120}\bfseries\color{cfrcblue}] at (0.8,{\PH-0.55})
+      {Harder Better Faster Stronger};
+\node[anchor=north west, text width=39.4in, align=left,
+      font=\F{60}{64}\color{dark}] at (0.8,{\PH-2.68})
+      {Neutron Shielding for Stellarators};
+\node[anchor=north west, font=\F{42}{47}] at (0.8,{\PH-4.30})
+      {{\bfseries\color{dark}Thaddaeus Kiker}\hspace{0.45cm}\textcolor{gray}{\textperiodcentered}\hspace{0.45cm}\textcolor{gray}{Columbia Fusion Research Center}};
+\draw[cfrcblue,line width=3.5pt] (0.8,{\PH-5.20}) -- (40.2,{\PH-5.20});
+
+% ---------------------------------------------------------------- COLUMN GEOMETRY
+% LX=0.8 LW=13.2 ; CX=14.6 CW=11.8 ; RX=27.0 RW=13.2
+% COL_TOP=5.45 ; PANEL_H=13.25 ; second panel top=19.5 ; COL_BOT=32.75
+
+% == PANEL MACRO ================================================
+% #1 px  #2 pw  #3 ptop  #4 WORD  #5 subtitle  #6 image  #7 imgdim(e.g. width=13.2in)  #8 caption
+\newcommand{\panel}[8]{%
+  \node[anchor=west, font=\F{48}{52}] at (#1,{\PH-(#3+0.58)})
+    {{\bfseries\color{cfrcblue}#4}\hspace{0.25cm}{\F{39}{44}\itshape\color{dark}#5}};
+  \draw[cfrcblue,line width=1.5pt] (#1,{\PH-(#3+1.15)}) -- ({#1+#2},{\PH-(#3+1.15)});
+  \node[anchor=center,inner sep=0] at ({#1+#2/2},{\PH-(#3+1.35+8.75/2)})
+    {\includegraphics[#7]{#6}};
+  \node[anchor=north west, text width=#2 in, align=left,
+        font=\F{34}{42}\color{dark}] at (#1,{\PH-(#3+10.35)}) {#8};
+}
+
+% LEFT: HARDER / BETTER
+\panel{0.8}{13.2}{5.45}{Harder:}{The Geometry Is Three-Dimensional}{tokamak_vs_stellarator.png}{width=13.2in}%
+  {A tokamak (left) is axisymmetric; a stellarator (right) twists in full 3-D. That twist concentrates the neutron load, so the flux on the magnets swings about 13$\times$ around the machine and uniform shielding is wasteful.}
+\panel{0.8}{13.2}{19.5}{Better:}{Shielding That Conforms To The Plasma}{better_cross_sections.png}{width=13.2in}%
+  {The tool builds a wall that conforms to the plasma at every toroidal angle and sets shield standoff as a free field, so thickness can vary by location instead of a fixed gap --- material only where the load demands it.}
+
+% RIGHT: FASTER / STRONGER
+\panel{27.0}{13.2}{5.45}{Faster:}{Cheap To Evaluate}{faster_speed_memory.png}{height=8.75in}%
+  {Sampling births from the equilibrium analytically, or from an adaptive grid, reaches near-spectral accuracy at grid speed and about 6$\times$ less memory than a uniform grid.}
+\panel{27.0}{13.2}{19.5}{Stronger:}{A Spin-Polarization Lever}{stronger_rate_steering.png}{width=13.2in}%
+  {Spin-polarizing the fuel steers fusion neutrons, redistributing where they land and the fusion rate itself (modes A\,/\,B\,/\,C vs.\ unpolarized; a spherical-tokamak case shown).}
+
+% ---------------------------------------------------------------- CENTER BILLBOARD
+% thesis -- large title-case headline, no border, no solid fill (ink-friendly)
+\node[anchor=north, text width=11.8in, align=center] at (20.5,{\PH-5.45})
+  {\F{64}{74}\bfseries\color{cfrcblue}A Neutron-Transport Toolkit for Stellarator Magnet Protection};
+
+% method flow -- three cards (Problem -> Approach -> Why); border toggled by \ifboxes
+\ifboxes
+  \tikzset{mcard/.style={draw=cfrcblue, line width=1.6pt, rounded corners=12pt,
+      minimum width=11.2in, inner sep=26pt, text width=10.2in, align=left, anchor=north}}
+\else
+  \tikzset{mcard/.style={minimum width=11.2in, inner sep=26pt, text width=10.2in,
+      align=left, anchor=north}}
+\fi
+\newcommand{\cardtext}[2]{{\F{44}{52}\bfseries\color{cfrcblue}#1}\\[10pt]{\F{40}{50}\color{dark}#2}}
+\node[mcard] (b1) at (20.5,{\PH-10.0})
+  {\cardtext{The Problem}{In a stellarator the neutron load on the magnets is strongly non-uniform. Shielding every coil with the same thick blanket wastes mass on the quiet coils and drives up cost.}};
+\node[mcard, below=1.05in of b1] (b2)
+  {\cardtext{The Approach}{A native OpenMC fusion source drives Monte-Carlo transport, and an adjoint importance map pinpoints where on each coil the damaging neutrons originate --- so shield goes only where it extends magnet life.}};
+\node[mcard, below=1.05in of b2] (b3)
+  {\cardtext{Why It Matters}{Placement beats bulk: response-aware shielding lowers the peak coil load at fixed mass, a fast source keeps the design loop cheap, and spin polarization adds a lever on where the neutrons go.}};
+\ifboxes
+  \draw[-{Latex[length=16pt,width=14pt]}, cfrcblue, line width=2.4pt] (b1.south) -- (b2.north);
+  \draw[-{Latex[length=16pt,width=14pt]}, cfrcblue, line width=2.4pt] (b2.south) -- (b3.north);
+\fi
+\node[anchor=north, text width=11.6in, align=center,
+      font=\F{52}{58}\bfseries\color{cfrcblue}, below=1.25in of b3] {Shield Where the Neutrons Actually Go.};
+
+% ---------------------------------------------------------------- FOOTER
+\draw[cfrcblue,line width=2.5pt] (0.8,{\PH-33.10}) -- (40.2,{\PH-33.10});
+\node[anchor=north,inner sep=0] at (20.5,{\PH-33.55}) {\includegraphics[width=8.4in]{cfrc_logo.png}};
+\node[anchor=north west, text width=14in, align=left] at (0.8,{\PH-34.30})
+  {{\F{22}{26}\bfseries\color{dark}Columbia Undergraduate Research Symposium}\\[0.05cm]{\F{20}{24}\color{gray}October 23, 2026}};
+\node[anchor=north east, font=\F{22}{26}\color{gray}] at (40.2,{\PH-34.30}) {tjk2147@columbia.edu};
+\node[anchor=north east, font=\F{20}{24}\color{gray}] at (40.2,{\PH-34.86}) {Columbia Fusion Research Center};
+
+\end{tikzpicture}
+\end{document}

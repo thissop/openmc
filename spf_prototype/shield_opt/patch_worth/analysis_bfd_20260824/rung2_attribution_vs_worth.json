@@ -1,0 +1,38 @@
+{
+  "metrics_vs_importance": {
+    "dR20": {
+      "pearson": -0.119,
+      "spearman": -0.622,
+      "sign_acc": 0.33
+    },
+    "dpeak": {
+      "pearson": -0.609,
+      "spearman": -0.776,
+      "sign_acc": 0.33
+    },
+    "dcluster": {
+      "pearson": -0.16,
+      "spearman": -0.594,
+      "sign_acc": 0.33
+    },
+    "n_improved": {
+      "pearson": -0.53,
+      "spearman": -0.65,
+      "sign_acc": 0.33
+    },
+    "dR20_per_mass": {
+      "pearson": 0.042,
+      "spearman": 0.21,
+      "sign_acc": 0.67
+    },
+    "dTBR": {
+      "pearson": 0.351,
+      "spearman": 0.014,
+      "sign_acc": 0.33
+    }
+  },
+  "top3_overlap": 0,
+  "outcome": "MAPPING TOO AMBIGUOUS: projected importance ANTI-correlates with worth (Spearman -0.62..-0.78) with 0/3 top-3 overlap, physically implausible (best reducers are phi=0/90 seam patches at coil-20 position, which should be HIGH importance). => circular-torus projection is misaligned/unreliable; do NOT force A!=B or A=B. Needs projection onto true VMEC shield surface with verified coil-20 toroidal position. Consistent with prior scalar W_FD-vs-A n.s. (relationship UNRESOLVED).",
+  "projection": "circular-torus approx (NOT true VMEC surface); first-order rank comparison only",
+  "importance_quantity": "coil-20 adjoint importance psi_dagger (flat response), NOT contributon or exact worth"
+}
