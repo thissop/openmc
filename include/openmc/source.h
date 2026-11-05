@@ -491,6 +491,16 @@ private:
   double eval_density(int bin, double t, double theta, double zeta,
     double* R_out = nullptr, double* Z_out = nullptr) const;
 
+  //! Evaluate the local VMEC magnetic-field direction
+  //! \param bin Geometry radial bin index
+  //! \param t Interpolation parameter within the geometry bin
+  //! \param rho Normalized radial coordinate
+  //! \param theta VMEC poloidal angle [rad]
+  //! \param zeta VMEC toroidal angle [rad]
+  //! \return Unit magnetic-field direction in Cartesian coordinates
+  Direction field_direction(
+    int bin, double t, double rho, double theta, double zeta) const;
+
   //! Sample energy from the distribution(s)
   //! \param rho Normalized radial coordinate (for distribution selection)
   //! \param seed Pseudorandom seed pointer
@@ -515,6 +525,15 @@ private:
   vector<double> rmns_; //!< sin coefficients of R (non-symmetric only)
   vector<double> zmnc_; //!< cos coefficients of Z (non-symmetric only)
   bool asym_ {false};   //!< Whether non-stellarator-symmetric terms present
+
+  // Spin-polarized fusion direction model (optional)
+  bool polarized_ {false};   //!< Whether SPF angular sampling is enabled
+  double p_perp_ {0.0};      //!< Probability of the perpendicular SPF shape
+  vector<double> field_rho_; //!< Radial grid for iota/lambda field data
+  vector<double> iota_;      //!< Rotational transform on field_rho_
+  vector<double> lmns_;      //!< sin coefficients of VMEC lambda [field x mode]
+  vector<double> lmnc_;      //!< cos coefficients of lambda (asymmetric only)
+  bool lambda_asym_ {false}; //!< Whether lmnc_ terms are present
 
   // Energy distribution(s): either 1 for all rho, or one per rho point
   vector<unique_ptr<Distribution>> energy_dists_;

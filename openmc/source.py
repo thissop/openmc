@@ -1615,6 +1615,21 @@ class StellaratorSource(SourceBase):
     constraints : dict
         Constraints on sampled source particles. See :class:`SourceBase` for
         valid keys and values.
+    polarization : sequence of float or dict, optional
+        Spin-polarized D-T collision-mode fractions ``(a, b, c)`` or the
+        corresponding deuteron/triton spin-state fractions. If omitted,
+        directions remain isotropic.
+    field_rho : numpy.ndarray, optional
+        Radial grid for the VMEC rotational-transform and lambda data. This is
+        commonly VMEC's half mesh and need not match ``rho``.
+    iota : numpy.ndarray, optional
+        Rotational transform on ``field_rho``. Required with ``polarization``.
+    lmns : numpy.ndarray, optional
+        Sine Fourier coefficients of VMEC's stream function lambda with shape
+        ``(len(field_rho), len(mode_m))``. Required with ``polarization``.
+    lmnc : numpy.ndarray, optional
+        Cosine Fourier coefficients of lambda for non-stellarator-symmetric
+        equilibria.
 
     Attributes
     ----------
@@ -1646,6 +1661,16 @@ class StellaratorSource(SourceBase):
         Indicator of source type: 'stellarator'
     constraints : dict
         Constraints on sampled source particles
+    polarization : tuple of float or None
+        Normalized collision-mode fractions ``(a, b, c)``.
+    field_rho : numpy.ndarray or None
+        Radial grid for field data.
+    iota : numpy.ndarray or None
+        Rotational transform on ``field_rho``.
+    lmns : numpy.ndarray or None
+        Sine coefficients of VMEC lambda.
+    lmnc : numpy.ndarray or None
+        Cosine coefficients of VMEC lambda.
 
     """
 
@@ -1663,7 +1688,12 @@ class StellaratorSource(SourceBase):
         zmnc: Sequence[Sequence[float]] | None = None,
         time: Univariate | None = None,
         strength: float = 1.0,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None,
+        polarization=None,
+        field_rho: Sequence[float] | None = None,
+        iota: Sequence[float] | None = None,
+        lmns: Sequence[Sequence[float]] | None = None,
+        lmnc: Sequence[Sequence[float]] | None = None,
     ):
         super().__init__(strength=strength, constraints=constraints)
         self.rho = rho
@@ -1677,6 +1707,11 @@ class StellaratorSource(SourceBase):
         self.num_field_periods = num_field_periods
         self.energy = energy
         self.time = time
+        self.polarization = polarization
+        self.field_rho = field_rho
+        self.iota = iota
+        self.lmns = lmns
+        self.lmnc = lmnc
 
         self._validate()
 
@@ -1709,6 +1744,28 @@ class StellaratorSource(SourceBase):
                 f"Number of energy distributions ({len(self.energy)}) must be "
                 f"either 1 or equal to the number of rho grid points "
                 f"({n_rho})")
+        field_values = (self.field_rho, self.iota, self.lmns)
+        if self.polarization is not None and any(x is None for x in field_values):
+            raise ValueError(
+                "polarized StellaratorSource requires field_rho, iota, and "
+                "lmns")
+        if self.polarization is None and any(x is not None for x in field_values):
+            raise ValueError(
+                "field_rho, iota, and lmns are only used with polarization")
+        if self.polarization is None and self.lmnc is not None:
+            raise ValueError("lmnc is only used with polarization")
+        if self.polarization is not None:
+            n_field = len(self.field_rho)
+            if len(self.iota) != n_field:
+                raise ValueError(
+                    "iota and field_rho must have the same length")
+            expected = (n_field, n_modes)
+            if self.lmns.shape != expected:
+                raise ValueError(f"lmns must have shape {expected}, got "
+                                 f"{self.lmns.shape}")
+            if self.lmnc is not None and self.lmnc.shape != expected:
+                raise ValueError(f"lmnc must have shape {expected}, got "
+                                 f"{self.lmnc.shape}")
 
     @property
     def type(self) -> str:
@@ -1813,6 +1870,66 @@ class StellaratorSource(SourceBase):
     @zmnc.setter
     def zmnc(self, value):
         self._zmnc = self._check_coeff('zmnc', value, none_ok=True)
+
+    @property
+    def polarization(self):
+        """None or normalized ``(a, b, c)`` SPF mode fractions."""
+        return self._polarization
+
+    @polarization.setter
+    def polarization(self, value):
+        self._polarization = _normalize_spf_polarization(value)
+
+    @property
+    def field_rho(self) -> np.ndarray | None:
+        return self._field_rho
+
+    @field_rho.setter
+    def field_rho(self, value):
+        if value is None:
+            self._field_rho = None
+            return
+        value = np.asarray(value, dtype=float)
+        if value.ndim != 1 or len(value) < 2:
+            raise ValueError(
+                "field_rho must be a 1-D array with at least 2 points")
+        if not np.all(np.isfinite(value)):
+            raise ValueError("field_rho must contain finite values")
+        if value[0] < 0.0 or value[-1] > 1.0:
+            raise ValueError("field_rho values must lie in [0, 1]")
+        if not np.all(np.diff(value) > 0.0):
+            raise ValueError("field_rho must be strictly increasing")
+        self._field_rho = value
+
+    @property
+    def iota(self) -> np.ndarray | None:
+        return self._iota
+
+    @iota.setter
+    def iota(self, value):
+        if value is None:
+            self._iota = None
+            return
+        value = np.asarray(value, dtype=float)
+        if value.ndim != 1 or not np.all(np.isfinite(value)):
+            raise ValueError("iota must be a 1-D array of finite values")
+        self._iota = value
+
+    @property
+    def lmns(self) -> np.ndarray | None:
+        return self._lmns
+
+    @lmns.setter
+    def lmns(self, value):
+        self._lmns = self._check_coeff('lmns', value, none_ok=True)
+
+    @property
+    def lmnc(self) -> np.ndarray | None:
+        return self._lmnc
+
+    @lmnc.setter
+    def lmnc(self, value):
+        self._lmnc = self._check_coeff('lmnc', value, none_ok=True)
 
     @property
     def num_field_periods(self) -> int:
@@ -1920,6 +2037,49 @@ class StellaratorSource(SourceBase):
             rmns = rmns * 100.0
             zmnc = zmnc * 100.0
 
+        # VMEC's field-line relation is
+        # B^theta/B^zeta = (iota - lambda_zeta)/(1 + lambda_theta).
+        # VMEC++ can export lambda on the full mesh. Classic wout files store
+        # lmns/lmnc and iotas on the half mesh, with row zero reserved as
+        # padding; preserve that native mesh instead of silently treating it
+        # as the full geometry mesh.
+        polarization = kwargs.pop('polarization', None)
+        field_data = {}
+        if polarization is not None:
+            lmns_raw = ds.get('lmns')
+            if lmns_raw is not None:
+                field_rho = np.sqrt(
+                    (np.arange(1, ns) - 0.5) / (ns - 1))
+                lmns = lmns_raw[1:]
+                lmnc_raw = ds.get('lmnc') if lasym else None
+                lmnc = lmnc_raw[1:] if lmnc_raw is not None else None
+                if ds.get('iotas') is not None:
+                    iota = ds['iotas'][1:]
+                elif ds.get('iotaf') is not None:
+                    iota = 0.5 * (ds['iotaf'][:-1] + ds['iotaf'][1:])
+                else:
+                    iota = None
+            elif ds.get('lmns_full') is not None:
+                field_rho = rho
+                iota = ds.get('iotaf')
+                lmns = ds['lmns_full']
+                lmnc = ds.get('lmnc_full') if lasym else None
+            else:
+                raise ValueError(
+                    "polarized VMEC source requires lmns or lmns_full in "
+                    "the wout file")
+            if iota is None:
+                raise ValueError(
+                    "polarized VMEC source requires iotas or iotaf in the "
+                    "wout file")
+            field_data = dict(
+                polarization=polarization,
+                field_rho=field_rho,
+                iota=iota,
+                lmns=lmns,
+                lmnc=lmnc,
+            )
+
         return cls(
             rho=rho,
             emission_density=cls._evaluate_emission_density(
@@ -1932,6 +2092,7 @@ class StellaratorSource(SourceBase):
             zmnc=zmnc,
             num_field_periods=nfp,
             energy=energy,
+            **field_data,
             **kwargs
         )
 
@@ -1943,7 +2104,8 @@ class StellaratorSource(SourceBase):
         HDF5-based and read with h5py.
         """
         names = ('rmnc', 'zmns', 'rmns', 'zmnc', 'xm', 'xn', 'nfp',
-                 'lasym__logical__')
+                 'lasym__logical__', 'iotaf', 'iotas', 'lmns', 'lmnc',
+                 'lmns_full', 'lmnc_full')
         try:
             with netcdf_file(str(path), mmap=False) as ds:
                 return {k: np.asarray(v[()], dtype=float)
@@ -2013,6 +2175,12 @@ class StellaratorSource(SourceBase):
             eq = eq[-1]
         cv.check_type('eq', eq, Equilibrium)
 
+        # When a polarized field direction is requested, the straight-field-line
+        # stream function lambda is converted on the same angular footing as the
+        # geometry and iota is evaluated on the rho grid below.
+        want_field = (kwargs.get('polarization') is not None and not all(
+            k in kwargs for k in ('field_rho', 'iota', 'lmns')))
+
         def convert(name):
             basis = getattr(eq, f'{name}_basis')
             l, m, _ = basis.modes.T  # noqa: E741
@@ -2027,24 +2195,52 @@ class StellaratorSource(SourceBase):
 
         r_modes, r_sine, r_cosine = convert('R')
         z_modes, z_sine, z_cosine = convert('Z')
-        modes = sorted(set(r_modes) | set(z_modes))
+        if want_field:
+            l_modes, l_sine, l_cosine = convert('L')
+            modes = sorted(set(r_modes) | set(z_modes) | set(l_modes))
+        else:
+            modes = sorted(set(r_modes) | set(z_modes))
         mode_m, mode_n = np.asarray(modes, dtype=int).T
         indices = {mode: k for k, mode in enumerate(modes)}
-        rmnc, rmns, zmnc, zmns = (
-            np.zeros((n_rho, len(modes))) for _ in range(4))
-        # Align the R/Z mode lists and convert meters to centimeters.
+        rmnc, rmns, zmnc, zmns, lmnc, lmns = (
+            np.zeros((n_rho, len(modes))) for _ in range(6))
+        # Align the R/Z (and lambda) mode lists and convert meters to centimeters.
         r_indices = [indices[mode] for mode in r_modes]
         z_indices = [indices[mode] for mode in z_modes]
         rmnc[:, r_indices], rmns[:, r_indices] = 100*r_cosine, 100*r_sine
         zmnc[:, z_indices], zmns[:, z_indices] = 100*z_cosine, 100*z_sine
+        if want_field:
+            l_indices = [indices[mode] for mode in l_modes]
+            # lambda is dimensionless and is not scaled to centimeters
+            lmnc[:, l_indices], lmns[:, l_indices] = l_cosine, l_sine
 
-        # Drop modes whose R and Z coefficients are exactly zero on every surface.
-        keep = np.any((rmnc != 0) | (rmns != 0) | (zmnc != 0) | (zmns != 0), axis=0)
+        # Drop modes whose coefficients are exactly zero on every surface (lambda
+        # is included in the test only when a polarized field is requested).
+        nonzero = (rmnc != 0) | (rmns != 0) | (zmnc != 0) | (zmns != 0)
+        if want_field:
+            nonzero = nonzero | (lmnc != 0) | (lmns != 0)
+        keep = np.any(nonzero, axis=0)
         mode_m, mode_n = mode_m[keep], mode_n[keep]
-        rmnc, rmns, zmnc, zmns = (a[:, keep] for a in (rmnc, rmns, zmnc, zmns))
+        rmnc, rmns, zmnc, zmns, lmnc, lmns = (
+            a[:, keep] for a in (rmnc, rmns, zmnc, zmns, lmnc, lmns))
 
         # Drop the asymmetric tables for stellarator-symmetric equilibria
         sym = not (np.any(rmns) or np.any(zmnc))
+
+        field_kwargs = {}
+        if want_field:
+            from desc.grid import LinearGrid
+            grid = LinearGrid(rho=rho, M=0, N=0, NFP=int(eq.NFP))
+            iota_vals = np.asarray(eq.compute('iota', grid=grid)['iota'])
+            iota_rho = np.asarray(grid.nodes)[:, 0]
+            iota = np.array(
+                [iota_vals[np.argmin(np.abs(iota_rho - r))] for r in rho])
+            field_kwargs = dict(
+                field_rho=rho,
+                iota=iota,
+                lmns=lmns,
+                lmnc=lmnc if np.any(lmnc) else None,
+            )
 
         return cls(
             rho=rho,
@@ -2058,6 +2254,7 @@ class StellaratorSource(SourceBase):
             zmnc=None if sym else zmnc,
             num_field_periods=eq.NFP,
             energy=energy,
+            **field_kwargs,
             **kwargs
         )
 
@@ -2085,6 +2282,19 @@ class StellaratorSource(SourceBase):
             if coeff is not None:
                 ET.SubElement(element, name).text = \
                     ' '.join(str(c) for c in coeff.ravel())
+
+        if self.polarization is not None:
+            ET.SubElement(element, "polarization").text = \
+                ' '.join(str(x) for x in self.polarization)
+            ET.SubElement(element, "field_rho").text = \
+                ' '.join(str(x) for x in self.field_rho)
+            ET.SubElement(element, "iota").text = \
+                ' '.join(str(x) for x in self.iota)
+            ET.SubElement(element, "lmns").text = \
+                ' '.join(str(x) for x in self.lmns.ravel())
+            if self.lmnc is not None:
+                ET.SubElement(element, "lmnc").text = \
+                    ' '.join(str(x) for x in self.lmnc.ravel())
 
         # Energy distribution(s)
         for dist in self.energy:
@@ -2124,6 +2334,24 @@ class StellaratorSource(SourceBase):
             coeffs[name] = (np.array(text.split(), dtype=float).reshape(shape)
                             if text else None)
 
+        polarization_text = get_text(elem, 'polarization')
+        polarization = (tuple(float(x) for x in polarization_text.split())
+                        if polarization_text else None)
+        field_rho_text = get_text(elem, 'field_rho')
+        iota_text = get_text(elem, 'iota')
+        field_rho = (np.array(field_rho_text.split(), dtype=float)
+                     if field_rho_text else None)
+        iota = (np.array(iota_text.split(), dtype=float)
+                if iota_text else None)
+        field_shape = ((len(field_rho), len(mode_m))
+                       if field_rho is not None else None)
+        lmns_text = get_text(elem, 'lmns')
+        lmnc_text = get_text(elem, 'lmnc')
+        lmns = (np.array(lmns_text.split(), dtype=float).reshape(field_shape)
+                if lmns_text else None)
+        lmnc = (np.array(lmnc_text.split(), dtype=float).reshape(field_shape)
+                if lmnc_text else None)
+
         # Read energy distributions
         energy = [Univariate.from_xml_element(e) for e in elem.findall('energy')]
 
@@ -2148,7 +2376,12 @@ class StellaratorSource(SourceBase):
             energy=energy,
             time=time,
             strength=strength,
-            constraints=constraints
+            constraints=constraints,
+            polarization=polarization,
+            field_rho=field_rho,
+            iota=iota,
+            lmns=lmns,
+            lmnc=lmnc,
         )
 
 

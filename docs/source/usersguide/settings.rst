@@ -543,6 +543,18 @@ other sources. As with :class:`openmc.TokamakSource`, the ``energy`` argument
 accepts a single distribution or one distribution per radial grid point, and a
 ``time`` distribution may optionally be given.
 
+When ``polarization`` is passed to :meth:`StellaratorSource.from_vmec`, the
+rotational transform and VMEC lambda coefficients are read from the wout file
+and used to evaluate the local field direction at each accepted birth point.
+The classic VMEC half mesh and the VMEC++ full-mesh form are handled
+explicitly. :meth:`StellaratorSource.from_desc` likewise extracts the DESC
+stream-function ``lambda`` (folded from its Fourier-Zernike basis into the same
+combined form as the geometry) and the rotational transform, evaluated on the
+radial grid. The reconstructed field direction is validated against DESC's own
+computed field to better than a degree and converges with ``n_rho``. Passing
+``field_rho``, ``iota``, and ``lmns`` explicitly overrides the native
+extraction; unpolarized DESC sources are unchanged.
+
 .. _compiled_source:
 
 Compiled Sources
